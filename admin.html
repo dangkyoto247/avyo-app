@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Avyo - Trang Quản Trị Hệ Thống</title>
+  
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f1f5f9; margin: 0; padding: 12px; }
+    .container { max-width: 900px; margin: auto; }
+    .card { background: white; padding: 16px; border-radius: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 14px; }
+    #map { height: 280px; width: 100%; border-radius: 12px; margin-top: 10px; }
+    
+    /* Form & Input */
+    .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-top: 10px; }
+    input, select { padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; outline: none; }
+    button { padding: 10px 16px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; font-size: 14px; }
+    .btn-add { background: #16a34a; color: white; }
+    .btn-cancel { background: #64748b; color: white; display: none; }
+    .btn-edit { background: #0284c7; color: white; padding: 6px 10px; font-size: 12px; }
+    .btn-del { background: #ef4444; color: white; padding: 6px 10px; font-size: 12px; }
+
+    /* Bảng dữ liệu */
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
+    th, td { padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: left; }
+    th { background: #f8fafc; color: #475569; font-weight: 600; }
+    .badge-online { background: #dcfce7; color: #15803d; padding: 3px 8px; border-radius: 12px; font-weight: bold; font-size: 11px; }
+    .badge-offline { background: #f1f5f9; color: #64748b; padding: 3px 8px; border-radius: 12px; font-weight: bold; font-size: 11px; }
+
+    /* Màn hình khóa đăng nhập */
+    #login-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #0f172a; display: flex; align-items: center; justify-content: center; z-index: 9999; }
+    .login-box { background: white; padding: 24px; border-radius: 16px; text-align: center; width: 280px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+    .vehicle-icon { font-size: 26px; text-align: center; line-height: 1; }
+  </style>
+</head>
+<body>
+
+  <!-- Khóa Mật Khẩu Bảo Mật -->
+  <div id="login-modal">
+    <div class="login-box">
+      <h3 style="margin-top:0; color:#0f172a;">🔒 Đăng Nhập Admin</h3>
+      <p style="font-size:12px; color:#64748b; margin-bottom:12px;">Nhập mật khẩu để truy cập trang quản trị</p>
+      <input type="password" id="passInput" placeholder="Mật khẩu..." style="width: 80%; text-align: center; margin-bottom: 12px;">
+      <button onclick="checkPass()" style="width: 90%; background: #16a34a; color: white;">VÀO TRANG QUẢN TRỊ</button>
+    </div>
+  </div>
+
+  <!-- Giao diện Admin chính -->
+  <div class="container">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+      <h2 style="margin:0; color:#0f172a;">⚙️ Quản Lý Hệ Thống Avyo</h2>
+      <button onclick="logout()" style="background:#cbd5e1; color:#334155; padding:6px 12px; font-size:12px;">Đăng xuất</button>
+    </div>
+
+    <!-- Bản đồ theo dõi toàn bộ tài xế -->
+    <div class="card">
+      <h4 style="margin: 0; color: #334155;">📍 Bản Đồ Giám Sát Xe Đang Chạy (<span id="onlineCount">0</span> xe)</h4>
+      <div id="map"></div>
+    </div>
+
+    <!-- Form Thêm / Sửa Tài Xế -->
+    <div class="card">
+      <h4 id="formTitle" style="margin: 0 0 8px 0; color: #334155;">➕ Thêm Tài Xế Mới</h4>
+      <input type="hidden" id="driverId">
+      <div class="form-grid">
+        <input type="text" id="driverName" placeholder="Tên tài xế (VD: Nguyễn Văn A)">
+        <input type="text" id="driverPhone" placeholder="Số điện thoại Zalo">
+        <select id="vehicleType">
+          <option value="bike">🛵 Xe máy (6k/km)</option>
+          <option value="car">🚕 Ô tô (11k/km)</option>
+          <option value="driver">👤 Lái xe hộ (11k/km)</option>
+          <option value="truck">🚚 Xe chở hàng (Thỏa thuận)</option>
+        </select>
+        <input type="text" id="vehicleDetail" placeholder="Loại xe & Biển số (VD: Wave 37B1-1234)">
+      </div>
+      <div style="margin-top: 10px; display: flex; gap: 8px;">
+        <button id="saveBtn" class="btn-add" onclick="saveDriver()">LƯU TÀI XẾ</button>
+        <button id="cancelBtn" class="btn-cancel" onclick="resetForm()">HỦY SỬA</button>
+      </div>
+    </div>
+
+    <!-- Danh sách tài xế -->
+    <div class="card" style="overflow-x: auto;">
+      <h4 style="margin: 0 0 8px 0; color: #334155;">📋 Danh Sách Tất Cả Tài Xế</h4>
+      <table>
+        <thead>
+          <tr>
+            <th>Loại xe</th>
+            <th>Họ và Tên</th>
+            <th>Số Điện Thoại</th>
+            <th>Xe & Biển Số</th>
+            <th>Trạng Thái</th>
+            <th>Thao Tác</th>
+          </tr>
+        </thead>
+        <tbody id="driverTableBody">
+          <tr><td colspan="6" style="text-align:center;">Đang tải dữ liệu...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    // Mật khẩu vào trang Admin (Bạn có thể đổi mật khẩu khác tại đây)
+    const ADMIN_PASS = "123456";
+
+    function checkPass() {
+      const input = document.getElementById('passInput').value;
+      if (input === ADMIN_PASS) {
+        document.getElementById('login-modal').style.display = 'none';
+        initMap();
+        loadAllData();
+      } else {
+        alert("❌ Mật khẩu không đúng!");
+      }
+    }
+
+    function logout() {
+      document.getElementById('login-modal').style.display = 'flex';
+      document.getElementById('passInput').value = '';
+    }
+
+    const SUPABASE_URL = 'https://yvucyqkglbgxvozrznir.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_l2z89zfRrm2beySFi1jhOg_PBYenag9';
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    let map = null;
+    let adminMarkers = {};
+
+    const icons = {
+      'bike': L.divIcon({ html: '<div class="vehicle-icon">🛵</div>', className: 'custom-icon', iconSize: [26, 26] }),
+      'car': L.divIcon({ html: '<div class="vehicle-icon">🚕</div>', className: 'custom-icon', iconSize: [26, 26] }),
+      'driver': L.divIcon({ html: '<div class="vehicle-icon"><svg viewBox="0 0 24 24" fill="#16a34a" width="26px" height="26px"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg></div>', className: 'custom-icon', iconSize: [26, 26] }),
+      'truck': L.divIcon({ html: '<div class="vehicle-icon">🚚</div>', className: 'custom-icon', iconSize: [26, 26] })
+    };
+
+    const typeLabels = { 'bike': '🛵 Xe máy', 'car': '🚕 Ô tô', 'driver': '👤 Lái xe hộ', 'truck': '🚚 Chở hàng' };
+
+    function initMap() {
+      if (map) return;
+      map = L.map('map').setView([18.7034, 105.6832], 12);
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(map);
+    }
+
+    async function loadAllData() {
+      const { data: drivers } = await supabaseClient.from('drivers').select('*').order('created_at', { ascending: false });
+      
+      const tbody = document.getElementById('driverTableBody');
+      tbody.innerHTML = '';
+
+      Object.keys(adminMarkers).forEach(id => map.removeLayer(adminMarkers[id]));
+      adminMarkers = {};
+
+      let onlineCount = 0;
+
+      if (!drivers || drivers.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Chưa có tài xế nào. Hãy thêm ở trên!</td></tr>';
+        document.getElementById('onlineCount').innerText = '0';
+        return;
+      }
+
+      drivers.forEach(d => {
+        if (d.is_online) onlineCount++;
+
+        // Vẽ danh sách bảng
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><b>${typeLabels[d.vehicle_type] || d.vehicle_type}</b></td>
+          <td><b>${d.name}</b></td>
+          <td>${d.phone}</td>
+          <td>${d.vehicle || '--'}</td>
+          <td>${d.is_online ? '<span class="badge-online">🟢 BẬT GPS</span>' : '<span class="badge-offline">⚪ Tắt</span>'}</td>
+          <td>
+            <button class="btn-edit" onclick="editDriver('${d.id}', '${d.name}', '${d.phone}', '${d.vehicle_type}', '${d.vehicle || ''}')">Sửa</button>
+            <button class="btn-del" onclick="deleteDriver('${d.id}', '${d.name}')">Xóa</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+
+        // Vẽ lên bản đồ nếu đang bật GPS
+        if (d.is_online && d.lat && d.lng) {
+          const marker = L.marker([d.lat, d.lng], { icon: icons[d.vehicle_type] || icons['bike'] })
+            .addTo(map)
+            .bindPopup(`<b>${d.name}</b><br>${d.vehicle}`);
+          adminMarkers[d.id] = marker;
+        }
+      });
+
+      document.getElementById('onlineCount').innerText = onlineCount;
+    }
+
+    async function saveDriver() {
+      const id = document.getElementById('driverId').value;
+      const name = document.getElementById('driverName').value.trim();
+      const phone = document.getElementById('driverPhone').value.trim();
+      const vehicle_type = document.getElementById('vehicleType').value;
+      const vehicle = document.getElementById('vehicleDetail').value.trim();
+
+      if (!name || !phone) return alert("Vui lòng điền Tên và Số điện thoại!");
+
+      if (id) {
+        // Cập nhật tài xế cũ
+        await supabaseClient.from('drivers').update({ name, phone, vehicle_type, vehicle }).eq('id', id);
+        alert("✅ Cập nhật thông tin thành công!");
+      } else {
+        // Thêm tài xế mới
+        await supabaseClient.from('drivers').insert([{ name, phone, vehicle_type, vehicle, is_online: false }]);
+        alert("✅ Thêm tài xế mới thành công!");
+      }
+
+      resetForm();
+      loadAllData();
+    }
+
+    function editDriver(id, name, phone, type, vehicle) {
+      document.getElementById('driverId').value = id;
+      document.getElementById('driverName').value = name;
+      document.getElementById('driverPhone').value = phone;
+      document.getElementById('vehicleType').value = type;
+      document.getElementById('vehicleDetail').value = vehicle;
+
+      document.getElementById('formTitle').innerText = "✏️ Cập Nhật Thông Tin Tài Xế";
+      document.getElementById('saveBtn').innerText = "LƯU THAY ĐỔI";
+      document.getElementById('cancelBtn').style.display = "inline-block";
+    }
+
+    function resetForm() {
+      document.getElementById('driverId').value = '';
+      document.getElementById('driverName').value = '';
+      document.getElementById('driverPhone').value = '';
+      document.getElementById('vehicleDetail').value = '';
+
+      document.getElementById('formTitle').innerText = "➕ Thêm Tài Xế Mới";
+      document.getElementById('saveBtn').innerText = "LƯU TÀI XẾ";
+      document.getElementById('cancelBtn').style.display = "none";
+    }
+
+    async function deleteDriver(id, name) {
+      if (confirm(`Bạn có chắc chắn muốn XÓA tài xế "${name}" khỏi hệ thống?`)) {
+        await supabaseClient.from('drivers').delete().eq('id', id);
+        loadAllData();
+      }
+    }
+
+    // Tự động làm mới khi tài xế bật/tắt GPS trên máy họ
+    supabaseClient.channel('admin-realtime').on('postgres_changes', { event: '*', schema: 'public', table: 'drivers' }, () => loadAllData()).subscribe();
+  </script>
+</body>
+</html>
