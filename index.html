@@ -26,7 +26,6 @@
     .btn-gps { background: #0f172a; color: white; padding: 9px; border-radius: 10px; border: none; font-weight: bold; width: 100%; cursor: pointer; font-size: 13px; margin-bottom: 8px; }
     .vehicle-icon { font-size: 30px; text-align: center; line-height: 1; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3)); }
     
-    /* Thanh bộ lọc loại xe */
     .filter-bar { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 6px; }
     .filter-chip { background: #e2e8f0; color: #475569; padding: 6px 12px; border-radius: 20px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; user-select: none; transition: all 0.2s; border: 1px solid #cbd5e1; }
     .filter-chip.active { background: #16a34a; color: white; border-color: #16a34a; box-shadow: 0 2px 6px rgba(22,163,74,0.3); }
@@ -36,7 +35,6 @@
 
   <h3 style="text-align: center; color: #0f172a; margin: 8px 0 12px 0;">🚕 Avyo - Chạm Chọn Chuyến</h3>
   
-  <!-- Thanh chọn hiển thị loại xe -->
   <div class="filter-bar">
     <div class="filter-chip active" onclick="toggleFilter('bike', this)">🛵 Xe máy</div>
     <div class="filter-chip active" onclick="toggleFilter('car', this)">🚕 Ô tô</div>
@@ -50,7 +48,7 @@
     <button id="gpsBtn" class="btn-gps" onclick="useCurrentLocationAsPickup()">📍 Đặt điểm đón tại vị trí của tôi</button>
     <p style="margin: 4px 0;"><b>Quãng đường:</b> <span id="distance">0</span> km</p>
     <p style="margin: 4px 0;"><b>Ước tính cước:</b> <span id="price" class="price">0</span> <small id="rate-label" style="font-size: 12px; color: #64748b; font-weight: normal;"></small></p>
-    <button id="resetBtn" class="btn-reset" onclick="resetRoute()">🔄 ĐẶT LAI ĐIỂM ĐÓN / ĐẾN</button>
+    <button id="resetBtn" class="btn-reset" onclick="resetRoute()">🔄 ĐẶT LẠI ĐIỂM ĐÓN / ĐẾN</button>
   </div>
 
   <div class="card">
@@ -75,7 +73,6 @@
     let selectedDriver = null;
     let rawDriversData = [];
 
-    // Bộ lọc loại xe (Mặc định chọn cả 4 loại)
     const activeFilters = new Set(['bike', 'car', 'driver', 'truck']);
 
     function toggleFilter(type, element) {
@@ -90,21 +87,22 @@
       renderDriverMarkers();
     }
 
-    // Tự động định vị GPS khi mở web
     map.locate({ setView: true, maxZoom: 15 });
     
     map.on('locationfound', (e) => {
       userLatLng = e.latlng;
-      // Tự động gán điểm đón ngay vị trí GPS khách đang đứng
       setPickupLocation(e.latlng, true);
     });
 
+    // CẬP NHẬT: Cho phép kéo thả Điểm đón
     function setPickupLocation(latlng, isAuto = false) {
       if (markerStart) map.removeLayer(markerStart);
       
-      markerStart = L.marker(latlng).addTo(map)
-        .bindPopup(isAuto ? "<b>📍 Điểm đón (Vị trí của bạn)</b>" : "<b>📍 Điểm đón</b>")
+      markerStart = L.marker(latlng, { draggable: true }).addTo(map)
+        .bindPopup(isAuto ? "<b>📍 Điểm đón của bạn</b><br><small><i>(Nhấn giữ & kéo để đổi vị trí khác)</i></small>" : "<b>📍 Điểm đón</b><br><small><i>(Nhấn giữ & kéo để đổi vị trí khác)</i></small>")
         .openPopup();
+        
+      markerStart.on('dragend', calculateRoute); // Tự động tính lại giá khi thả tay ra
         
       document.getElementById('resetBtn').style.display = 'block';
       if (markerEnd) calculateRoute();
@@ -119,11 +117,17 @@
       }
     }
 
+    // CẬP NHẬT: Cho phép kéo thả Điểm đến
     map.on('click', function(e) {
       if (!markerStart) {
         setPickupLocation(e.latlng, false);
       } else if (!markerEnd) {
-        markerEnd = L.marker(e.latlng).addTo(map).bindPopup("<b>🚩 Điểm đến</b>").openPopup();
+        markerEnd = L.marker(e.latlng, { draggable: true }).addTo(map)
+          .bindPopup("<b>🚩 Điểm đến</b><br><small><i>(Nhấn giữ & kéo để đổi vị trí khác)</i></small>")
+          .openPopup();
+          
+        markerEnd.on('dragend', calculateRoute); // Tự động tính lại giá khi thả tay ra
+        
         calculateRoute();
       }
     });
@@ -167,6 +171,7 @@
       }
     }
 
+    // CẬP NHẬT: Khi bấm đặt lại, xóa trắng bản đồ để khách tự do chọn từ đầu
     function resetRoute() {
       if (markerStart) map.removeLayer(markerStart);
       if (markerEnd) map.removeLayer(markerEnd);
@@ -178,7 +183,9 @@
       document.getElementById('price').innerText = '0';
       document.getElementById('rate-label').innerText = '';
       document.getElementById('resetBtn').style.display = 'none';
-      if (userLatLng) setPickupLocation(userLatLng, true);
+      
+      // Xóa thông báo này nếu bạn không thích nó bật lên
+      alert("Đã xóa lộ trình. Hãy chạm vào bản đồ lần 1 để chọn ĐIỂM ĐÓN (hoặc bấm nút Đặt điểm đón tại vị trí của tôi)!");
     }
 
     const SUPABASE_URL = 'https://yvucyqkglbgxvozrznir.supabase.co';
