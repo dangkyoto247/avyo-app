@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Avyo - App Tài Xế</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body { font-family: sans-serif; padding: 15px; max-width: 420px; margin: auto; background: #f0fdf4; }
+    .card { background: white; padding: 18px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); text-align: center; }
+    select, button { width: 100%; padding: 12px; margin-top: 10px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 15px; }
+    button { background: #22c55e; color: white; font-weight: bold; border: none; cursor: pointer; }
+    .status { font-weight: bold; margin: 12px 0; }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <h2>🚕 Avyo Tài Xế</h2>
+    
+    <label style="text-align:left; display:block; font-size:13px; font-weight:bold;">Chọn tài xế:</label>
+    <select id="driverSelect"><option value="">-- Chọn tên tài xế --</option></select>
+
+    <div id="status" class="status" style="color: #ef4444;">🔴 Đang tắt định vị</div>
+    <p style="font-size: 12px; color: #64748b;">Tọa độ GPS thực tế: <span id="coords">--</span></p>
+
+    <button id="toggleBtn" onclick="toggleOnline()">BẮT ĐẦU NHẬN KHÁCH (BẬT GPS)</button>
+  </div>
+
+  <script>
+    const SUPABASE_URL = 'https://yvucyqkglbgxvozrznir.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_l2z89zfRrm2beySFi1jhOg_PBYenag9';
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    let isOnline = false, watchId = null;
+
+    const typeIcons = { 'bike': '🛵', 'car': '🚕', 'driver': '👨', 'truck': '🚚' };
+
+    async function init() {
+      const { data } = await supabaseClient.from('drivers').select('id, name, vehicle_type');
+      if (data) {
+        data.forEach(d => {
+          const icon = typeIcons[d.vehicle_type] || '🚕';
+          document.getElementById('driverSelect').innerHTML += `<option value="${d.id}">${icon} - ${d.name}</option>`;
+        });
+      }
+    }
+    init();
+
+    async function updateLocation(lat, lng) {
+      const driverId = document.getElementById('driverSelect').value;
+      if (!driverId || !isOnline) return;
+
+      await supabaseClient.from('drivers').update({
+        lat: lat,
+        lng: lng,
+        is_online: true,
+        updated_at: new Date().toISOString()
+      }).eq('id', driverId);
+    }
+
+    async function toggleOnline() {
+      const driverSelect = document.getElementById('driverSelect');
+      const driverId = driverSelect.value;
+      if (!driverId) return alert('Vui lòng chọn tài xế!');
+
+      const btn = document.getElementById('toggleBtn');
+      const status = document.getElementById('status');
+
+      if (!isOnline) {
+        if (!navigator.geolocation) return alert('Thiết bị không hỗ trợ GPS');
+
+        isOnline = true;
+        driverSelect.disabled = true; 
+        btn.innerText = 'TẮT NHẬN KHÁCH (NGHỈ NƠI)';
+        btn.style.background = '#ef4444';
+        status.innerHTML = '🟢 ĐANG PHÁT GPS (Thử nghiệm 3s/lần)';
+        status.style.color = '#16a34a';
+
+        let lastUpdateTime = 0; 
+
+        watchId = navigator.geolocation.watchPosition(async (pos) => {
+          if (!isOnline) return;
+
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+
+          document.getElementById('coords').innerText = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+
+          const now = Date.now();
+          if (now - lastUpdateTime >= 3000) {
+            await updateLocation(lat, lng);
+            lastUpdateTime = now; 
+          }
+        }, (err) => alert('Lỗi GPS: ' + err.message), { enableHighAccuracy: true });
+
+      } else {
+        isOnline = false;
+
+        if (watchId) {
+          navigator.geolocation.clearWatch(watchId);
+          watchId = null;
+        }
+
+        await supabaseClient.from('drivers').update({ 
+          is_online: false,
+          updated_at: new Date().toISOString()
+        }).eq('id', driverId);
+
+        driverSelect.disabled = false; 
+        status.innerHTML = '🔴 ĐÃ TẮT ĐỊNH VỊ';
+        status.style.color = '#ef4444';
+        btn.innerText = 'BẮT ĐẦU NHẬN KHÁCH (BẬT GPS)';
+        btn.style.background = '#22c55e';
+      }
+    }
+  </script>
+</body>
+</html>
