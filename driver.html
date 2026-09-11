@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Avyo - App Tài Xế</title>
 
-  <!-- Khai báo PWA (App) -->
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#16a34a">
   <link rel="apple-touch-icon" href="logo.png">
@@ -42,7 +41,7 @@
 
     let isOnline = false, watchId = null;
 
-    const typeIcons = { 'bike': '🛵', 'car': '🚕', 'driver': '👨', 'truck': '🚚' };
+    const typeIcons = { 'bike': '🛵', 'car': '🚕', 'driver': '👤', 'truck': '🚚' };
 
     async function init() {
       const { data } = await supabaseClient.from('drivers').select('id, name, vehicle_type');
@@ -124,7 +123,6 @@
     }
   </script>
 
-  <!-- Đăng ký Service Worker -->
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('sw.js').then(() => {
