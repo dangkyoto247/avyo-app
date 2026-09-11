@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Avyo - Gọi Xe Tinh Gọn 0Đ</title>
   
-  <!-- Khai báo PWA (App) -->
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#16a34a">
   <link rel="apple-touch-icon" href="logo.png">
@@ -25,7 +24,6 @@
     .btn-phone { background: #22c55e; color: white; padding: 12px; border-radius: 10px; text-decoration: none; display: block; text-align: center; font-weight: bold; margin-top: 8px; }
     .btn-reset { background: #f97316; color: white; padding: 10px; border-radius: 10px; border: none; font-weight: bold; width: 100%; margin-top: 10px; cursor: pointer; display: none; font-size: 14px; }
     .vehicle-icon { font-size: 30px; text-align: center; line-height: 1; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3)); }
-    .vehicle-icon-lg { font-size: 36px; text-align: center; line-height: 1; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3)); }
   </style>
 </head>
 <body>
@@ -41,7 +39,7 @@
 
   <div class="card">
     <h4 style="margin: 0 0 8px 0; color: #334155;">Tài Xế Được Chọn</h4>
-    <p id="driver-info" style="margin: 4px 0; color: #64748b;"><i>Chạm vào icon 🛵 🚕 👨 🚚 trên bản đồ...</i></p>
+    <p id="driver-info" style="margin: 4px 0; color: #64748b;"><i>Chạm vào icon 🛵 🚕 👤 🚚 trên bản đồ...</i></p>
     
     <button id="zaloBtn" class="btn-zalo" style="display:none;" onclick="openZalo()">💬 Nhắn Zalo (Tự động Copy)</button>
     <a id="phoneBtn" href="#" class="btn-phone" style="display:none;">📞 Gọi Điện Trực Tiếp</a>
@@ -128,14 +126,15 @@
 
     let driverMarkers = {};
 
+    // CẬP NHẬT: Vẽ hình nửa thân người màu xanh lá cây bằng công nghệ SVG (cùng kích cỡ 30px)
     const icons = {
       'bike': L.divIcon({ html: '<div class="vehicle-icon">🛵</div>', className: 'custom-icon', iconSize: [30, 30], iconAnchor: [15, 15] }),
       'car': L.divIcon({ html: '<div class="vehicle-icon">🚕</div>', className: 'custom-icon', iconSize: [30, 30], iconAnchor: [15, 15] }),
-      'driver': L.divIcon({ html: '<div class="vehicle-icon-lg">👨</div>', className: 'custom-icon', iconSize: [36, 36], iconAnchor: [18, 18] }),
+      'driver': L.divIcon({ html: '<div class="vehicle-icon"><svg viewBox="0 0 24 24" fill="#16a34a" width="30px" height="30px"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg></div>', className: 'custom-icon', iconSize: [30, 30], iconAnchor: [15, 15] }),
       'truck': L.divIcon({ html: '<div class="vehicle-icon">🚚</div>', className: 'custom-icon', iconSize: [30, 30], iconAnchor: [15, 15] })
     };
 
-    const typeNames = { 'bike': '🛵 Xe máy', 'car': '🚕 Ô tô', 'driver': '👨 Lái xe hộ', 'truck': '🚚 Xe chở hàng' };
+    const typeNames = { 'bike': '🛵 Xe máy', 'car': '🚕 Ô tô', 'driver': '👤 Lái xe hộ', 'truck': '🚚 Xe chở hàng' };
 
     function openZalo() {
       if (!selectedDriver) return;
@@ -215,7 +214,6 @@
     supabaseClient.channel('realtime-drivers').on('postgres_changes', { event: '*', schema: 'public', table: 'drivers' }, () => loadDrivers()).subscribe();
   </script>
   
-  <!-- Đăng ký Service Worker -->
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('sw.js').then(() => {
