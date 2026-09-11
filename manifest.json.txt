@@ -1,0 +1,21 @@
+{
+  "name": "Avyo - Gọi Xe",
+  "short_name": "Avyo",
+  "description": "Nền tảng gọi xe tinh gọn 0Đ",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#16a34a",
+  "icons": [
+    {
+      "src": "logo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
