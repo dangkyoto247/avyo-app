@@ -4,130 +4,244 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Avyo - App Tài Xế</title>
-
+  
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#16a34a">
-  <link rel="apple-touch-icon" href="logo.png">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-
+  
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  
   <style>
-    body { font-family: sans-serif; padding: 15px; max-width: 420px; margin: auto; background: #f0fdf4; }
-    .card { background: white; padding: 18px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); text-align: center; }
-    select, button { width: 100%; padding: 12px; margin-top: 10px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 15px; }
-    button { background: #22c55e; color: white; font-weight: bold; border: none; cursor: pointer; }
-    .status { font-weight: bold; margin: 12px 0; }
+    body { 
+      font-family: sans-serif; 
+      padding: 15px; 
+      max-width: 420px; 
+      margin: auto; 
+      background: #f0fdf4; 
+    }
+    .card { 
+      background: white; 
+      padding: 20px; 
+      border-radius: 16px; 
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08); 
+      text-align: center; 
+    }
+    input, button { 
+      width: 100%; 
+      padding: 14px; 
+      margin-top: 10px; 
+      border-radius: 10px; 
+      border: 1px solid #cbd5e1; 
+      font-size: 16px; 
+      box-sizing: border-box; 
+    }
+    button { 
+      background: #22c55e; 
+      color: white; 
+      font-weight: bold; 
+      border: none; 
+      cursor: pointer; 
+    }
+    .status { 
+      font-weight: bold; 
+      margin: 15px 0; 
+      font-size: 16px; 
+    }
+    .logout-text { 
+      color: #64748b; 
+      font-size: 14px; 
+      text-decoration: underline; 
+      margin-top: 20px; 
+      display: block; 
+      cursor: pointer; 
+    }
   </style>
 </head>
 <body>
 
-  <div class="card">
-    <h2>🚕 Avyo Tài Xế</h2>
+  <!-- MÀN HÌNH ĐĂNG NHẬP -->
+  <div id="loginScreen" class="card" style="display: none;">
+    <h2 style="margin-top: 0; color: #16a34a;">🚕 Avyo Tài Xế</h2>
+    <p style="color: #64748b; font-size: 14px; margin-bottom: 20px;">Đăng nhập để nhận cuốc xe</p>
     
-    <label style="text-align:left; display:block; font-size:13px; font-weight:bold;">Chọn tài xế:</label>
-    <select id="driverSelect"><option value="">-- Chọn tên tài xế --</option></select>
+    <input type="tel" id="phoneInput" placeholder="Số điện thoại của bạn" autocomplete="off">
+    <input type="password" id="pinInput" placeholder="Mã PIN (Mật khẩu)" autocomplete="off">
+    
+    <button onclick="login()" style="margin-top: 20px;">ĐĂNG NHẬP</button>
+  </div>
 
-    <div id="status" class="status" style="color: #ef4444;">🔴 Đang tắt định vị</div>
-    <p style="font-size: 12px; color: #64748b;">Tọa độ GPS thực tế: <span id="coords">--</span></p>
+  <!-- MÀN HÌNH ĐIỀU KHIỂN GPS CỦA TÀI XẾ -->
+  <div id="appScreen" class="card" style="display: none;">
+    
+    <!-- Khung thông tin tài xế -->
+    <div style="background: #dcfce7; padding: 12px; border-radius: 10px; margin-bottom: 15px;">
+      <h3 id="driverNameLabel" style="margin: 0; color: #15803d;">--</h3>
+      <p id="vehicleLabel" style="margin: 5px 0 0 0; font-size: 14px; color: #166534;">--</p>
+    </div>
 
+    <!-- Trạng thái GPS -->
+    <div id="status" class="status" style="color: #ef4444;">🔴 Đang tắt định vị (Nghỉ ngơi)</div>
+    <p style="font-size: 12px; color: #64748b;">Tọa độ GPS: <span id="coords">--</span></p>
+
+    <!-- Nút Bật/Tắt -->
     <button id="toggleBtn" onclick="toggleOnline()">BẮT ĐẦU NHẬN KHÁCH (BẬT GPS)</button>
+
+    <!-- Nút Đăng xuất -->
+    <a class="logout-text" onclick="logout()">Đăng xuất tài khoản</a>
   </div>
 
   <script>
+    // --- 1. KẾT NỐI SUPABASE ---
     const SUPABASE_URL = 'https://yvucyqkglbgxvozrznir.supabase.co';
-    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl2dWN5cWtnbGJneHZvenJ6bmlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkxMzA3ODAsImV4cCI6MjEwNDcwNjc4MH0.Zagl4i2LPmxW3w9ih0h4LRsrm-OOGtPcWgvEs2vHBqo';
+    
+    // BẠN HÃY THAY MÃ API KEY CHUẨN CỦA BẠN VÀO DÒNG DƯỚI NÀY (Bắt đầu bằng eyJ...)
+    const SUPABASE_KEY = 'MÃ_KEY_EYJ_CỦA_BẠN_VÀO_ĐÂY';
+    
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    let isOnline = false, watchId = null;
+    let isOnline = false;
+    let watchId = null;
+    
+    // Lấy ID tài khoản đã lưu trong điện thoại
+    let currentDriverId = localStorage.getItem('avyo_driver_id');
 
-    const typeIcons = { 'bike': '🛵', 'car': '🚕', 'driver': '👤', 'truck': '🚚' };
+    // --- 2. KIỂM TRA ĐĂNG NHẬP KHI MỞ APP ---
+    if (currentDriverId) {
+      // Đã đăng nhập -> Hiện màn hình điều khiển
+      document.getElementById('appScreen').style.display = 'block';
+      document.getElementById('driverNameLabel').innerText = "Tài xế: " + localStorage.getItem('avyo_driver_name');
+      document.getElementById('vehicleLabel').innerText = localStorage.getItem('avyo_vehicle');
+    } else {
+      // Chưa đăng nhập -> Hiện màn hình Login
+      document.getElementById('loginScreen').style.display = 'block';
+    }
 
-    async function init() {
-      const { data } = await supabaseClient.from('drivers').select('id, name, vehicle_type');
-      if (data) {
-        data.forEach(d => {
-          const icon = typeIcons[d.vehicle_type] || '🚕';
-          document.getElementById('driverSelect').innerHTML += `<option value="${d.id}">${icon} - ${d.name}</option>`;
-        });
+    // --- 3. HÀM XỬ LÝ ĐĂNG NHẬP ---
+    async function login() {
+      const phone = document.getElementById('phoneInput').value.trim();
+      const pin = document.getElementById('pinInput').value.trim();
+      
+      if (!phone || !pin) {
+        return alert("Vui lòng nhập đủ SĐT và Mã PIN!");
+      }
+
+      const btn = document.querySelector('#loginScreen button');
+      btn.innerText = "Đang kiểm tra...";
+
+      // Truy vấn Database để kiểm tra
+      const { data, error } = await supabaseClient
+        .from('drivers')
+        .select('*')
+        .eq('phone', phone)
+        .eq('pin', pin)
+        .single();
+
+      if (error || !data) {
+        alert("❌ Sai Số điện thoại hoặc Mã PIN!");
+        btn.innerText = "ĐĂNG NHẬP";
+      } else {
+        // Lưu thông tin vào bộ nhớ điện thoại
+        localStorage.setItem('avyo_driver_id', data.id);
+        localStorage.setItem('avyo_driver_name', data.name);
+        localStorage.setItem('avyo_vehicle', data.vehicle || 'Chưa cập nhật xe');
+        
+        alert("✅ Đăng nhập thành công!");
+        window.location.reload(); // Tải lại trang để tự động chuyển vào App
       }
     }
-    init();
 
+    // --- 4. HÀM ĐĂNG XUẤT ---
+    function logout() {
+      if (confirm("Bạn có chắc chắn muốn đăng xuất không?")) {
+        // Nếu đang bật GPS thì tắt đi
+        if (isOnline) {
+          toggleOnline(); 
+        }
+        
+        // Xóa sạch bộ nhớ
+        localStorage.removeItem('avyo_driver_id');
+        localStorage.removeItem('avyo_driver_name');
+        localStorage.removeItem('avyo_vehicle');
+        
+        window.location.reload();
+      }
+    }
+
+    // --- 5. HÀM XỬ LÝ GPS (BẬT / TẮT) ---
     async function updateLocation(lat, lng) {
-      const driverId = document.getElementById('driverSelect').value;
-      if (!driverId || !isOnline) return;
-
-      await supabaseClient.from('drivers').update({
-        lat: lat,
-        lng: lng,
-        is_online: true,
-        updated_at: new Date().toISOString()
-      }).eq('id', driverId);
+      if (!currentDriverId || !isOnline) return;
+      
+      await supabaseClient.from('drivers').update({ 
+        lat: lat, 
+        lng: lng, 
+        is_online: true, 
+        updated_at: new Date().toISOString() 
+      }).eq('id', currentDriverId);
     }
 
     async function toggleOnline() {
-      const driverSelect = document.getElementById('driverSelect');
-      const driverId = driverSelect.value;
-      if (!driverId) return alert('Vui lòng chọn tài xế!');
+      if (!currentDriverId) {
+        return alert('Lỗi tài khoản, vui lòng đăng xuất và đăng nhập lại!');
+      }
 
       const btn = document.getElementById('toggleBtn');
       const status = document.getElementById('status');
 
       if (!isOnline) {
+        // BẬT GPS
         if (!navigator.geolocation) return alert('Thiết bị không hỗ trợ GPS');
-
+        
         isOnline = true;
-        driverSelect.disabled = true; 
-        btn.innerText = 'TẮT NHẬN KHÁCH (NGHỈ NƠI)';
+        btn.innerText = 'TẮT NHẬN KHÁCH (NGHỈ NGƠI)'; 
         btn.style.background = '#ef4444';
-        status.innerHTML = '🟢 ĐANG PHÁT GPS (Thử nghiệm 3s/lần)';
+        status.innerHTML = '🟢 ĐANG PHÁT GPS ĐỂ ĐÓN KHÁCH'; 
         status.style.color = '#16a34a';
 
         let lastUpdateTime = 0; 
-
+        
         watchId = navigator.geolocation.watchPosition(async (pos) => {
           if (!isOnline) return;
-
+          
           const lat = pos.coords.latitude;
           const lng = pos.coords.longitude;
-
           document.getElementById('coords').innerText = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-
+          
           const now = Date.now();
-          if (now - lastUpdateTime >= 3000) {
-            await updateLocation(lat, lng);
+          if (now - lastUpdateTime >= 3000) { 
+            await updateLocation(lat, lng); 
             lastUpdateTime = now; 
           }
-        }, (err) => alert('Lỗi GPS: ' + err.message), { enableHighAccuracy: true });
+        }, (err) => {
+          alert('Lỗi GPS: ' + err.message);
+        }, { 
+          enableHighAccuracy: true 
+        });
 
       } else {
+        // TẮT GPS
         isOnline = false;
-
-        if (watchId) {
-          navigator.geolocation.clearWatch(watchId);
-          watchId = null;
+        
+        if (watchId) { 
+          navigator.geolocation.clearWatch(watchId); 
+          watchId = null; 
         }
-
+        
         await supabaseClient.from('drivers').update({ 
-          is_online: false,
-          updated_at: new Date().toISOString()
-        }).eq('id', driverId);
-
-        driverSelect.disabled = false; 
-        status.innerHTML = '🔴 ĐÃ TẮT ĐỊNH VỊ';
+          is_online: false, 
+          updated_at: new Date().toISOString() 
+        }).eq('id', currentDriverId);
+        
+        status.innerHTML = '🔴 ĐÃ TẮT ĐỊNH VỊ (Nghỉ ngơi)'; 
         status.style.color = '#ef4444';
-        btn.innerText = 'BẮT ĐẦU NHẬN KHÁCH (BẬT GPS)';
+        
+        btn.innerText = 'BẮT ĐẦU NHẬN KHÁCH (BẬT GPS)'; 
         btn.style.background = '#22c55e';
       }
     }
   </script>
-
+  
   <script>
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js').then(() => {
-        console.log("App đã sẵn sàng hoạt động ngoại tuyến!");
-      });
+      navigator.serviceWorker.register('sw.js');
     }
   </script>
 </body>

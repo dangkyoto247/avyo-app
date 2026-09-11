@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Avyo - Trang Quản Trị Hệ Thống</title>
   
-  <!-- BỔ SUNG CẤU HÌNH PWA ĐỂ CÀI APP CHO TRANG ADMIN -->
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0f172a">
   <link rel="apple-touch-icon" href="logo.png">
@@ -17,14 +16,43 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f1f5f9; margin: 0; padding: 12px; }
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+      background: #f1f5f9; 
+      margin: 0; 
+      padding: 12px; 
+    }
     .container { max-width: 1000px; margin: auto; }
-    .card { background: white; padding: 16px; border-radius: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 14px; }
+    .card { 
+      background: white; 
+      padding: 16px; 
+      border-radius: 14px; 
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06); 
+      margin-bottom: 14px; 
+    }
     #map { height: 280px; width: 100%; border-radius: 12px; margin-top: 10px; }
     
-    .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-top: 10px; }
-    input, select { padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; outline: none; }
-    button { padding: 10px 16px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; font-size: 14px; }
+    .form-grid { 
+      display: grid; 
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
+      gap: 10px; 
+      margin-top: 10px; 
+    }
+    input, select { 
+      padding: 10px; 
+      border: 1px solid #cbd5e1; 
+      border-radius: 8px; 
+      font-size: 14px; 
+      outline: none; 
+    }
+    button { 
+      padding: 10px 16px; 
+      border-radius: 8px; 
+      border: none; 
+      font-weight: bold; 
+      cursor: pointer; 
+      font-size: 14px; 
+    }
     .btn-add { background: #16a34a; color: white; }
     .btn-cancel { background: #64748b; color: white; display: none; }
     .btn-edit { background: #0284c7; color: white; padding: 6px 10px; font-size: 12px; }
@@ -37,8 +65,14 @@
     .badge-offline { background: #f1f5f9; color: #64748b; padding: 3px 8px; border-radius: 12px; font-weight: bold; font-size: 11px; }
     .small-text { font-size: 11px; color: #64748b; display: block; margin-top: 2px; }
 
-    #login-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #0f172a; display: flex; align-items: center; justify-content: center; z-index: 9999; }
-    .login-box { background: white; padding: 24px; border-radius: 16px; text-align: center; width: 280px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+    #login-modal { 
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+      background: #0f172a; display: flex; align-items: center; justify-content: center; z-index: 9999; 
+    }
+    .login-box { 
+      background: white; padding: 24px; border-radius: 16px; 
+      text-align: center; width: 280px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); 
+    }
     .vehicle-icon { font-size: 26px; text-align: center; line-height: 1; }
   </style>
 </head>
@@ -60,33 +94,39 @@
       <button onclick="logout()" style="background:#cbd5e1; color:#334155; padding:6px 12px; font-size:12px;">Đăng xuất</button>
     </div>
 
+    <!-- Bản đồ -->
     <div class="card">
       <h4 style="margin: 0; color: #334155;">📍 Bản Đồ Giám Sát Xe Đang Chạy (<span id="onlineCount">0</span> xe)</h4>
       <div id="map"></div>
     </div>
 
+    <!-- Form -->
     <div class="card">
       <h4 id="formTitle" style="margin: 0 0 8px 0; color: #334155;">➕ Thêm Tài Xế Mới</h4>
       <input type="hidden" id="driverId">
+      
       <div class="form-grid">
         <input type="text" id="driverName" placeholder="Tên tài xế (VD: Nguyễn Văn A)">
-        <input type="text" id="driverPhone" placeholder="Số điện thoại Zalo">
+        <input type="text" id="driverPhone" placeholder="Số điện thoại Zalo (Dùng đăng nhập)">
+        <input type="text" id="driverPin" placeholder="Mã PIN (Mật khẩu đăng nhập, VD: 1234)">
         <input type="text" id="driverCccd" placeholder="Số CCCD (Tùy chọn)">
         <input type="text" id="driverAddress" placeholder="Nơi thường trú (Tùy chọn)">
         <select id="vehicleType">
-          <option value="bike">🛵 Xe máy (6k/km)</option>
-          <option value="car">🚕 Ô tô (11k/km)</option>
-          <option value="driver">👤 Lái xe hộ (11k/km)</option>
-          <option value="truck">🚚 Xe chở hàng (Thỏa thuận)</option>
+          <option value="bike">🛵 Xe máy</option>
+          <option value="car">🚕 Ô tô</option>
+          <option value="driver">👤 Lái xe hộ</option>
+          <option value="truck">🚚 Xe chở hàng</option>
         </select>
         <input type="text" id="vehicleDetail" placeholder="Loại xe & Biển số (VD: Wave 37B1-1234)">
       </div>
+
       <div style="margin-top: 10px; display: flex; gap: 8px;">
         <button id="saveBtn" class="btn-add" onclick="saveDriver()">LƯU TÀI XẾ</button>
         <button id="cancelBtn" class="btn-cancel" onclick="resetForm()">HỦY SỬA</button>
       </div>
     </div>
 
+    <!-- Bảng dữ liệu -->
     <div class="card" style="overflow-x: auto;">
       <h4 style="margin: 0 0 8px 0; color: #334155;">📋 Danh Sách Tất Cả Tài Xế</h4>
       <table>
@@ -94,20 +134,20 @@
           <tr>
             <th>Loại xe</th>
             <th>Thông tin Tài xế</th>
-            <th>SĐT & CCCD</th>
-            <th>Xe & Biển Số</th>
+            <th>Đăng nhập (SĐT & PIN)</th>
             <th>Trạng Thái</th>
             <th>Thao Tác</th>
           </tr>
         </thead>
         <tbody id="driverTableBody">
-          <tr><td colspan="6" style="text-align:center;">Đang tải dữ liệu...</td></tr>
+          <tr><td colspan="5" style="text-align:center;">Đang tải dữ liệu...</td></tr>
         </tbody>
       </table>
     </div>
   </div>
 
   <script>
+    // --- 1. QUẢN LÝ ĐĂNG NHẬP ADMIN ---
     const ADMIN_PASS = "123456";
 
     function checkPass() {
@@ -126,17 +166,22 @@
       document.getElementById('passInput').value = '';
     }
 
+    // --- 2. KẾT NỐI SUPABASE ---
     const SUPABASE_URL = 'https://yvucyqkglbgxvozrznir.supabase.co';
-    const SUPABASE_KEY = 'sb_publishable_l2z89zfRrm2beySFi1jhOg_PBYenag9';
+    
+    // BẠN HÃY THAY MÃ API KEY CHUẨN CỦA BẠN VÀO DÒNG DƯỚI NÀY (Bắt đầu bằng eyJ...)
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl2dWN5cWtnbGJneHZvenJ6bmlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkxMzA3ODAsImV4cCI6MjEwNDcwNjc4MH0.Zagl4i2LPmxW3w9ih0h4LRsrm-OOGtPcWgvEs2vHBqo'; 
+    
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+    // --- 3. CẤU HÌNH BẢN ĐỒ ---
     let map = null;
     let adminMarkers = {};
 
     const icons = {
       'bike': L.divIcon({ html: '<div class="vehicle-icon">🛵</div>', className: 'custom-icon', iconSize: [26, 26] }),
       'car': L.divIcon({ html: '<div class="vehicle-icon">🚕</div>', className: 'custom-icon', iconSize: [26, 26] }),
-      'driver': L.divIcon({ html: '<div class="vehicle-icon"><svg viewBox="0 0 24 24" fill="#16a34a" width="26px" height="26px"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg></div>', className: 'custom-icon', iconSize: [26, 26] }),
+      'driver': L.divIcon({ html: '<div class="vehicle-icon">👤</div>', className: 'custom-icon', iconSize: [26, 26] }),
       'truck': L.divIcon({ html: '<div class="vehicle-icon">🚚</div>', className: 'custom-icon', iconSize: [26, 26] })
     };
     const typeLabels = { 'bike': '🛵 Xe máy', 'car': '🚕 Ô tô', 'driver': '👤 Lái xe hộ', 'truck': '🚚 Chở hàng' };
@@ -147,18 +192,24 @@
       L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(map);
     }
 
+    // --- 4. TẢI DỮ LIỆU TỪ DATABASE ---
     async function loadAllData() {
-      const { data: drivers, error } = await supabaseClient.from('drivers').select('*').order('created_at', { ascending: false });
+      const { data: drivers, error } = await supabaseClient
+        .from('drivers')
+        .select('*')
+        .order('created_at', { ascending: false });
       
       const tbody = document.getElementById('driverTableBody');
       tbody.innerHTML = '';
+      
+      // Xóa điểm đánh dấu cũ trên bản đồ
       Object.keys(adminMarkers).forEach(id => map.removeLayer(adminMarkers[id]));
       adminMarkers = {};
 
       let onlineCount = 0;
 
       if (!drivers || drivers.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Chưa có tài xế nào.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Chưa có tài xế nào.</td></tr>';
         document.getElementById('onlineCount').innerText = '0';
         return;
       }
@@ -166,33 +217,41 @@
       drivers.forEach(d => {
         if (d.is_online) onlineCount++;
 
+        // Xử lý ngày tham gia
         let joinDate = '--';
         if (d.created_at) {
           const dateObj = new Date(d.created_at);
           joinDate = dateObj.toLocaleDateString('vi-VN');
         }
 
+        // Tạo dòng dữ liệu cho bảng
         const tr = document.createElement('tr');
         tr.innerHTML = `
-          <td><b>${typeLabels[d.vehicle_type] || d.vehicle_type}</b></td>
+          <td>
+            <b>${typeLabels[d.vehicle_type] || d.vehicle_type}</b><br>
+            <span class="small-text">${d.vehicle || '--'}</span>
+          </td>
           <td>
             <b>${d.name}</b>
-            <span class="small-text">📍 ${d.address || 'Chưa cập nhật địa chỉ'}</span>
+            <span class="small-text">CCCD: ${d.cccd || '---'}</span>
+            <span class="small-text">📍 ${d.address || 'Chưa có địa chỉ'}</span>
             <span class="small-text">📅 Tham gia: ${joinDate}</span>
           </td>
           <td>
-            📞 ${d.phone}
-            <span class="small-text">💳 CCCD: ${d.cccd || '---'}</span>
+            SĐT: <b>${d.phone}</b><br>
+            PIN: <b style="color:#eab308;">${d.pin || '1234'}</b>
           </td>
-          <td>${d.vehicle || '--'}</td>
-          <td>${d.is_online ? '<span class="badge-online">🟢 BẬT GPS</span>' : '<span class="badge-offline">⚪ Tắt</span>'}</td>
           <td>
-            <button class="btn-edit" onclick="editDriver('${d.id}', '${d.name}', '${d.phone}', '${d.cccd || ''}', '${d.address || ''}', '${d.vehicle_type}', '${d.vehicle || ''}')">Sửa</button>
+            ${d.is_online ? '<span class="badge-online">🟢 BẬT GPS</span>' : '<span class="badge-offline">⚪ Tắt</span>'}
+          </td>
+          <td>
+            <button class="btn-edit" onclick="editDriver('${d.id}', '${d.name}', '${d.phone}', '${d.pin || ''}', '${d.cccd || ''}', '${d.address || ''}', '${d.vehicle_type}', '${d.vehicle || ''}')">Sửa</button>
             <button class="btn-del" onclick="deleteDriver('${d.id}', '${d.name}')">Xóa</button>
           </td>
         `;
         tbody.appendChild(tr);
 
+        // Đưa tài xế đang online lên bản đồ
         if (d.is_online && d.lat && d.lng) {
           const marker = L.marker([d.lat, d.lng], { icon: icons[d.vehicle_type] || icons['bike'] })
             .addTo(map)
@@ -204,23 +263,37 @@
       document.getElementById('onlineCount').innerText = onlineCount;
     }
 
+    // --- 5. LƯU (THÊM/SỬA) TÀI XẾ ---
     async function saveDriver() {
       const id = document.getElementById('driverId').value;
       const name = document.getElementById('driverName').value.trim();
       const phone = document.getElementById('driverPhone').value.trim();
+      const pin = document.getElementById('driverPin').value.trim() || '1234';
       const cccd = document.getElementById('driverCccd').value.trim();
       const address = document.getElementById('driverAddress').value.trim();
       const vehicle_type = document.getElementById('vehicleType').value;
       const vehicle = document.getElementById('vehicleDetail').value.trim();
 
-      if (!name || !phone) return alert("Vui lòng điền Tên và Số điện thoại!");
+      if (!name || !phone) {
+        return alert("Vui lòng điền Tên và Số điện thoại!");
+      }
 
-      const payload = { name, phone, cccd, address, vehicle_type, vehicle };
+      const payload = { 
+        name: name, 
+        phone: phone, 
+        pin: pin, 
+        cccd: cccd, 
+        address: address, 
+        vehicle_type: vehicle_type, 
+        vehicle: vehicle 
+      };
+      
       let response;
-
       if (id) {
+        // Cập nhật
         response = await supabaseClient.from('drivers').update(payload).eq('id', id);
       } else {
+        // Thêm mới
         payload.is_online = false;
         response = await supabaseClient.from('drivers').insert([payload]);
       }
@@ -234,10 +307,12 @@
       }
     }
 
-    function editDriver(id, name, phone, cccd, address, type, vehicle) {
+    // --- 6. HỖ TRỢ ĐIỀN FORM ---
+    function editDriver(id, name, phone, pin, cccd, address, type, vehicle) {
       document.getElementById('driverId').value = id;
       document.getElementById('driverName').value = name;
       document.getElementById('driverPhone').value = phone;
+      document.getElementById('driverPin').value = pin;
       document.getElementById('driverCccd').value = cccd;
       document.getElementById('driverAddress').value = address;
       document.getElementById('vehicleType').value = type;
@@ -252,6 +327,7 @@
       document.getElementById('driverId').value = '';
       document.getElementById('driverName').value = '';
       document.getElementById('driverPhone').value = '';
+      document.getElementById('driverPin').value = '';
       document.getElementById('driverCccd').value = '';
       document.getElementById('driverAddress').value = '';
       document.getElementById('vehicleDetail').value = '';
@@ -261,6 +337,7 @@
       document.getElementById('cancelBtn').style.display = "none";
     }
 
+    // --- 7. XÓA TÀI XẾ ---
     async function deleteDriver(id, name) {
       if (confirm(`Bạn có chắc muốn XÓA tài xế "${name}"?`)) {
         await supabaseClient.from('drivers').delete().eq('id', id);
@@ -268,10 +345,13 @@
       }
     }
 
-    supabaseClient.channel('admin-realtime').on('postgres_changes', { event: '*', schema: 'public', table: 'drivers' }, () => loadAllData()).subscribe();
+    // Kích hoạt realtime
+    supabaseClient.channel('admin-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'drivers' }, () => loadAllData())
+      .subscribe();
   </script>
 
-  <!-- BỔ SUNG SCRIPT ĐỂ CHẠY BACKGROUND VÀ CÀI ĐẶT APP -->
+  <!-- PWA Service Worker (Để cài App) -->
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('sw.js').then(() => {
