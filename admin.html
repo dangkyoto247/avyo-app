@@ -147,7 +147,7 @@
     }
 
     async function loadAllData() {
-      const { data: drivers } = await supabaseClient.from('drivers').select('*').order('created_at', { ascending: false });
+      const { data: drivers, error } = await supabaseClient.from('drivers').select('*').order('updated_at', { ascending: false });
       
       const tbody = document.getElementById('driverTableBody');
       tbody.innerHTML = '';
