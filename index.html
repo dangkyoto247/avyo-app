@@ -22,24 +22,40 @@
     .price { font-size: 22px; font-weight: bold; color: #16a34a; }
     .btn-zalo { background: #0068ff; color: white; padding: 12px; border-radius: 10px; text-decoration: none; display: block; text-align: center; font-weight: bold; margin-top: 8px; border: none; width: 100%; font-size: 16px; cursor: pointer; }
     .btn-phone { background: #22c55e; color: white; padding: 12px; border-radius: 10px; text-decoration: none; display: block; text-align: center; font-weight: bold; margin-top: 8px; }
-    .btn-reset { background: #f97316; color: white; padding: 10px; border-radius: 10px; border: none; font-weight: bold; width: 100%; margin-top: 10px; cursor: pointer; display: none; font-size: 14px; }
+    .btn-reset { background: #f97316; color: white; padding: 10px; border-radius: 10px; border: none; font-weight: bold; width: 100%; margin-top: 8px; cursor: pointer; display: none; font-size: 14px; }
+    .btn-gps { background: #0f172a; color: white; padding: 9px; border-radius: 10px; border: none; font-weight: bold; width: 100%; cursor: pointer; font-size: 13px; margin-bottom: 8px; }
     .vehicle-icon { font-size: 30px; text-align: center; line-height: 1; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3)); }
+    
+    /* Thanh bộ lọc loại xe */
+    .filter-bar { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 6px; }
+    .filter-chip { background: #e2e8f0; color: #475569; padding: 6px 12px; border-radius: 20px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; user-select: none; transition: all 0.2s; border: 1px solid #cbd5e1; }
+    .filter-chip.active { background: #16a34a; color: white; border-color: #16a34a; box-shadow: 0 2px 6px rgba(22,163,74,0.3); }
   </style>
 </head>
 <body>
 
-  <h3 style="text-align: center; color: #0f172a; margin: 8px 0;">🚕 Avyo - Chạm Chọn Chuyến</h3>
+  <h3 style="text-align: center; color: #0f172a; margin: 8px 0 12px 0;">🚕 Avyo - Chạm Chọn Chuyến</h3>
+  
+  <!-- Thanh chọn hiển thị loại xe -->
+  <div class="filter-bar">
+    <div class="filter-chip active" onclick="toggleFilter('bike', this)">🛵 Xe máy</div>
+    <div class="filter-chip active" onclick="toggleFilter('car', this)">🚕 Ô tô</div>
+    <div class="filter-chip active" onclick="toggleFilter('driver', this)">👤 Lái xe hộ</div>
+    <div class="filter-chip active" onclick="toggleFilter('truck', this)">🚚 Chở hàng</div>
+  </div>
+
   <div id="map"></div>
   
   <div class="card">
+    <button id="gpsBtn" class="btn-gps" onclick="useCurrentLocationAsPickup()">📍 Đặt điểm đón tại vị trí của tôi</button>
     <p style="margin: 4px 0;"><b>Quãng đường:</b> <span id="distance">0</span> km</p>
     <p style="margin: 4px 0;"><b>Ước tính cước:</b> <span id="price" class="price">0</span> <small id="rate-label" style="font-size: 12px; color: #64748b; font-weight: normal;"></small></p>
-    <button id="resetBtn" class="btn-reset" onclick="resetRoute()">🔄 CHỌN LẠI ĐIỂM ĐI / ĐẾN</button>
+    <button id="resetBtn" class="btn-reset" onclick="resetRoute()">🔄 ĐẶT LAI ĐIỂM ĐÓN / ĐẾN</button>
   </div>
 
   <div class="card">
     <h4 style="margin: 0 0 8px 0; color: #334155;">Tài Xế Được Chọn</h4>
-    <p id="driver-info" style="margin: 4px 0; color: #64748b;"><i>Chạm vào icon 🛵 🚕 👤 🚚 trên bản đồ...</i></p>
+    <p id="driver-info" style="margin: 4px 0; color: #64748b;"><i>Chạm vào icon tài xế trên bản đồ...</i></p>
     
     <button id="zaloBtn" class="btn-zalo" style="display:none;" onclick="openZalo()">💬 Nhắn Zalo (Tự động Copy)</button>
     <a id="phoneBtn" href="#" class="btn-phone" style="display:none;">📞 Gọi Điện Trực Tiếp</a>
@@ -53,10 +69,75 @@
       attribution: '© OpenStreetMap' 
     }).addTo(map);
 
-    map.locate({setView: false});
+    let userLatLng = null;
+    let markerStart = null, markerEnd = null;
+    let currentDistance = 0, currentPrice = 0;
+    let selectedDriver = null;
+    let rawDriversData = [];
+
+    // Bộ lọc loại xe (Mặc định chọn cả 4 loại)
+    const activeFilters = new Set(['bike', 'car', 'driver', 'truck']);
+
+    function toggleFilter(type, element) {
+      if (activeFilters.has(type)) {
+        if (activeFilters.size === 1) return alert("Phải chọn ít nhất 1 loại xe!");
+        activeFilters.delete(type);
+        element.classList.remove('active');
+      } else {
+        activeFilters.add(type);
+        element.classList.add('active');
+      }
+      renderDriverMarkers();
+    }
+
+    // Tự động định vị GPS khi mở web
+    map.locate({ setView: true, maxZoom: 15 });
+    
     map.on('locationfound', (e) => {
-      L.circle(e.latlng, { radius: 100, color: '#0068ff' }).addTo(map).bindPopup("📍 Vị trí của bạn");
+      userLatLng = e.latlng;
+      // Tự động gán điểm đón ngay vị trí GPS khách đang đứng
+      setPickupLocation(e.latlng, true);
     });
+
+    function setPickupLocation(latlng, isAuto = false) {
+      if (markerStart) map.removeLayer(markerStart);
+      
+      markerStart = L.marker(latlng).addTo(map)
+        .bindPopup(isAuto ? "<b>📍 Điểm đón (Vị trí của bạn)</b>" : "<b>📍 Điểm đón</b>")
+        .openPopup();
+        
+      document.getElementById('resetBtn').style.display = 'block';
+      if (markerEnd) calculateRoute();
+    }
+
+    function useCurrentLocationAsPickup() {
+      if (userLatLng) {
+        setPickupLocation(userLatLng, true);
+        map.setView(userLatLng, 15);
+      } else {
+        map.locate({ setView: true, maxZoom: 15 });
+      }
+    }
+
+    map.on('click', function(e) {
+      if (!markerStart) {
+        setPickupLocation(e.latlng, false);
+      } else if (!markerEnd) {
+        markerEnd = L.marker(e.latlng).addTo(map).bindPopup("<b>🚩 Điểm đến</b>").openPopup();
+        calculateRoute();
+      }
+    });
+
+    function calculateRoute() {
+      if (!markerStart || !markerEnd) return;
+      const km = calculateDistance(
+        markerStart.getLatLng().lat, markerStart.getLatLng().lng,
+        markerEnd.getLatLng().lat, markerEnd.getLatLng().lng
+      );
+      currentDistance = km.toFixed(1);
+      document.getElementById('distance').innerText = currentDistance;
+      if (selectedDriver) updatePrice();
+    }
 
     function calculateDistance(lat1, lon1, lat2, lon2) {
       const R = 6371;
@@ -66,28 +147,8 @@
       return (R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))) * 1.28;
     }
 
-    let markerStart = null, markerEnd = null;
-    let currentDistance = 0, currentPrice = 0;
-    let selectedDriver = null;
-
-    map.on('click', function(e) {
-      if (!markerStart) {
-        markerStart = L.marker(e.latlng).addTo(map).bindPopup("<b>📍 Điểm đón</b>").openPopup();
-        document.getElementById('resetBtn').style.display = 'block';
-      } else if (!markerEnd) {
-        markerEnd = L.marker(e.latlng).addTo(map).bindPopup("<b>🚩 Điểm đến</b>").openPopup();
-        
-        const km = calculateDistance(markerStart.getLatLng().lat, markerStart.getLatLng().lng, markerEnd.getLatLng().lat, markerEnd.getLatLng().lng);
-        currentDistance = km.toFixed(1);
-        document.getElementById('distance').innerText = currentDistance;
-
-        if (selectedDriver) updatePrice();
-      }
-    });
-
     function updatePrice() {
       if (!selectedDriver || currentDistance == 0) return;
-      
       const type = selectedDriver.vehicle_type;
       
       if (type === 'truck') {
@@ -97,7 +158,6 @@
       } else {
         let rate = 6000;
         let label = 'Xe máy 6k/km';
-
         if (type === 'car') { rate = 11000; label = 'Ô tô 11k/km'; }
         if (type === 'driver') { rate = 11000; label = 'Lái xe hộ 11k/km'; }
 
@@ -118,6 +178,7 @@
       document.getElementById('price').innerText = '0';
       document.getElementById('rate-label').innerText = '';
       document.getElementById('resetBtn').style.display = 'none';
+      if (userLatLng) setPickupLocation(userLatLng, true);
     }
 
     const SUPABASE_URL = 'https://yvucyqkglbgxvozrznir.supabase.co';
@@ -126,7 +187,6 @@
 
     let driverMarkers = {};
 
-    // CẬP NHẬT: Vẽ hình nửa thân người màu xanh lá cây bằng công nghệ SVG (cùng kích cỡ 30px)
     const icons = {
       'bike': L.divIcon({ html: '<div class="vehicle-icon">🛵</div>', className: 'custom-icon', iconSize: [30, 30], iconAnchor: [15, 15] }),
       'car': L.divIcon({ html: '<div class="vehicle-icon">🚕</div>', className: 'custom-icon', iconSize: [30, 30], iconAnchor: [15, 15] }),
@@ -138,7 +198,6 @@
 
     function openZalo() {
       if (!selectedDriver) return;
-
       const typeName = typeNames[selectedDriver.vehicle_type] || 'Tài xế';
       let msg = `Chào ${typeName}, tôi muốn sử dụng dịch vụ Avyo:\n`;
 
@@ -148,12 +207,7 @@
       if (markerEnd) {
         msg += `\n🚩 Điểm đến: https://maps.google.com/?q=${markerEnd.getLatLng().lat.toFixed(5)},${markerEnd.getLatLng().lng.toFixed(5)}`;
         msg += `\n📏 Quãng đường: ${currentDistance} km`;
-        
-        if (selectedDriver.vehicle_type === 'truck') {
-          msg += `\n💰 Cước ước tính: Thỏa thuận`;
-        } else {
-          msg += `\n💰 Cước ước tính: ${currentPrice.toLocaleString('vi-VN')} VNĐ`;
-        }
+        msg += `\n💰 Cước ước tính: ${selectedDriver.vehicle_type === 'truck' ? 'Thỏa thuận' : currentPrice.toLocaleString('vi-VN') + ' VNĐ'}`;
       }
 
       navigator.clipboard.writeText(msg).then(() => {
@@ -165,59 +219,49 @@
     }
 
     async function loadDrivers() {
-      const { data: drivers } = await supabaseClient.from('drivers').select('*').eq('is_online', true);
-      const activeDriverIds = new Set(drivers ? drivers.map(d => d.id) : []);
+      const { data } = await supabaseClient.from('drivers').select('*').eq('is_online', true);
+      rawDriversData = data || [];
+      renderDriverMarkers();
+    }
 
+    function renderDriverMarkers() {
       Object.keys(driverMarkers).forEach(id => {
-        if (!activeDriverIds.has(id)) {
-          map.removeLayer(driverMarkers[id]);
-          delete driverMarkers[id];
-        }
+        map.removeLayer(driverMarkers[id]);
+        delete driverMarkers[id];
       });
 
-      if (!drivers || drivers.length === 0) return;
+      const filteredDrivers = rawDriversData.filter(d => activeFilters.has(d.vehicle_type));
 
-      let bounds = [];
-
-      drivers.forEach(driver => {
+      filteredDrivers.forEach(driver => {
         if (!driver.lat || !driver.lng) return;
-
-        bounds.push([driver.lat, driver.lng]);
 
         const icon = icons[driver.vehicle_type] || icons['bike'];
         const typeBadge = typeNames[driver.vehicle_type] || 'Tài xế';
 
-        if (driverMarkers[driver.id]) {
-          driverMarkers[driver.id].setLatLng([driver.lat, driver.lng]);
-        } else {
-          const marker = L.marker([driver.lat, driver.lng], { icon: icon }).addTo(map);
-          marker.bindPopup(`<b>${typeBadge}: ${driver.name}</b>`);
-          
-          marker.on('click', () => {
-            selectedDriver = driver;
-            document.getElementById('driver-info').innerHTML = `Tài xế: <b>${driver.name}</b><br>Dịch vụ: ${typeBadge}<br>Xe: ${driver.vehicle}`;
-            document.getElementById('phoneBtn').href = `tel:${driver.phone}`;
-            
-            updatePrice();
+        const marker = L.marker([driver.lat, driver.lng], { icon: icon }).addTo(map);
+        marker.bindPopup(`<b>${typeBadge}: ${driver.name}</b>`);
+        
+        marker.on('click', () => {
+          selectedDriver = driver;
+          document.getElementById('driver-info').innerHTML = `Tài xế: <b>${driver.name}</b><br>Dịch vụ: ${typeBadge}<br>Xe: ${driver.vehicle}`;
+          document.getElementById('phoneBtn').href = `tel:${driver.phone}`;
+          updatePrice();
+          document.getElementById('zaloBtn').style.display = 'block';
+          document.getElementById('phoneBtn').style.display = 'block';
+        });
 
-            document.getElementById('zaloBtn').style.display = 'block';
-            document.getElementById('phoneBtn').style.display = 'block';
-          });
-          driverMarkers[driver.id] = marker;
-        }
+        driverMarkers[driver.id] = marker;
       });
-
-      if (bounds.length > 0) map.fitBounds(bounds, { padding: [30, 30], maxZoom: 15 });
     }
 
     loadDrivers();
     supabaseClient.channel('realtime-drivers').on('postgres_changes', { event: '*', schema: 'public', table: 'drivers' }, () => loadDrivers()).subscribe();
   </script>
-  
+
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('sw.js').then(() => {
-        console.log("App đã sẵn sàng hoạt động ngoại tuyến!");
+        console.log("App đã sẵn sàng hoạt động!");
       });
     }
   </script>
