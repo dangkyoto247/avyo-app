@@ -65,10 +65,10 @@
   </div>
 
   <div class="filter-bar">
-    <div class="filter-chip active" onclick="toggleFilter('bike', this)">🛵 Xe máy</div>
-    <div class="filter-chip active" onclick="toggleFilter('car', this)">🚕 Ô tô</div>
-    <div class="filter-chip active" onclick="toggleFilter('driver', this)">👤 Lái xe hộ</div>
-    <div class="filter-chip active" onclick="toggleFilter('truck', this)">🚚 Chở hàng</div>
+    <div class="filter-chip active" onclick="selectFilter('bike', this)">🛵 Xe máy</div>
+    <div class="filter-chip" onclick="selectFilter('car', this)">🚕 Ô tô</div>
+    <div class="filter-chip" onclick="selectFilter('driver', this)">👤 Lái xe hộ</div>
+    <div class="filter-chip" onclick="selectFilter('truck', this)">🚚 Chở hàng</div>
   </div>
 
   <div class="card" style="margin-bottom: 8px; padding: 10px 12px;">
@@ -188,17 +188,20 @@
       popupAnchor: [0, -34]
     });
 
-    const activeFilters = new Set(['bike', 'car', 'driver', 'truck']);
+    // BỘ LỌC ĐƠN: CHỈ CHỌN 1 LOẠI XE TẠI MỘT THỜI ĐIỂM
+    let activeFilter = 'bike';
 
-    function toggleFilter(type, element) {
-      if (activeFilters.has(type)) {
-        if (activeFilters.size === 1) return alert("Phải chọn ít nhất 1 loại xe!");
-        activeFilters.delete(type);
-        element.classList.remove('active');
-      } else {
-        activeFilters.add(type);
-        element.classList.add('active');
+    function selectFilter(type, element) {
+      if (activeFilter === type) return;
+      
+      activeFilter = type;
+      document.querySelectorAll('.filter-bar .filter-chip').forEach(chip => chip.classList.remove('active'));
+      element.classList.add('active');
+
+      if (selectedDriver && selectedDriver.vehicle_type !== activeFilter) {
+        deselectDriver();
       }
+
       renderDriverMarkers();
     }
 
@@ -546,7 +549,7 @@
     const icons = {
       'bike': L.divIcon({ html: '<div class="vehicle-icon">🛵</div>', className: 'custom-icon', iconSize: [30, 30], iconAnchor: [15, 15] }),
       'car': L.divIcon({ html: '<div class="vehicle-icon">🚕</div>', className: 'custom-icon', iconSize: [30, 30], iconAnchor: [15, 15] }),
-      'driver': L.divIcon({ html: '<div class="vehicle-icon"><svg viewBox="0 0 24 24" fill="#00b14f" width="30px" height="30px"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4s-4 1.79-4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg></div>', className: 'custom-icon', iconSize: [30, 30], iconAnchor: [15, 15] }),
+      'driver': L.divIcon({ html: '<div class="vehicle-icon"><svg viewBox="0 0 24 24" fill="#00b14f" width="30px" height="30px"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg></div>', className: 'custom-icon', iconSize: [30, 30], iconAnchor: [15, 15] }),
       'truck': L.divIcon({ html: '<div class="vehicle-icon">🚚</div>', className: 'custom-icon', iconSize: [30, 30], iconAnchor: [15, 15] })
     };
 
@@ -559,8 +562,8 @@
       const centerPoint = markerStart ? markerStart.getLatLng() : userLatLng;
       if (centerPoint) {
         const distKm = getHaversineDistance(centerPoint.lat, centerPoint.lng, selectedDriver.lat, selectedDriver.lng);
-        if (distKm > 10) {
-          return alert(`⚠️ Tài xế đang ở cách bạn ${distKm.toFixed(1)}km (ngoài bán kính 10km). Hãy chọn tài xế ở gần hơn!`);
+        if (distKm > 5) {
+          return alert(`⚠️ Tài xế đang ở cách bạn ${distKm.toFixed(1)}km (ngoài bán kính 5km). Hãy chọn tài xế ở gần hơn!`);
         }
       }
 
@@ -575,8 +578,8 @@
       const centerPoint = markerStart ? markerStart.getLatLng() : userLatLng;
       if (centerPoint) {
         const distKm = getHaversineDistance(centerPoint.lat, centerPoint.lng, selectedDriver.lat, selectedDriver.lng);
-        if (distKm > 10) {
-          return alert(`⚠️ Tài xế đang ở cách bạn ${distKm.toFixed(1)}km (ngoài bán kính 10km). Hãy chọn tài xế ở gần hơn!`);
+        if (distKm > 5) {
+          return alert(`⚠️ Tài xế đang ở cách bạn ${distKm.toFixed(1)}km (ngoài bán kính 5km). Hãy chọn tài xế ở gần hơn!`);
         }
       }
 
@@ -670,6 +673,7 @@
       alert(`🌟 Cảm ơn bạn đã đánh giá ${stars} sao cho tài xế ${selectedDriver.name}!`);
     }
 
+    // HIỂN THỊ TỐI ĐA 15 XE GẦN NHẤT TRONG BÁN KÍNH 5KM THUỘC LOẠI XE ĐANG CHỌN
     function renderDriverMarkers() {
       Object.keys(driverMarkers).forEach(id => {
         map.removeLayer(driverMarkers[id]);
@@ -679,12 +683,14 @@
       const centerPoint = markerStart ? markerStart.getLatLng() : userLatLng;
 
       let filteredDrivers = rawDriversData.filter(driver => {
-        if (!activeFilters.has(driver.vehicle_type)) return false;
+        // Lọc theo 1 loại xe được chọn
+        if (driver.vehicle_type !== activeFilter) return false;
         if (!driver.lat || !driver.lng) return false;
 
+        // Lọc bán kính tối đa 5km
         if (centerPoint) {
           const distKm = getHaversineDistance(centerPoint.lat, centerPoint.lng, driver.lat, driver.lng);
-          if (distKm > 10) return false;
+          if (distKm > 5) return false;
         }
 
         return true;
@@ -698,7 +704,8 @@
         });
       }
 
-      filteredDrivers.slice(0, 20).forEach(driver => {
+      // Giới hạn hiển thị tối đa 15 xe
+      filteredDrivers.slice(0, 15).forEach(driver => {
         const icon = icons[driver.vehicle_type] || icons['bike'];
         const typeBadge = typeNames[driver.vehicle_type] || 'Tài xế';
         const rating = calcRating(driver);
