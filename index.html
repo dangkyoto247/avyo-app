@@ -4,10 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Avyo - Gọi Xe Tinh Gọn 0Đ</title>
-  
+ 
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#16a34a">
   <link rel="apple-touch-icon" href="logo.png">
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
@@ -25,7 +26,7 @@
     .btn-reset { background: #f97316; color: white; padding: 10px; border-radius: 10px; border: none; font-weight: bold; width: 100%; margin-top: 8px; cursor: pointer; display: none; font-size: 14px; }
     .btn-gps { background: #0f172a; color: white; padding: 9px; border-radius: 10px; border: none; font-weight: bold; width: 100%; cursor: pointer; font-size: 13px; margin-bottom: 8px; }
     .vehicle-icon { font-size: 30px; text-align: center; line-height: 1; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3)); }
-    
+   
     .filter-bar { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 6px; }
     .filter-chip { background: #e2e8f0; color: #475569; padding: 6px 12px; border-radius: 20px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; user-select: none; transition: all 0.2s; border: 1px solid #cbd5e1; }
     .filter-chip.active { background: #16a34a; color: white; border-color: #16a34a; box-shadow: 0 2px 6px rgba(22,163,74,0.3); }
@@ -34,7 +35,7 @@
 <body>
 
   <h3 style="text-align: center; color: #0f172a; margin: 8px 0 12px 0;">🚕 Avyo - Chạm Chọn Chuyến</h3>
-  
+ 
   <div class="filter-bar">
     <div class="filter-chip active" onclick="toggleFilter('bike', this)">🛵 Xe máy</div>
     <div class="filter-chip active" onclick="toggleFilter('car', this)">🚕 Ô tô</div>
@@ -43,7 +44,7 @@
   </div>
 
   <div id="map"></div>
-  
+ 
   <div class="card">
     <button id="gpsBtn" class="btn-gps" onclick="useCurrentLocationAsPickup()">📍 Đặt điểm đón tại vị trí của tôi</button>
     <p style="margin: 4px 0;"><b>Quãng đường:</b> <span id="distance">0</span> km</p>
@@ -54,17 +55,17 @@
   <div class="card">
     <h4 style="margin: 0 0 8px 0; color: #334155;">Tài Xế Được Chọn</h4>
     <p id="driver-info" style="margin: 4px 0; color: #64748b;"><i>Chạm vào icon tài xế trên bản đồ...</i></p>
-    
+   
     <button id="zaloBtn" class="btn-zalo" style="display:none;" onclick="openZalo()">💬 Nhắn Zalo (Tự động Copy)</button>
     <a id="phoneBtn" href="#" class="btn-phone" style="display:none;">📞 Gọi Điện Trực Tiếp</a>
   </div>
 
   <script>
     const map = L.map('map').setView([18.7034, 105.6832], 13);
-    
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { 
-      maxZoom: 18, 
-      attribution: '© OpenStreetMap' 
+   
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 18,
+      attribution: '© OpenStreetMap'
     }).addTo(map);
 
     let userLatLng = null;
@@ -88,22 +89,21 @@
     }
 
     map.locate({ setView: true, maxZoom: 15 });
-    
+   
     map.on('locationfound', (e) => {
       userLatLng = e.latlng;
       setPickupLocation(e.latlng, true);
     });
 
-    // CẬP NHẬT: Cho phép kéo thả Điểm đón
     function setPickupLocation(latlng, isAuto = false) {
       if (markerStart) map.removeLayer(markerStart);
-      
+     
       markerStart = L.marker(latlng, { draggable: true }).addTo(map)
         .bindPopup(isAuto ? "<b>📍 Điểm đón của bạn</b><br><small><i>(Nhấn giữ & kéo để đổi vị trí khác)</i></small>" : "<b>📍 Điểm đón</b><br><small><i>(Nhấn giữ & kéo để đổi vị trí khác)</i></small>")
         .openPopup();
-        
-      markerStart.on('dragend', calculateRoute); // Tự động tính lại giá khi thả tay ra
-        
+       
+      markerStart.on('dragend', calculateRoute);
+       
       document.getElementById('resetBtn').style.display = 'block';
       if (markerEnd) calculateRoute();
     }
@@ -117,7 +117,6 @@
       }
     }
 
-    // CẬP NHẬT: Cho phép kéo thả Điểm đến
     map.on('click', function(e) {
       if (!markerStart) {
         setPickupLocation(e.latlng, false);
@@ -125,9 +124,9 @@
         markerEnd = L.marker(e.latlng, { draggable: true }).addTo(map)
           .bindPopup("<b>🚩 Điểm đến</b><br><small><i>(Nhấn giữ & kéo để đổi vị trí khác)</i></small>")
           .openPopup();
-          
-        markerEnd.on('dragend', calculateRoute); // Tự động tính lại giá khi thả tay ra
-        
+         
+        markerEnd.on('dragend', calculateRoute);
+       
         calculateRoute();
       }
     });
@@ -154,7 +153,7 @@
     function updatePrice() {
       if (!selectedDriver || currentDistance == 0) return;
       const type = selectedDriver.vehicle_type;
-      
+     
       if (type === 'truck') {
         document.getElementById('price').innerText = 'Thỏa thuận';
         document.getElementById('rate-label').innerText = '(Xe chở hàng)';
@@ -171,7 +170,6 @@
       }
     }
 
-    // CẬP NHẬT: Khi bấm đặt lại, xóa trắng bản đồ để khách tự do chọn từ đầu
     function resetRoute() {
       if (markerStart) map.removeLayer(markerStart);
       if (markerEnd) map.removeLayer(markerEnd);
@@ -183,8 +181,7 @@
       document.getElementById('price').innerText = '0';
       document.getElementById('rate-label').innerText = '';
       document.getElementById('resetBtn').style.display = 'none';
-      
-      // Xóa thông báo này nếu bạn không thích nó bật lên
+     
       alert("Đã xóa lộ trình. Hãy chạm vào bản đồ lần 1 để chọn ĐIỂM ĐÓN (hoặc bấm nút Đặt điểm đón tại vị trí của tôi)!");
     }
 
@@ -247,7 +244,7 @@
 
         const marker = L.marker([driver.lat, driver.lng], { icon: icon }).addTo(map);
         marker.bindPopup(`<b>${typeBadge}: ${driver.name}</b>`);
-        
+       
         marker.on('click', () => {
           selectedDriver = driver;
           document.getElementById('driver-info').innerHTML = `Tài xế: <b>${driver.name}</b><br>Dịch vụ: ${typeBadge}<br>Xe: ${driver.vehicle}`;
