@@ -34,8 +34,7 @@
     .driver-profile-box { display: flex; align-items: center; gap: 12px; margin-top: 4px; }
     .driver-avatar-img { width: 54px; height: 54px; border-radius: 50%; object-fit: cover; border: 2px solid #16a34a; flex-shrink: 0; background: #e2e8f0; }
     
-    /* Giao diện nút sao đánh giá */
-    .star-btn { cursor: pointer; filter: grayscale(100%); opacity: 0.5; transition: all 0.15s ease; display: inline-block; margin: 0 2px; }
+    .star-btn { cursor: pointer; filter: grayscale(100%); opacity: 0.4; transition: all 0.15s ease; display: inline-block; margin: 0 2px; }
     .star-btn.active { filter: grayscale(0%); opacity: 1; transform: scale(1.2); }
   </style>
 </head>
@@ -64,7 +63,7 @@
     <div id="driver-info" style="color: #64748b;"><i>Chạm vào icon tài xế trên bản đồ...</i></div>
    
     <button id="zaloBtn" class="btn-zalo" style="display:none;" onclick="openZalo()">💬 Nhắn Zalo (Tự động Copy)</button>
-    <a id="phoneBtn" href="#" class="btn-phone" style="display:none;">📞 Gọi Điện Trực Tiếp</a>
+    <a id="phoneBtn" href="#" class="btn-phone" style="display:none;" onclick="trackContact()">📞 Gọi Điện Trực Tiếp</a>
   </div>
 
   <script>
@@ -260,8 +259,25 @@
 
     const typeNames = { 'bike': '🛵 Xe máy', 'car': '🚕 Ô tô', 'driver': '👤 Lái xe hộ', 'truck': '🚚 Xe chở hàng' };
 
+    // MỞ KHÓA VÉ ĐÁNH GIÁ KHI BẤM GỌI / ZALO (ĐIỀU KIỆN: KHẢ NĂNG PHỤC VỤ KHU VỰC < 10KM)
+    function trackContact() {
+      if (!selectedDriver) return;
+
+      if (userLatLng) {
+        const distKm = calculateDistance(userLatLng.lat, userLatLng.lng, selectedDriver.lat, selectedDriver.lng) / 1.28;
+        if (distKm > 10) {
+          return alert(`⚠️ Tài xế đang ở cách bạn ${distKm.toFixed(1)}km (ngoài vùng phục vụ gần). Hãy chọn tài xế ở gần hơn!`);
+        }
+      }
+
+      // Cấp vé đánh giá hợp lệ vào máy
+      localStorage.setItem(`avyo_unlocked_rating_${selectedDriver.id}`, 'true');
+    }
+
     function openZalo() {
       if (!selectedDriver) return;
+      trackContact();
+
       const typeName = typeNames[selectedDriver.vehicle_type] || 'Tài xế';
       let msg = `Chào ${typeName}, tôi muốn sử dụng dịch vụ Avyo:\n`;
 
@@ -297,7 +313,6 @@
       };
     }
 
-    // Hiệu ứng di chuột làm sáng tất cả các sao từ 1 đến vị trí di chuột
     function highlightStars(count) {
       const stars = document.querySelectorAll('.star-btn');
       stars.forEach((star, index) => {
@@ -312,30 +327,36 @@
     async function submitRating(stars) {
       if (!selectedDriver) return;
 
-      const todayStr = new Date().toDateString(); // Lấy ngày hiện tại (mỗi ngày 1 lượt)
-      const ratedKey = `avyo_rated_${selectedDriver.id}`;
-      const lastRatedDate = localStorage.getItem(ratedKey);
-      
-      if (lastRatedDate === todayStr) {
-        return alert("⭐ Hôm nay máy bạn đã gửi đánh giá cho tài xế này rồi. Vui lòng quay lại vào ngày mai!");
+      // XÁC THỰC VÉ ĐÁNH GIÁ (Đã từng bấm Gọi/Zalo gần hoặc từng ở sát <100m)
+      const isUnlocked = localStorage.getItem(`avyo_unlocked_rating_${selectedDriver.id}`);
+      if (!isUnlocked) {
+        return alert("⚠️ Bạn cần bấm '📞 Gọi Điện' hoặc '💬 Nhắn Zalo' liên hệ với tài xế để mở quyền đánh giá!");
       }
 
-      localStorage.setItem(ratedKey, todayStr);
-      const { error } = await supabaseClient.rpc('add_driver_rating', { 
+      // KIỂM TRA ĐÁNH GIÁ TỐI ĐA 1 LẦN / NGÀY / MÁY
+      const todayStr = new Date().toDateString();
+      const ratedKey = `avyo_rated_date_${selectedDriver.id}`;
+      if (localStorage.getItem(ratedKey) === todayStr) {
+        return alert("⭐ Hôm nay bạn đã gửi đánh giá cho tài xế này rồi!");
+      }
+
+      // GỬI ĐÁNH GIÁ LÊN DATABASE (KHỐNG CHẾ TRẦN 50 LƯỢT/NGÀY TỪ SERVER)
+      const { data: isSuccess, error } = await supabaseClient.rpc('add_driver_rating', { 
         target_id: selectedDriver.id, 
         stars: stars 
       });
 
-      if (!error) {
-        selectedDriver.rating_sum = (selectedDriver.rating_sum || 25) + stars;
-        selectedDriver.rating_count = (selectedDriver.rating_count || 5) + 1;
-        const rating = calcRating(selectedDriver);
-        
-        document.getElementById('rating-display').innerText = `${rating.score} / 5.0 (${rating.count} lượt)`;
-        alert(`🌟 Cảm ơn bạn đã đánh giá ${stars} sao cho tài xế ${selectedDriver.name}!`);
-      } else {
-        alert("Có lỗi xảy ra, vui lòng thử lại!");
+      if (error || isSuccess === false) {
+        return alert("⚠️ Tài xế này đã đạt giới hạn tối đa 50 lượt đánh giá trong ngày hôm nay!");
       }
+
+      localStorage.setItem(ratedKey, todayStr);
+      selectedDriver.rating_sum = (selectedDriver.rating_sum || 25) + stars;
+      selectedDriver.rating_count = (selectedDriver.rating_count || 5) + 1;
+      const rating = calcRating(selectedDriver);
+      
+      document.getElementById('rating-display').innerText = `${rating.score} / 5.0 (${rating.count} lượt)`;
+      alert(`🌟 Cảm ơn bạn đã đánh giá ${stars} sao cho tài xế ${selectedDriver.name}!`);
     }
 
     function renderDriverMarkers() {
@@ -358,7 +379,15 @@
         marker.on('click', async () => {
           selectedDriver = driver;
 
-          // Giới hạn lượt xem 5 phút / máy
+          // TỰ ĐỘNG CẤP VÉ ĐÁNH GIÁ NẾU KHÁCH & TÀI XẾ TỰ NGHỊCH GẶP NHAU < 100M
+          if (userLatLng) {
+            const distKm = calculateDistance(userLatLng.lat, userLatLng.lng, driver.lat, driver.lng) / 1.28;
+            if (distKm <= 0.1) { // Dưới 100m
+              localStorage.setItem(`avyo_unlocked_rating_${driver.id}`, 'true');
+            }
+          }
+
+          // GIỚI HẠN LƯỢT XEM HỒ SƠ 5 PHÚT / MÁY
           const VIEW_COOLDOWN = 5 * 60 * 1000;
           const lastViewKey = `avyo_last_view_${driver.id}`;
           const lastViewTime = localStorage.getItem(lastViewKey);
