@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Avyo - App Tài Xế</title>
  
-  <!-- Thêm link khắc phục lỗi favicon 404 -->
   <link rel="shortcut icon" href="#">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#16a34a">
@@ -13,7 +12,6 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
  
-  <!-- Leaflet CSS & JS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -101,6 +99,22 @@
       text-align: center;
       cursor: pointer;
     }
+    /* Style Nút Tổng đài CSKH Khẩn Cấp */
+    .btn-cskh {
+      background: #0284c7;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      text-decoration: none;
+      padding: 12px;
+      border-radius: 10px;
+      font-weight: bold;
+      margin-top: 14px;
+      font-size: 14px;
+      box-shadow: 0 2px 6px rgba(2, 132, 199, 0.3);
+    }
   </style>
 </head>
 <body>
@@ -108,18 +122,21 @@
   <!-- MÀN HÌNH ĐĂNG NHẬP -->
   <div id="loginScreen" class="card" style="display: none; text-align: center;">
     <h2 style="margin-top: 0; color: #16a34a;">🚕 Avyo Tài Xế</h2>
-    <p style="color: #64748b; font-size: 14px; margin-bottom: 20px;">Đăng nhập để nhận cuốc xe</p>
+    <p style="color: #64748b; font-size: 14px; margin-bottom: 15px;">Đăng nhập để nhận cuốc xe</p>
    
     <input type="tel" id="phoneInput" placeholder="Số điện thoại của bạn" autocomplete="off">
     <input type="password" id="pinInput" placeholder="Mã PIN (Mật khẩu)" autocomplete="off">
    
-    <button onclick="login()" style="margin-top: 20px;">ĐĂNG NHẬP</button>
+    <button onclick="login()" style="margin-top: 15px;">ĐĂNG NHẬP</button>
+
+    <!-- NÚT GỌI TỔNG ĐÀI KHẨN CẤP VỚI BIỂU TƯỢNG HỖ TRỢ -->
+    <a href="tel:19001234" class="btn-cskh">
+      🎧 Gọi Tổng Đài CSKH (Video Xác Minh)
+    </a>
   </div>
 
   <!-- MÀN HÌNH ĐIỀU KHIỂN CỦA TÀI XẾ -->
   <div id="appScreen" style="display: none;">
-   
-    <!-- KHUNG THÔNG TIN CÁ NHÂN VÀ PHƯƠNG TIỆN -->
     <div class="card">
       <div class="profile-header">
         <img id="driverAvatar" class="driver-avatar" src="https://cdn-icons-png.flaticon.com/512/149/149071.png" alt="Avatar">
@@ -144,7 +161,6 @@
         </div>
       </div>
 
-      <!-- KHUNG ĐÁNH GIÁ & LƯỢT XEM HỒ SƠ -->
       <div style="display: flex; gap: 8px; margin-top: 10px;">
         <div style="flex: 1; background: #f8fafc; padding: 10px; border-radius: 10px; border: 1px solid #e2e8f0; text-align: center;">
           <span style="font-size: 11px; color: #64748b; display: block;">👁️ Lượt xem</span>
@@ -157,7 +173,6 @@
       </div>
     </div>
 
-    <!-- KHUNG BẢN ĐỒ & TRẠNG THÁI BẬT GPS -->
     <div class="card">
       <div id="status" class="status" style="color: #ef4444;">🔴 Đang tắt định vị (Nghỉ ngơi)</div>
       <div id="driverMap"></div>
@@ -166,7 +181,6 @@
       <button id="toggleBtn" onclick="toggleOnline()">BẮT ĐẦU NHẬN KHÁCH (BẬT GPS)</button>
       <a class="logout-text" onclick="logout()">Đăng xuất tài khoản</a>
     </div>
-
   </div>
 
   <script>
@@ -178,9 +192,10 @@
     let isOnline = false;
     let watchId = null;
     let currentDriverId = localStorage.getItem('avyo_driver_id');
-    
     let driverMap = null;
     let driverMarker = null;
+
+    const LOCK_TIME_MS = 60 * 60 * 1000; // 1 giờ
 
     const typeLabels = { 
       'bike': '🛵 Xe máy', 
@@ -204,6 +219,95 @@
       document.getElementById('loginScreen').style.display = 'block';
     }
 
+    // Kiểm tra trạng thái khóa thiết bị và tự động mở khóa nếu Admin đã duyệt trên hệ thống
+    async function checkDeviceLockout(phone) {
+      const lockUntil = localStorage.getItem('avyo_lock_until');
+      const lockStartTime = localStorage.getItem('avyo_lock_start_time');
+
+      if (lockUntil) {
+        const now = Date.now();
+        if (now < parseInt(lockUntil)) {
+          // Kiểm tra xem Admin đã bấm mở khóa trên Supabase chưa
+          if (phone) {
+            const { data } = await supabaseClient
+              .from('drivers')
+              .select('updated_at')
+              .eq('phone', phone)
+              .single();
+
+            if (data && data.updated_at) {
+              const updatedAt = new Date(data.updated_at).getTime();
+              if (updatedAt > parseInt(lockStartTime || 0)) {
+                // Admin đã mở khóa thành công -> Xóa trạng thái phạt
+                localStorage.removeItem('avyo_lock_until');
+                localStorage.removeItem('avyo_lock_start_time');
+                localStorage.removeItem('avyo_fail_count');
+                return 0;
+              }
+            }
+          }
+          return Math.ceil((parseInt(lockUntil) - now) / (1000 * 60));
+        } else {
+          localStorage.removeItem('avyo_lock_until');
+          localStorage.removeItem('avyo_lock_start_time');
+          localStorage.removeItem('avyo_fail_count');
+        }
+      }
+      return 0;
+    }
+
+    async function login() {
+      const phone = document.getElementById('phoneInput').value.trim();
+      const pin = document.getElementById('pinInput').value.trim();
+     
+      if (!phone || !pin) {
+        return alert("Vui lòng nhập đủ SĐT và Mã PIN!");
+      }
+
+      // Kiểm tra xem máy có đang bị khóa hay không
+      const lockedMinutes = await checkDeviceLockout(phone);
+      if (lockedMinutes > 0) {
+        return alert(`⛔ Thiết bị này đang bị KHÓA ĐĂNG NHẬP (còn ${lockedMinutes} phút)!\n\nNút bên dưới hỗ trợ kết nối Video với CSKH để mở khóa khẩn cấp.`);
+      }
+
+      const btn = document.querySelector('#loginScreen button');
+      btn.innerText = "Đang kiểm tra...";
+
+      const { data, error } = await supabaseClient
+        .from('drivers')
+        .select('*')
+        .eq('phone', phone)
+        .eq('pin', pin)
+        .single();
+
+      if (error || !data) {
+        let failCount = parseInt(localStorage.getItem('avyo_fail_count') || '0') + 1;
+        localStorage.setItem('avyo_fail_count', failCount.toString());
+
+        if (failCount >= 3) {
+          const now = Date.now();
+          localStorage.setItem('avyo_lock_until', (now + LOCK_TIME_MS).toString());
+          localStorage.setItem('avyo_lock_start_time', now.toString());
+          alert("❌ Bạn đã nhập sai PIN 3 lần!\nThiết bị đã bị KHÓA 1 giờ.\nVui lòng bấm nút '🎧 Gọi CSKH' bên dưới để mở khóa khẩn cấp.");
+        } else {
+          alert(`❌ Sai Số điện thoại hoặc Mã PIN!\n(Cảnh báo: Sai ${failCount}/3 lần sẽ bị khóa thiết bị 1 giờ)`);
+        }
+        btn.innerText = "ĐĂNG NHẬP";
+      } else if (data.is_active === false) {
+        alert("⛔ Tài khoản của bạn đã tạm ngưng hoạt động (Đã nghỉ). Vui lòng liên hệ Admin!");
+        btn.innerText = "ĐĂNG NHẬP";
+      } else {
+        localStorage.removeItem('avyo_fail_count');
+        localStorage.removeItem('avyo_lock_until');
+        localStorage.removeItem('avyo_lock_start_time');
+
+        localStorage.setItem('avyo_driver_id', data.id);
+        localStorage.setItem('avyo_driver_name', data.name);
+        alert("✅ Đăng nhập thành công!");
+        window.location.reload();
+      }
+    }
+
     function initDriverMap() {
       if (driverMap) return;
       driverMap = L.map('driverMap').setView([18.7034, 105.6832], 14);
@@ -222,7 +326,6 @@
           return;
         }
 
-        // Cập nhật Thông tin cá nhân
         document.getElementById('driverNameLabel').innerText = data.name;
         document.getElementById('driverAvatar').src = getOptimizedAvatar(data.avatar_url);
         document.getElementById('cccdLabel').innerText = "CCCD: " + (data.cccd || '---');
@@ -233,12 +336,10 @@
           document.getElementById('joinDateLabel').innerText = "📅 Tham gia: " + joinDate;
         }
 
-        // Cập nhật Thông tin xe & Đăng nhập
         document.getElementById('vehicleTypeLabel').innerText = typeLabels[data.vehicle_type] || 'Phương tiện';
         document.getElementById('vehicleDetailLabel').innerText = data.vehicle || 'Chưa cập nhật chi tiết xe';
         document.getElementById('phoneLabel').innerText = data.phone;
 
-        // Cập nhật Thống kê Lượt xem & Đánh giá
         document.getElementById('clickCountLabel').innerText = (data.click_count || 0) + " lượt xem";
         const sum = data.rating_sum || 25;
         const count = data.rating_count || 5;
@@ -261,38 +362,6 @@
         driverMarker.setLatLng(latLng);
       }
       driverMap.setView(latLng, 16);
-    }
-
-    async function login() {
-      const phone = document.getElementById('phoneInput').value.trim();
-      const pin = document.getElementById('pinInput').value.trim();
-     
-      if (!phone || !pin) {
-        return alert("Vui lòng nhập đủ SĐT và Mã PIN!");
-      }
-
-      const btn = document.querySelector('#loginScreen button');
-      btn.innerText = "Đang kiểm tra...";
-
-      const { data, error } = await supabaseClient
-        .from('drivers')
-        .select('*')
-        .eq('phone', phone)
-        .eq('pin', pin)
-        .single();
-
-      if (error || !data) {
-        alert("❌ Sai Số điện thoại hoặc Mã PIN!");
-        btn.innerText = "ĐĂNG NHẬP";
-      } else if (data.is_active === false) {
-        alert("⛔ Tài khoản của bạn đã tạm ngưng hoạt động (Đã nghỉ). Vui lòng liên hệ Admin!");
-        btn.innerText = "ĐĂNG NHẬP";
-      } else {
-        localStorage.setItem('avyo_driver_id', data.id);
-        localStorage.setItem('avyo_driver_name', data.name);
-        alert("✅ Đăng nhập thành công!");
-        window.location.reload();
-      }
     }
 
     function logout(force = false) {
