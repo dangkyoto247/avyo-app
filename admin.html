@@ -63,7 +63,6 @@
     .btn-cancel { background: #64748b; color: white; display: none; }
     .btn-edit { background: #0284c7; color: white; padding: 6px 10px; font-size: 12px; border-radius: 6px; margin: 2px; }
     
-    /* Style nút Mở khóa màu đỏ nổi bật */
     .btn-unlock { 
       background: #dc2626; 
       color: white; 
@@ -186,7 +185,7 @@
           <tr>
             <th>Loại xe</th>
             <th>Thông tin Tài xế</th>
-            <th>Đánh giá & Lượt xem</th>
+            <th>Đánh giá & Tương tác</th>
             <th>Đăng nhập (SĐT & PIN)</th>
             <th>Trạng Thái</th>
             <th>Thao Tác</th>
@@ -377,8 +376,9 @@
             </div>
           </td>
           <td>
-            ⭐ <b style="color:#eab308; font-size:14px;">${rScore}</b> <span class="small-text">(${rCount} lượt)</span>
-            👁️ <b style="color:#16a34a; font-size:13px;">${d.click_count || 0}</b> lượt xem
+            ⭐ <b style="color:#eab308; font-size:14px;">${rScore}</b> <span class="small-text">(${rCount} lượt)</span><br>
+            👁️ <b style="color:#16a34a; font-size:13px;">${d.click_count || 0}</b> lượt xem<br>
+            📞 <b style="color:#0284c7; font-size:13px;">${d.contact_count || 0}</b> khách gọi
           </td>
           <td>
             SĐT: <b>${d.phone}</b><br>

@@ -89,12 +89,7 @@
       font-size: 12px;
       color: #334155;
     }
-    .small-text { 
-      font-size: 11px; 
-      color: #64748b; 
-      display: block; 
-      margin-top: 2px; 
-    }
+    .small-text { font-size: 11px; color: #64748b; display: block; margin-top: 2px; }
     .logout-text {
       color: #64748b;
       font-size: 14px;
@@ -164,14 +159,19 @@
         </div>
       </div>
 
-      <div style="display: flex; gap: 8px; margin-top: 10px;">
-        <div style="flex: 1; background: #f8fafc; padding: 10px; border-radius: 10px; border: 1px solid #e2e8f0; text-align: center;">
+      <!-- ĐÃ BỔ SUNG Ô ĐẾM SỐ KHÁCH GỌI -->
+      <div style="display: flex; gap: 6px; margin-top: 10px;">
+        <div style="flex: 1; background: #f8fafc; padding: 10px 4px; border-radius: 10px; border: 1px solid #e2e8f0; text-align: center;">
           <span style="font-size: 11px; color: #64748b; display: block;">👁️ Lượt xem</span>
-          <b id="clickCountLabel" style="color: #16a34a; font-size: 15px;">0 lượt xem</b>
+          <b id="clickCountLabel" style="color: #16a34a; font-size: 14px;">0</b>
         </div>
-        <div style="flex: 1; background: #f8fafc; padding: 10px; border-radius: 10px; border: 1px solid #e2e8f0; text-align: center;">
+        <div style="flex: 1; background: #f0f9ff; padding: 10px 4px; border-radius: 10px; border: 1px solid #bae6fd; text-align: center;">
+          <span style="font-size: 11px; color: #0369a1; display: block;">📞 Khách gọi</span>
+          <b id="contactCountLabel" style="color: #0284c7; font-size: 14px;">0</b>
+        </div>
+        <div style="flex: 1; background: #f8fafc; padding: 10px 4px; border-radius: 10px; border: 1px solid #e2e8f0; text-align: center;">
           <span style="font-size: 11px; color: #64748b; display: block;">⭐ Đánh giá</span>
-          <b id="ratingLabel" style="color: #eab308; font-size: 15px;">5.0 (0 lượt)</b>
+          <b id="ratingLabel" style="color: #eab308; font-size: 14px;">5.0 (0)</b>
         </div>
       </div>
     </div>
@@ -199,7 +199,7 @@
     let driverMap = null;
     let driverMarker = null;
 
-    const LOCK_TIME_MS = 60 * 60 * 1000; // Thời gian khóa: 1 giờ
+    const LOCK_TIME_MS = 60 * 60 * 1000; 
 
     const typeLabels = { 
       'bike': '🛵 Xe máy', 
@@ -223,7 +223,6 @@
       document.getElementById('loginScreen').style.display = 'block';
     }
 
-    // XỬ LÝ ĐĂNG NHẬP & BẢO MẬT KHÓA TÀI KHOẢN
     async function login() {
       const phone = document.getElementById('phoneInput').value.trim();
       const pin = document.getElementById('pinInput').value.trim();
@@ -235,7 +234,6 @@
       const btn = document.querySelector('#loginScreen button');
       btn.innerText = "Đang kiểm tra...";
 
-      // 1. Kiểm tra sự tồn tại của SĐT
       const { data: driverInfo, error: findError } = await supabaseClient
         .from('drivers')
         .select('*')
@@ -250,26 +248,19 @@
 
       const now = Date.now();
 
-      // 2. Kiểm tra trạng thái khóa 1 giờ trên Supabase
       if (driverInfo.locked_until && parseInt(driverInfo.locked_until) > now) {
         const lockedMinutes = Math.ceil((parseInt(driverInfo.locked_until) - now) / 60000);
         btn.innerText = "ĐĂNG NHẬP";
-        return alert(`⛔ Tài khoản đang bị KHÓA TẠM THỜI (còn ${lockedMinutes} phút)!\n\nVui lòng bấm nút '🎧 Gọi Tổng Đài CSKH' bên dưới để hỗ trợ mở khóa khẩn cấp.`);
+        return alert(`⛔ Tài khoản đang bị KHÓA TẠM THỜI (còn ${lockedMinutes} phút)!\n\nVui lòng bấm '🎧 Gọi Tổng Đài CSKH' bên dưới để hỗ trợ mở khóa khẩn cấp.`);
       }
 
-      // 3. Kiểm tra Mã PIN (Sai 3 lần sẽ khóa 1 giờ)
       if (driverInfo.pin !== pin) {
         let failCount = parseInt(localStorage.getItem(`fail_${phone}`) || '0') + 1;
         localStorage.setItem(`fail_${phone}`, failCount.toString());
 
         if (failCount >= 3) {
           const lockUntilMs = now + LOCK_TIME_MS;
-          
-          await supabaseClient
-            .from('drivers')
-            .update({ locked_until: lockUntilMs.toString() })
-            .eq('id', driverInfo.id);
-
+          await supabaseClient.from('drivers').update({ locked_until: lockUntilMs.toString() }).eq('id', driverInfo.id);
           alert("❌ Bạn đã nhập sai PIN 3 lần!\nTài khoản đã bị KHÓA TRÊN HỆ THỐNG trong 1 giờ.");
         } else {
           alert(`❌ Sai Mã PIN!\nCảnh báo: Bạn còn ${3 - failCount} lần thử trước khi bị khóa.`);
@@ -278,14 +269,12 @@
         return;
       }
 
-      // 4. Kiểm tra tài khoản có bị ngưng hoạt động không
       if (driverInfo.is_active === false) {
         alert("⛔ Tài khoản của bạn đã bị cho nghỉ. Vui lòng liên hệ Admin!");
         btn.innerText = "ĐĂNG NHẬP";
         return;
       }
 
-      // 5. Đăng nhập thành công -> Tạo Session Token mới để chống đăng nhập nhiều thiết bị
       const newToken = Date.now().toString() + '_' + Math.random().toString(36).substring(2, 9);
       
       const { error: updateError } = await supabaseClient
@@ -321,14 +310,8 @@
     }
 
     async function loadDriverProfile() {
-      const { data } = await supabaseClient
-        .from('drivers')
-        .select('*')
-        .eq('id', currentDriverId)
-        .single();
-
+      const { data } = await supabaseClient.from('drivers').select('*').eq('id', currentDriverId).single();
       if (data) {
-        // Kiểm tra xem có thiết bị khác đăng nhập đè lên không
         if (data.session_token && data.session_token !== currentSessionToken) {
           alert("⚠️ Tài khoản của bạn vừa được đăng nhập trên một thiết bị khác!\nThiết bị này sẽ bị đăng xuất tự động.");
           logout(true);
@@ -355,10 +338,13 @@
         document.getElementById('vehicleDetailLabel').innerText = data.vehicle || 'Chưa cập nhật chi tiết xe';
         document.getElementById('phoneLabel').innerText = data.phone;
 
-        document.getElementById('clickCountLabel').innerText = (data.click_count || 0) + " lượt xem";
+        // Đổ dữ liệu Lượt xem, Khách Gọi và Đánh giá
+        document.getElementById('clickCountLabel').innerText = data.click_count || 0;
+        document.getElementById('contactCountLabel').innerText = data.contact_count || 0;
+        
         const sum = data.rating_sum || 25;
         const count = data.rating_count || 5;
-        document.getElementById('ratingLabel').innerText = `${(sum / count).toFixed(1)} (${count} lượt)`;
+        document.getElementById('ratingLabel').innerText = `${(sum / count).toFixed(1)} (${count})`;
 
         if (data.lat && data.lng) {
           updateMapMarker(data.lat, data.lng);
@@ -370,9 +356,7 @@
       if (!driverMap) initDriverMap();
       const latLng = [lat, lng];
       if (!driverMarker) {
-        driverMarker = L.marker(latLng).addTo(driverMap)
-          .bindPopup("📍 <b>Vị trí của bạn</b>")
-          .openPopup();
+        driverMarker = L.marker(latLng).addTo(driverMap).bindPopup("📍 <b>Vị trí của bạn</b>").openPopup();
       } else {
         driverMarker.setLatLng(latLng);
       }
@@ -381,9 +365,7 @@
 
     function logout(force = false) {
       if (force || confirm("Bạn có chắc chắn muốn đăng xuất không?")) {
-        if (isOnline) {
-          toggleOnline();
-        }
+        if (isOnline) toggleOnline();
         localStorage.removeItem('avyo_driver_id');
         localStorage.removeItem('avyo_driver_name');
         localStorage.removeItem('avyo_session_token');
@@ -402,9 +384,7 @@
     }
 
     async function toggleOnline() {
-      if (!currentDriverId) {
-        return alert('Lỗi tài khoản, vui lòng đăng xuất và đăng nhập lại!');
-      }
+      if (!currentDriverId) return alert('Lỗi tài khoản, vui lòng đăng xuất và đăng nhập lại!');
 
       const btn = document.getElementById('toggleBtn');
       const status = document.getElementById('status');
@@ -418,15 +398,12 @@
         status.innerHTML = '🟢 ĐANG PHÁT GPS ĐỂ ĐÓN KHÁCH';
         status.style.color = '#16a34a';
 
-        setTimeout(() => { 
-          if (driverMap) driverMap.invalidateSize(); 
-        }, 200);
+        setTimeout(() => { if (driverMap) driverMap.invalidateSize(); }, 200);
 
         let lastUpdateTime = 0;
        
         watchId = navigator.geolocation.watchPosition(async (pos) => {
           if (!isOnline) return;
-         
           const lat = pos.coords.latitude;
           const lng = pos.coords.longitude;
           document.getElementById('coords').innerText = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
@@ -439,9 +416,7 @@
           }
         }, (err) => {
           alert('Lỗi GPS: ' + err.message);
-        }, {
-          enableHighAccuracy: true
-        });
+        }, { enableHighAccuracy: true });
 
       } else {
         isOnline = false;
@@ -449,7 +424,6 @@
           navigator.geolocation.clearWatch(watchId);
           watchId = null;
         }
-       
         await supabaseClient.from('drivers').update({
           is_online: false,
           updated_at: new Date().toISOString()
@@ -462,7 +436,7 @@
       }
     }
 
-    // LẮNG NGHE THAY ĐỔI THEO THỜI GIAN THỰC (REALTIME)
+    // LẮNG NGHE REALTIME ĐỂ CẬP NHẬT LƯỢT GỌI VÀ ĐẨY THIẾT BỊ KHÁC
     if (currentDriverId) {
       supabaseClient.channel('driver-self-update')
         .on('postgres_changes', { 
@@ -472,24 +446,26 @@
           filter: `id=eq.${currentDriverId}` 
         }, (payload) => {
           if (payload.new) {
-            // Tự động văng ra nếu thiết bị khác đăng nhập làm thay đổi session_token
             if (payload.new.session_token && payload.new.session_token !== currentSessionToken) {
               alert("⚠️ Tài khoản của bạn vừa được đăng nhập ở một thiết bị khác!\nỨng dụng sẽ đăng xuất thiết bị này.");
-              logout(true);
-              return;
+              logout(true); return;
             }
             if (payload.new.is_active === false) {
               alert("⛔ Tài khoản của bạn đã chuyển sang trạng thái Đã nghỉ!");
-              logout(true);
-              return;
+              logout(true); return;
             }
+            
+            // Cập nhật lượt xem, lượt gọi, lượt đánh giá
             if (payload.new.click_count !== undefined) {
-              document.getElementById('clickCountLabel').innerText = payload.new.click_count + " lượt xem";
+              document.getElementById('clickCountLabel').innerText = payload.new.click_count;
+            }
+            if (payload.new.contact_count !== undefined) {
+              document.getElementById('contactCountLabel').innerText = payload.new.contact_count;
             }
             if (payload.new.rating_sum !== undefined && payload.new.rating_count !== undefined) {
               const sum = payload.new.rating_sum || 25;
               const count = payload.new.rating_count || 5;
-              document.getElementById('ratingLabel').innerText = `${(sum / count).toFixed(1)} (${count} lượt)`;
+              document.getElementById('ratingLabel').innerText = `${(sum / count).toFixed(1)} (${count})`;
             }
           }
         })
