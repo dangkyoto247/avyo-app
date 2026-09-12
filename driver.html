@@ -507,7 +507,7 @@ watchId = navigator.geolocation.watchPosition(async (pos) => {
 
   const now = Date.now();
   // ĐỔI 3000 THÀNH 30000 (Gửi GPS lên Supabase mỗi 30 giây/lần)
-  if (now - lastUpdateTime >= 30000) {
+  if (now - lastUpdateTime >= 15000) {
     await updateLocation(lat, lng);
     lastUpdateTime = now;
   }
