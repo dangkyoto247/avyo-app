@@ -250,10 +250,10 @@
     };
     const typeLabels = { 'bike': '🛵 Xe máy', 'car': '🚕 Ô tô', 'driver': '👤 Lái xe hộ', 'truck': '🚚 Chở hàng' };
 
-    // --- BẢN ĐỒ CARTODB THAY THẾ CHO OSM GỐC ---
+    // TỐI ƯU BẢN ĐỒ ADMIN VỚI PREFER CANVAS (GIẢM TẢI TRÌNH DUYỆT)
     function initMap() {
       if (map) return;
-      map = L.map('map').setView([18.7034, 105.6832], 12);
+      map = L.map('map', { preferCanvas: true }).setView([18.7034, 105.6832], 12);
       
       L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
         maxZoom: 19,

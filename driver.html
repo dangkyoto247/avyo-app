@@ -220,10 +220,20 @@
 
     let driverMap = null;
     let driverMarker = null;
+    let lastSentLat = 0, lastSentLng = 0;
 
     const LOCK_TIME_MS = 60 * 60 * 1000;
-
     const typeLabels = { 'bike': '🛵 Xe máy', 'car': '🚕 Ô tô', 'driver': '👤 Lái xe hộ', 'truck': '🚚 Chở hàng' };
+
+    function getHaversineDistance(lat1, lon1, lat2, lon2) {
+      const R = 6371;
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    }
 
     function getOptimizedAvatar(url) {
       const defaultAvatar = 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
@@ -355,10 +365,10 @@
       window.location.reload();
     }
 
-    // --- BẢN ĐỒ CARTODB VOYAGER THAY THẾ CHO OSM ---
+    // 1. TỐI ƯU BẢN ĐỒ VỚI PREFER CANVAS (LƯỚT MƯỢT TRÊN ĐIỆN THOẠI YẾU)
     function initDriverMap() {
       if (driverMap) return;
-      driverMap = L.map('driverMap').setView([18.7034, 105.6832], 14);
+      driverMap = L.map('driverMap', { preferCanvas: true }).setView([18.7034, 105.6832], 14);
       
       L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
         maxZoom: 19,
@@ -498,22 +508,26 @@
         }, 60000);
 
         let lastUpdateTime = 0;
-watchId = navigator.geolocation.watchPosition(async (pos) => {
-  if (!isOnline) return;
-  const lat = pos.coords.latitude;
-  const lng = pos.coords.longitude;
-  document.getElementById('coords').innerText = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-  updateMapMarker(lat, lng);
+        // 2. TỐI ƯU PHÁT GPS: GỬI LÊN SUPABASE MỖI 30S VÀ CHỈ GỬI KHI DI CHUYỂN > 10 MÉT
+        watchId = navigator.geolocation.watchPosition(async (pos) => {
+          if (!isOnline) return;
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+          document.getElementById('coords').innerText = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+          updateMapMarker(lat, lng);
 
-  const now = Date.now();
-  // ĐỔI 3000 THÀNH 30000 (Gửi GPS lên Supabase mỗi 30 giây/lần)
-  if (now - lastUpdateTime >= 15000) {
-    await updateLocation(lat, lng);
-    lastUpdateTime = now;
-  }
-}, (err) => {
-  alert('Lỗi GPS: ' + err.message);
-}, { enableHighAccuracy: true });
+          const now = Date.now();
+          const movedKm = getHaversineDistance(lat, lng, lastSentLat, lastSentLng);
+
+          if ((now - lastUpdateTime >= 30000 && movedKm > 0.01) || lastSentLat === 0) {
+            await updateLocation(lat, lng);
+            lastUpdateTime = now;
+            lastSentLat = lat;
+            lastSentLng = lng;
+          }
+        }, (err) => {
+          alert('Lỗi GPS: ' + err.message);
+        }, { enableHighAccuracy: true });
 
       } else {
         isOnline = false;

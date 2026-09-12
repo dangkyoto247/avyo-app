@@ -1,4 +1,12 @@
 const TILE_CACHE_NAME = 'carto-tiles-v1';
+const STATIC_CACHE_NAME = 'avyo-static-v1';
+
+// Danh sách các thư viện CDN dùng chung được lưu offline
+const STATIC_ASSETS = [
+  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
+  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
+  'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'
+];
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
@@ -11,16 +19,13 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const requestUrl = event.request.url;
 
-  // 1. CHỈ CACHE MẢNH ẢNH BẢN ĐỒ CARTODB (Tải siêu nhanh & tiết kiệm 4G)
-  if (requestUrl.includes('basemaps.cartocdn.com')) {
+  // 1. CACHE CÁC FILE THƯ VIỆN CDN DÙNG CHUNG
+  if (STATIC_ASSETS.some(url => requestUrl.includes(url))) {
     event.respondWith(
-      caches.open(TILE_CACHE_NAME).then((cache) => {
+      caches.open(STATIC_CACHE_NAME).then((cache) => {
         return cache.match(event.request).then((cachedResponse) => {
-          if (cachedResponse) {
-            return cachedResponse;
-          }
+          if (cachedResponse) return cachedResponse;
           return fetch(event.request).then((networkResponse) => {
-            // Lưu bản sao mảnh bản đồ vào cache cho lần dùng sau
             cache.put(event.request, networkResponse.clone());
             return networkResponse;
           });
@@ -30,7 +35,22 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 2. MÃ NGUỒN APP (HTML, JS, CSS): Luôn lấy từ mạng (Network Only)
-  // Đảm bảo mỗi khi bạn sửa code, máy khách sẽ cập nhật ngay lập tức
+  // 2. CACHE MẢNH HÌNH ẢNH BẢN ĐỒ CARTODB (TẢI SIÊU NHANH)
+  if (requestUrl.includes('basemaps.cartocdn.com')) {
+    event.respondWith(
+      caches.open(TILE_CACHE_NAME).then((cache) => {
+        return cache.match(event.request).then((cachedResponse) => {
+          if (cachedResponse) return cachedResponse;
+          return fetch(event.request).then((networkResponse) => {
+            cache.put(event.request, networkResponse.clone());
+            return networkResponse;
+          });
+        });
+      })
+    );
+    return;
+  }
+
+  // 3. MÃ NGUỒN APP (HTML, JS, CSS): Luôn đi thẳng ra mạng để cập nhật mới tức thì
   event.respondWith(fetch(event.request));
 });
