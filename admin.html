@@ -62,7 +62,23 @@
     .btn-add { background: #16a34a; color: white; }
     .btn-cancel { background: #64748b; color: white; display: none; }
     .btn-edit { background: #0284c7; color: white; padding: 6px 10px; font-size: 12px; border-radius: 6px; margin: 2px; }
-    .btn-unlock { background: #eab308; color: white; padding: 6px 10px; font-size: 12px; border-radius: 6px; margin: 2px; }
+    
+    /* Style nút Mở khóa màu đỏ nổi bật */
+    .btn-unlock { 
+      background: #dc2626; 
+      color: white; 
+      padding: 6px 10px; 
+      font-size: 12px; 
+      border-radius: 6px; 
+      margin: 2px;
+      animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7); }
+      70% { box-shadow: 0 0 0 6px rgba(220, 38, 38, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+    }
+
     .btn-toggle-off { background: #ef4444; color: white; padding: 6px 10px; font-size: 12px; border-radius: 6px; margin: 2px; }
     .btn-toggle-on { background: #16a34a; color: white; padding: 6px 10px; font-size: 12px; border-radius: 6px; margin: 2px; }
 
@@ -72,8 +88,9 @@
     .badge-online { background: #dcfce7; color: #15803d; padding: 3px 8px; border-radius: 12px; font-weight: bold; font-size: 11px; }
     .badge-offline { background: #f1f5f9; color: #64748b; padding: 3px 8px; border-radius: 12px; font-weight: bold; font-size: 11px; }
     .badge-retired { background: #fee2e2; color: #dc2626; padding: 3px 8px; border-radius: 12px; font-weight: bold; font-size: 11px; }
-    .small-text { font-size: 11px; color: #64748b; display: block; margin-top: 2px; }
+    .badge-locked { background: #fee2e2; color: #b91c1c; padding: 3px 8px; border-radius: 12px; font-weight: bold; font-size: 11px; border: 1px solid #fca5a5; }
 
+    .small-text { font-size: 11px; color: #64748b; display: block; margin-top: 2px; }
     .admin-avatar { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 1.5px solid #cbd5e1; background: #e2e8f0; flex-shrink: 0; }
 
     #login-modal {
@@ -308,7 +325,11 @@
       }
 
       filteredDrivers.forEach(d => {
-        if (d.is_online && d.is_active !== false) onlineCount++;
+        const now = Date.now();
+        // Kiểm tra tài xế có đang bị khóa hay không
+        const isLocked = d.locked_until && parseInt(d.locked_until) > now;
+
+        if (!isLocked && d.is_online && d.is_active !== false) onlineCount++;
 
         let joinDate = '--';
         if (d.created_at) {
@@ -325,11 +346,18 @@
         let statusBadge = '';
         if (d.is_active === false) {
           statusBadge = '<span class="badge-retired">🔴 Đã nghỉ</span>';
+        } else if (isLocked) {
+          statusBadge = '<span class="badge-locked">🔒 BỊ KHÓA TẠM THỜI</span>';
         } else if (d.is_online) {
           statusBadge = '<span class="badge-online">🟢 BẬT GPS</span>';
         } else {
           statusBadge = '<span class="badge-offline">⚪ Tắt GPS</span>';
         }
+
+        // CHỈ TẠO NÚT MỞ KHÓA NẾU TÀI XẾ DƯỚI TRẠNG THÁI BỊ KHÓA
+        const unlockButtonHtml = isLocked 
+          ? `<button class="btn-unlock" onclick="unlockDriver('${d.id}', '${d.name}', '${d.pin || '1234'}')">🔓 Mở khóa & PIN</button>` 
+          : '';
 
         const tr = document.createElement('tr');
         tr.innerHTML = `
@@ -361,7 +389,7 @@
           </td>
           <td>
             <button class="btn-edit" onclick="editDriver('${d.id}', '${d.name}', '${d.phone}', '${d.pin || ''}', '${d.avatar_url || ''}', '${d.cccd || ''}', '${d.address || ''}', '${d.vehicle_type}', '${d.vehicle || ''}')">Sửa</button>
-            <button class="btn-unlock" onclick="unlockDriver('${d.id}', '${d.name}', '${d.pin || '1234'}')">🔓 Mở khóa & PIN</button>
+            ${unlockButtonHtml}
             ${d.is_active === false
               ? `<button class="btn-toggle-on" onclick="toggleDriverStatus('${d.id}', '${d.name}', false)">Kích hoạt lại</button>`
               : `<button class="btn-toggle-off" onclick="toggleDriverStatus('${d.id}', '${d.name}', true)">Cho nghỉ</button>`
@@ -370,7 +398,7 @@
         `;
         tbody.appendChild(tr);
 
-        if (d.is_active !== false && d.is_online && d.lat && d.lng) {
+        if (!isLocked && d.is_active !== false && d.is_online && d.lat && d.lng) {
           const marker = L.marker([d.lat, d.lng], { icon: icons[d.vehicle_type] || icons['bike'] })
             .addTo(map)
             .bindPopup(`<b>${d.name}</b><br>${d.phone}`);
@@ -459,14 +487,14 @@
       document.getElementById('cancelBtn').style.display = "none";
     }
 
-    // MỞ KHÓA KHẨN CẤP VÀ XÁC NHẬN MÃ PIN CHO TÀI XẾ
+    // MỞ KHÓA TÀI KHOẢN TRÊN SUPABASE (Set locked_until về null)
     async function unlockDriver(id, name, pin) {
-      const confirmUnlock = confirm(`📞 Đã xác minh Video thành công với tài xế: "${name}"?\n\nMật khẩu PIN của tài xế là: [ ${pin} ]\n\nBấm OK để đọc lại mật khẩu này cho tài xế và MỞ KHÓA thiết bị ngay lập tức.`);
+      const confirmUnlock = confirm(`📞 Đã xác minh Video thành công với tài xế: "${name}"?\n\nMật khẩu PIN của tài xế là: [ ${pin} ]\n\nBấm OK để MỞ KHÓA tài khoản ngay lập tức.`);
       
       if (confirmUnlock) {
         const { error } = await supabaseClient
           .from('drivers')
-          .update({ updated_at: new Date().toISOString() })
+          .update({ locked_until: null, updated_at: new Date().toISOString() })
           .eq('id', id);
 
         if (error) {

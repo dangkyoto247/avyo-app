@@ -99,7 +99,6 @@
       text-align: center;
       cursor: pointer;
     }
-    /* Style Nút Tổng đài CSKH Khẩn Cấp */
     .btn-cskh {
       background: #0284c7;
       color: white;
@@ -129,9 +128,8 @@
    
     <button onclick="login()" style="margin-top: 15px;">ĐĂNG NHẬP</button>
 
-    <!-- NÚT GỌI TỔNG ĐÀI KHẨN CẤP VỚI BIỂU TƯỢNG HỖ TRỢ -->
     <a href="tel:19001234" class="btn-cskh">
-      🎧 Gọi Tổng Đài CSKH (Video Xác Minh)
+      🎧 Gọi Tổng Đài CSKH (Mở Khóa/Hỗ Trợ)
     </a>
   </div>
 
@@ -219,43 +217,7 @@
       document.getElementById('loginScreen').style.display = 'block';
     }
 
-    // Kiểm tra trạng thái khóa thiết bị và tự động mở khóa nếu Admin đã duyệt trên hệ thống
-    async function checkDeviceLockout(phone) {
-      const lockUntil = localStorage.getItem('avyo_lock_until');
-      const lockStartTime = localStorage.getItem('avyo_lock_start_time');
-
-      if (lockUntil) {
-        const now = Date.now();
-        if (now < parseInt(lockUntil)) {
-          // Kiểm tra xem Admin đã bấm mở khóa trên Supabase chưa
-          if (phone) {
-            const { data } = await supabaseClient
-              .from('drivers')
-              .select('updated_at')
-              .eq('phone', phone)
-              .single();
-
-            if (data && data.updated_at) {
-              const updatedAt = new Date(data.updated_at).getTime();
-              if (updatedAt > parseInt(lockStartTime || 0)) {
-                // Admin đã mở khóa thành công -> Xóa trạng thái phạt
-                localStorage.removeItem('avyo_lock_until');
-                localStorage.removeItem('avyo_lock_start_time');
-                localStorage.removeItem('avyo_fail_count');
-                return 0;
-              }
-            }
-          }
-          return Math.ceil((parseInt(lockUntil) - now) / (1000 * 60));
-        } else {
-          localStorage.removeItem('avyo_lock_until');
-          localStorage.removeItem('avyo_lock_start_time');
-          localStorage.removeItem('avyo_fail_count');
-        }
-      }
-      return 0;
-    }
-
+    // THAY ĐỔI HÀM LOGIN HOÀN TOÀN: Kiểm tra Database thay vì chỉ LocalStorage
     async function login() {
       const phone = document.getElementById('phoneInput').value.trim();
       const pin = document.getElementById('pinInput').value.trim();
@@ -264,48 +226,71 @@
         return alert("Vui lòng nhập đủ SĐT và Mã PIN!");
       }
 
-      // Kiểm tra xem máy có đang bị khóa hay không
-      const lockedMinutes = await checkDeviceLockout(phone);
-      if (lockedMinutes > 0) {
-        return alert(`⛔ Thiết bị này đang bị KHÓA ĐĂNG NHẬP (còn ${lockedMinutes} phút)!\n\nNút bên dưới hỗ trợ kết nối Video với CSKH để mở khóa khẩn cấp.`);
-      }
-
       const btn = document.querySelector('#loginScreen button');
       btn.innerText = "Đang kiểm tra...";
 
-      const { data, error } = await supabaseClient
+      // 1. Tìm thông tin tài xế bằng Số điện thoại
+      const { data: driverInfo, error: findError } = await supabaseClient
         .from('drivers')
         .select('*')
         .eq('phone', phone)
-        .eq('pin', pin)
         .single();
 
-      if (error || !data) {
-        let failCount = parseInt(localStorage.getItem('avyo_fail_count') || '0') + 1;
-        localStorage.setItem('avyo_fail_count', failCount.toString());
+      if (findError || !driverInfo) {
+        alert("❌ Số điện thoại không tồn tại trong hệ thống!");
+        btn.innerText = "ĐĂNG NHẬP";
+        return;
+      }
+
+      const now = Date.now();
+
+      // 2. Kiểm tra xem tài khoản này có đang bị KHÓA trên Database không
+      if (driverInfo.locked_until && parseInt(driverInfo.locked_until) > now) {
+        const lockedMinutes = Math.ceil((parseInt(driverInfo.locked_until) - now) / 60000);
+        btn.innerText = "ĐĂNG NHẬP";
+        return alert(`⛔ Tài khoản đang bị KHÓA TẠM THỜI (còn ${lockedMinutes} phút)!\n\nVui lòng bấm '🎧 Gọi Tổng Đài CSKH' bên dưới để hỗ trợ mở khóa khẩn cấp.`);
+      }
+
+      // 3. Nếu tài khoản mở, kiểm tra MÃ PIN
+      if (driverInfo.pin !== pin) {
+        // Ghi nhận số lần sai vào máy
+        let failCount = parseInt(localStorage.getItem(`fail_${phone}`) || '0') + 1;
+        localStorage.setItem(`fail_${phone}`, failCount.toString());
 
         if (failCount >= 3) {
-          const now = Date.now();
-          localStorage.setItem('avyo_lock_until', (now + LOCK_TIME_MS).toString());
-          localStorage.setItem('avyo_lock_start_time', now.toString());
-          alert("❌ Bạn đã nhập sai PIN 3 lần!\nThiết bị đã bị KHÓA 1 giờ.\nVui lòng bấm nút '🎧 Gọi CSKH' bên dưới để mở khóa khẩn cấp.");
+          // Khóa 1 giờ (3600000 ms)
+          const lockUntilMs = now + LOCK_TIME_MS;
+          
+          // Cập nhật trạng thái khóa lên cơ sở dữ liệu Supabase để Admin thấy
+          await supabaseClient.from('drivers').update({ locked_until: lockUntilMs.toString() }).eq('id', driverInfo.id);
+          
+          alert("❌ Bạn đã nhập sai PIN 3 lần!\nTài khoản đã bị KHÓA TRÊN HỆ THỐNG trong 1 giờ.");
         } else {
-          alert(`❌ Sai Số điện thoại hoặc Mã PIN!\n(Cảnh báo: Sai ${failCount}/3 lần sẽ bị khóa thiết bị 1 giờ)`);
+          alert(`❌ Sai Mã PIN!\nCảnh báo: Bạn còn ${3 - failCount} lần thử trước khi bị khóa.`);
         }
         btn.innerText = "ĐĂNG NHẬP";
-      } else if (data.is_active === false) {
-        alert("⛔ Tài khoản của bạn đã tạm ngưng hoạt động (Đã nghỉ). Vui lòng liên hệ Admin!");
-        btn.innerText = "ĐĂNG NHẬP";
-      } else {
-        localStorage.removeItem('avyo_fail_count');
-        localStorage.removeItem('avyo_lock_until');
-        localStorage.removeItem('avyo_lock_start_time');
-
-        localStorage.setItem('avyo_driver_id', data.id);
-        localStorage.setItem('avyo_driver_name', data.name);
-        alert("✅ Đăng nhập thành công!");
-        window.location.reload();
+        return;
       }
+
+      // 4. Nếu đúng PIN nhưng tài khoản bị Admin cho nghỉ
+      if (driverInfo.is_active === false) {
+        alert("⛔ Tài khoản của bạn đã bị cho nghỉ. Vui lòng liên hệ Admin!");
+        btn.innerText = "ĐĂNG NHẬP";
+        return;
+      }
+
+      // 5. ĐĂNG NHẬP THÀNH CÔNG
+      localStorage.removeItem(`fail_${phone}`); // Xóa lịch sử sai phạm
+      
+      // Nếu trước đó đang có khóa cũ đã hết hạn, clear nó trên Database cho sạch data
+      if (driverInfo.locked_until) {
+        await supabaseClient.from('drivers').update({ locked_until: null }).eq('id', driverInfo.id);
+      }
+
+      localStorage.setItem('avyo_driver_id', driverInfo.id);
+      localStorage.setItem('avyo_driver_name', driverInfo.name);
+      alert("✅ Đăng nhập thành công!");
+      window.location.reload();
     }
 
     function initDriverMap() {
