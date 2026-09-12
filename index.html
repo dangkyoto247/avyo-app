@@ -2,11 +2,11 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Avyo - Gọi Xe Tinh Gọn 0Đ</title>
   
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#16a34a">
+  <meta name="theme-color" content="#00B14F">
   <link rel="apple-touch-icon" href="logo.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -16,94 +16,215 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 12px; max-width: 480px; margin: auto; background: #f8fafc; }
-    #map { height: 320px; width: 100%; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-bottom: 12px; }
-    .card { background: white; padding: 14px; border-radius: 16px; margin-bottom: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
-    .price { font-size: 22px; font-weight: bold; color: #16a34a; }
-    .btn-zalo { background: #0068ff; color: white; padding: 12px; border-radius: 10px; text-decoration: none; display: block; text-align: center; font-weight: bold; margin-top: 8px; border: none; width: 100%; font-size: 16px; cursor: pointer; }
-    .btn-phone { background: #22c55e; color: white; padding: 12px; border-radius: 10px; text-decoration: none; display: block; text-align: center; font-weight: bold; margin-top: 8px; }
-    .btn-reset { background: #f97316; color: white; padding: 10px; border-radius: 10px; border: none; font-weight: bold; width: 100%; margin-top: 8px; cursor: pointer; display: none; font-size: 14px; }
-    .btn-gps { background: #0f172a; color: white; padding: 9px; border-radius: 10px; border: none; font-weight: bold; width: 100%; cursor: pointer; font-size: 13px; margin-bottom: 8px; }
-    .vehicle-icon { font-size: 30px; text-align: center; line-height: 1; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3)); }
+    :root {
+      --grab-green: #00B14F;
+      --grab-dark: #008E3F;
+      --grab-light: #E6F7ED;
+      --bg-slate: #F4F6F8;
+      --text-main: #1C1C1E;
+      --text-sub: #7C7C80;
+    }
     
-    .filter-bar { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 6px; }
-    .filter-chip { background: #e2e8f0; color: #475569; padding: 6px 12px; border-radius: 20px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; user-select: none; transition: all 0.2s; border: 1px solid #cbd5e1; }
-    .filter-chip.active { background: #16a34a; color: white; border-color: #16a34a; box-shadow: 0 2px 6px rgba(22,163,74,0.3); }
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+      margin: 0; padding: 0; 
+      background: var(--bg-slate); 
+      color: var(--text-main); 
+      height: 100vh; 
+      display: flex; 
+      flex-direction: column; 
+      overflow: hidden; 
+      -webkit-tap-highlight-color: transparent;
+    }
+    
+    /* Header Grab Style */
+    .grab-header { 
+      background: var(--grab-green); 
+      color: white; 
+      padding: 14px 16px; 
+      font-weight: 700; 
+      font-size: 18px; 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+      box-shadow: 0 2px 10px rgba(0,0,0,0.12); 
+      z-index: 1000; 
+    }
+    
+    /* Bản đồ tràn viền */
+    #map { flex: 1; width: 100%; z-index: 1; }
+    
+    /* Thẻ thông tin dưới đáy màn hình */
+    .bottom-card { 
+      background: white; 
+      border-radius: 20px 20px 0 0; 
+      padding: 16px; 
+      padding-bottom: max(16px, env(safe-area-inset-bottom));
+      box-shadow: 0 -4px 24px rgba(0,0,0,0.12); 
+      z-index: 1000; 
+      max-height: 60vh; 
+      overflow-y: auto;
+    }
+    
+    .drag-handle { width: 40px; height: 5px; background: #E2E8F0; border-radius: 3px; margin: 0 auto 16px auto; }
+    
+    /* Thanh chọn loại xe (Tab) */
+    .vehicle-selector { 
+      display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 12px; scrollbar-width: none; 
+    }
+    .vehicle-selector::-webkit-scrollbar { display: none; }
+    .v-tab { 
+      flex: 1; min-width: 85px; background: #F8FAFC; border: 1.5px solid #E2E8F0; border-radius: 14px; 
+      padding: 12px 6px; text-align: center; font-size: 13px; font-weight: 600; color: var(--text-sub); 
+      cursor: pointer; transition: all 0.2s ease; 
+    }
+    .v-tab.active { 
+      background: var(--grab-light); border-color: var(--grab-green); color: var(--grab-dark); 
+      box-shadow: 0 3px 10px rgba(0,177,79,0.18); 
+    }
+    .v-tab:active { transform: scale(0.96); }
+    .v-icon { font-size: 24px; display: block; margin-bottom: 4px; }
+
+    /* Hộp Giá Cước */
+    .price-box { 
+      background: #F8FAFC; border-radius: 14px; padding: 14px 16px; margin-bottom: 14px; 
+      display: flex; justify-content: space-between; align-items: center; border: 1px solid #EDF2F7; 
+    }
+    .price-amount { font-size: 22px; font-weight: 800; color: var(--grab-dark); }
+    
+    /* Nút Bấm chung */
+    button { 
+      width: 100%; border: none; padding: 14px; border-radius: 14px; 
+      font-size: 15px; font-weight: 700; cursor: pointer; transition: all 0.2s ease; margin-bottom: 8px;
+    }
+    button:active { transform: scale(0.98); }
+    
+    .btn-gps { background: #F1F5F9; color: var(--text-main); border: 1px solid #CBD5E1; }
+    .btn-reset { background: #FFF1F2; color: #E11D48; border: 1px solid #FECDD3; display: none; }
+    
+    /* Khu vực liên hệ tài xế (Nổi bật) */
+    .driver-panel { 
+      display: none; background: white; border: 1.5px solid var(--grab-green); border-radius: 14px; 
+      padding: 14px; margin-top: 14px; box-shadow: 0 4px 14px rgba(0,177,79,0.15); 
+    }
+    .btn-zalo { background: #0068FF; color: white; margin-top: 12px; }
+    .btn-phone { background: var(--grab-green); color: white; box-shadow: 0 4px 14px rgba(0,177,79,0.3); }
+
+    .vehicle-icon-marker { font-size: 32px; text-align: center; line-height: 1; filter: drop-shadow(0 3px 6px rgba(0,0,0,0.3)); }
   </style>
 </head>
 <body>
 
-  <h3 style="text-align: center; color: #0f172a; margin: 8px 0 12px 0;">🚕 Avyo - Chạm Chọn Chuyến</h3>
-  
-  <div class="filter-bar">
-    <div class="filter-chip active" onclick="toggleFilter('bike', this)">🛵 Xe máy</div>
-    <div class="filter-chip active" onclick="toggleFilter('car', this)">🚕 Ô tô</div>
-    <div class="filter-chip active" onclick="toggleFilter('driver', this)">👤 Lái xe hộ</div>
-    <div class="filter-chip active" onclick="toggleFilter('truck', this)">🚚 Chở hàng</div>
+  <div class="grab-header">
+    🚕 Avyo - Chạm Chọn Chuyến
   </div>
 
   <div id="map"></div>
   
-  <div class="card">
-    <button id="gpsBtn" class="btn-gps" onclick="useCurrentLocationAsPickup()">📍 Đặt điểm đón tại vị trí của tôi</button>
-    <p style="margin: 4px 0;"><b>Quãng đường:</b> <span id="distance">0</span> km</p>
-    <p style="margin: 4px 0;"><b>Ước tính cước:</b> <span id="price" class="price">0</span> <small id="rate-label" style="font-size: 12px; color: #64748b; font-weight: normal;"></small></p>
-    <button id="resetBtn" class="btn-reset" onclick="resetRoute()">🔄 ĐẶT LẠI ĐIỂM ĐÓN / ĐẾN</button>
-  </div>
+  <div class="bottom-card">
+    <div class="drag-handle"></div>
 
-  <div class="card">
-    <h4 style="margin: 0 0 8px 0; color: #334155;">Tài Xế Được Chọn</h4>
-    <p id="driver-info" style="margin: 4px 0; color: #64748b;"><i>Chạm vào icon tài xế trên bản đồ...</i></p>
-    
-    <button id="zaloBtn" class="btn-zalo" style="display:none;" onclick="openZalo()">💬 Nhắn Zalo (Tự động Copy)</button>
-    <a id="phoneBtn" href="#" class="btn-phone" style="display:none;">📞 Gọi Điện Trực Tiếp</a>
+    <!-- Thanh Chọn Dịch Vụ -->
+    <div class="vehicle-selector">
+      <div class="v-tab active" onclick="selectType('bike', this)">
+        <span class="v-icon">🛵</span> Xe máy
+      </div>
+      <div class="v-tab" onclick="selectType('car', this)">
+        <span class="v-icon">🚕</span> Ô tô 4 chỗ
+      </div>
+      <div class="v-tab" onclick="selectType('driver', this)">
+        <span class="v-icon">👤</span> Lái xe hộ
+      </div>
+      <div class="v-tab" onclick="selectType('truck', this)">
+        <span class="v-icon">🚚</span> Chở hàng
+      </div>
+    </div>
+
+    <!-- Hiển Thị Giá Cước & Quãng Đường -->
+    <div class="price-box">
+      <div>
+        <div style="font-size: 13px; color: var(--text-sub);">Quãng đường: <b id="distanceTxt" style="color:var(--text-main);">0 km</b></div>
+        <div style="font-weight: 700; font-size: 14px; margin-top: 4px;" id="rateTxt">Cước phí ước tính</div>
+      </div>
+      <div class="price-amount" id="priceTxt">0 đ</div>
+    </div>
+
+    <!-- Các nút thao tác bản đồ -->
+    <button id="gpsBtn" class="btn-gps" onclick="useCurrentLocationAsPickup()">📍 Đặt điểm đón tại vị trí của tôi</button>
+    <button id="resetBtn" class="btn-reset" onclick="resetRoute()">🔄 ĐẶT LẠI LỘ TRÌNH MỚI</button>
+
+    <!-- Khung Liên Hệ Tài Xế (Chỉ hiện khi click vào xe trên bản đồ) -->
+    <div id="driverPanel" class="driver-panel">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <span style="font-size: 12px; color: var(--text-sub);">Tài xế đang chọn</span>
+          <div style="font-size: 16px; font-weight: 800; color: var(--text-main);" id="driverNameTxt">--</div>
+          <div style="font-size: 13px; color: var(--grab-dark); font-weight: 600;" id="vehicleDetailTxt">--</div>
+        </div>
+      </div>
+      
+      <button class="btn-zalo" onclick="openZalo()">💬 Nhắn Zalo (Tự động Copy lộ trình)</button>
+      <button class="btn-phone" id="callBtn" onclick="callDriver()">📞 Gọi Điện Trực Tiếp</button>
+    </div>
+
   </div>
 
   <script>
-    const map = L.map('map').setView([18.7034, 105.6832], 13);
+    // --- KHỞI TẠO BẢN ĐỒ ---
+    const map = L.map('map', { zoomControl: false }).setView([18.7034, 105.6832], 13);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18, attribution: '© OpenStreetMap' }).addTo(map);
     
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { 
-      maxZoom: 18, 
-      attribution: '© OpenStreetMap' 
-    }).addTo(map);
+    // Đưa nút Zoom xuống dưới để không bị thẻ Card đè lên
+    L.control.zoom({ position: 'topright' }).addTo(map);
 
     let userLatLng = null;
     let markerStart = null, markerEnd = null;
     let currentDistance = 0, currentPrice = 0;
+    
+    let currentFilter = 'bike'; // Mặc định mở app là gọi Xe máy
     let selectedDriver = null;
     let rawDriversData = [];
+    let driverMarkers = {};
 
-    const activeFilters = new Set(['bike', 'car', 'driver', 'truck']);
+    const prices = { 'bike': 6000, 'car': 11000, 'driver': 11000, 'truck': 0 };
+    const typeNames = { 'bike': '🛵 Xe máy', 'car': '🚕 Ô tô', 'driver': '👤 Lái xe hộ', 'truck': '🚚 Xe chở hàng' };
 
-    function toggleFilter(type, element) {
-      if (activeFilters.has(type)) {
-        if (activeFilters.size === 1) return alert("Phải chọn ít nhất 1 loại xe!");
-        activeFilters.delete(type);
-        element.classList.remove('active');
-      } else {
-        activeFilters.add(type);
-        element.classList.add('active');
-      }
+    const icons = {
+      'bike': L.divIcon({ html: '<div class="vehicle-icon-marker">🛵</div>', className: 'custom-icon', iconSize: [32, 32], iconAnchor: [16, 16] }),
+      'car': L.divIcon({ html: '<div class="vehicle-icon-marker">🚕</div>', className: 'custom-icon', iconSize: [32, 32], iconAnchor: [16, 16] }),
+      'driver': L.divIcon({ html: '<div class="vehicle-icon-marker"><svg viewBox="0 0 24 24" fill="#00B14F" width="32px" height="32px"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg></div>', className: 'custom-icon', iconSize: [32, 32], iconAnchor: [16, 16] }),
+      'truck': L.divIcon({ html: '<div class="vehicle-icon-marker">🚚</div>', className: 'custom-icon', iconSize: [32, 32], iconAnchor: [16, 16] })
+    };
+
+    // --- XỬ LÝ CHỌN LOẠI XE (GRAB STYLE) ---
+    function selectType(type, el) {
+      document.querySelectorAll('.v-tab').forEach(t => t.classList.remove('active'));
+      el.classList.add('active');
+      currentFilter = type;
+      
+      // Ẩn panel tài xế cũ vì đã đổi loại xe
+      selectedDriver = null;
+      document.getElementById('driverPanel').style.display = 'none';
+      
       renderDriverMarkers();
+      updatePrice();
     }
 
+    // --- ĐỊNH VỊ VÀ GHIM BẢN ĐỒ ---
     map.locate({ setView: true, maxZoom: 15 });
-    
     map.on('locationfound', (e) => {
       userLatLng = e.latlng;
       setPickupLocation(e.latlng, true);
     });
 
-    // CẬP NHẬT: Cho phép kéo thả Điểm đón
     function setPickupLocation(latlng, isAuto = false) {
       if (markerStart) map.removeLayer(markerStart);
       
       markerStart = L.marker(latlng, { draggable: true }).addTo(map)
-        .bindPopup(isAuto ? "<b>📍 Điểm đón của bạn</b><br><small><i>(Nhấn giữ & kéo để đổi vị trí khác)</i></small>" : "<b>📍 Điểm đón</b><br><small><i>(Nhấn giữ & kéo để đổi vị trí khác)</i></small>")
+        .bindPopup(isAuto ? "<b>📍 Điểm đón của bạn</b>" : "<b>📍 Điểm đón</b>")
         .openPopup();
         
-      markerStart.on('dragend', calculateRoute); // Tự động tính lại giá khi thả tay ra
-        
+      markerStart.on('dragend', calculateRoute);
       document.getElementById('resetBtn').style.display = 'block';
       if (markerEnd) calculateRoute();
     }
@@ -117,21 +238,18 @@
       }
     }
 
-    // CẬP NHẬT: Cho phép kéo thả Điểm đến
     map.on('click', function(e) {
       if (!markerStart) {
         setPickupLocation(e.latlng, false);
       } else if (!markerEnd) {
         markerEnd = L.marker(e.latlng, { draggable: true }).addTo(map)
-          .bindPopup("<b>🚩 Điểm đến</b><br><small><i>(Nhấn giữ & kéo để đổi vị trí khác)</i></small>")
-          .openPopup();
-          
-        markerEnd.on('dragend', calculateRoute); // Tự động tính lại giá khi thả tay ra
-        
+          .bindPopup("<b>🚩 Điểm đến</b>").openPopup();
+        markerEnd.on('dragend', calculateRoute);
         calculateRoute();
       }
     });
 
+    // --- TÍNH TOÁN QUÃNG ĐƯỜNG & GIÁ ---
     function calculateRoute() {
       if (!markerStart || !markerEnd) return;
       const km = calculateDistance(
@@ -139,8 +257,8 @@
         markerEnd.getLatLng().lat, markerEnd.getLatLng().lng
       );
       currentDistance = km.toFixed(1);
-      document.getElementById('distance').innerText = currentDistance;
-      if (selectedDriver) updatePrice();
+      document.getElementById('distanceTxt').innerText = currentDistance + ' km';
+      updatePrice();
     }
 
     function calculateDistance(lat1, lon1, lat2, lon2) {
@@ -148,60 +266,75 @@
       const dLat = (lat2 - lat1) * Math.PI / 180;
       const dLon = (lon2 - lon1) * Math.PI / 180;
       const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
-      return (R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))) * 1.28;
+      return (R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))) * 1.28; // 1.28 là hệ số độ võng đường phố thực tế
     }
 
     function updatePrice() {
-      if (!selectedDriver || currentDistance == 0) return;
-      const type = selectedDriver.vehicle_type;
-      
-      if (type === 'truck') {
-        document.getElementById('price').innerText = 'Thỏa thuận';
-        document.getElementById('rate-label').innerText = '(Xe chở hàng)';
+      if (currentFilter === 'truck') {
+        document.getElementById('priceTxt').innerText = 'Thỏa thuận';
+        document.getElementById('rateTxt').innerText = 'Cước chở hàng';
         currentPrice = 'Thỏa thuận';
       } else {
-        let rate = 6000;
-        let label = 'Xe máy 6k/km';
-        if (type === 'car') { rate = 11000; label = 'Ô tô 11k/km'; }
-        if (type === 'driver') { rate = 11000; label = 'Lái xe hộ 11k/km'; }
-
+        const rate = prices[currentFilter];
         currentPrice = Math.round(currentDistance * rate);
-        document.getElementById('price').innerText = currentPrice.toLocaleString('vi-VN') + ' VNĐ';
-        document.getElementById('rate-label').innerText = `(${label})`;
+        document.getElementById('priceTxt').innerText = currentPrice.toLocaleString('vi-VN') + ' đ';
+        document.getElementById('rateTxt').innerText = `Cước (${(rate/1000)}k/km)`;
       }
     }
 
-    // CẬP NHẬT: Khi bấm đặt lại, xóa trắng bản đồ để khách tự do chọn từ đầu
     function resetRoute() {
       if (markerStart) map.removeLayer(markerStart);
       if (markerEnd) map.removeLayer(markerEnd);
-      markerStart = null;
-      markerEnd = null;
-      currentDistance = 0;
-      currentPrice = 0;
-      document.getElementById('distance').innerText = '0';
-      document.getElementById('price').innerText = '0';
-      document.getElementById('rate-label').innerText = '';
-      document.getElementById('resetBtn').style.display = 'none';
+      markerStart = null; markerEnd = null;
+      currentDistance = 0; currentPrice = 0;
       
-      // Xóa thông báo này nếu bạn không thích nó bật lên
-      alert("Đã xóa lộ trình. Hãy chạm vào bản đồ lần 1 để chọn ĐIỂM ĐÓN (hoặc bấm nút Đặt điểm đón tại vị trí của tôi)!");
+      document.getElementById('distanceTxt').innerText = '0 km';
+      document.getElementById('priceTxt').innerText = '0 đ';
+      document.getElementById('resetBtn').style.display = 'none';
     }
 
+    // --- KẾT NỐI DATABASE & TÀI XẾ ---
     const SUPABASE_URL = 'https://yvucyqkglbgxvozrznir.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl2dWN5cWtnbGJneHZvenJ6bmlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkxMzA3ODAsImV4cCI6MjEwNDcwNjc4MH0.Zagl4i2LPmxW3w9ih0h4LRsrm-OOGtPcWgvEs2vHBqo';
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    let driverMarkers = {};
+    async function loadDrivers() {
+      const { data } = await supabaseClient.from('drivers').select('*').eq('is_online', true);
+      rawDriversData = data || [];
+      renderDriverMarkers();
+    }
 
-    const icons = {
-      'bike': L.divIcon({ html: '<div class="vehicle-icon">🛵</div>', className: 'custom-icon', iconSize: [30, 30], iconAnchor: [15, 15] }),
-      'car': L.divIcon({ html: '<div class="vehicle-icon">🚕</div>', className: 'custom-icon', iconSize: [30, 30], iconAnchor: [15, 15] }),
-      'driver': L.divIcon({ html: '<div class="vehicle-icon"><svg viewBox="0 0 24 24" fill="#16a34a" width="30px" height="30px"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg></div>', className: 'custom-icon', iconSize: [30, 30], iconAnchor: [15, 15] }),
-      'truck': L.divIcon({ html: '<div class="vehicle-icon">🚚</div>', className: 'custom-icon', iconSize: [30, 30], iconAnchor: [15, 15] })
-    };
+    function renderDriverMarkers() {
+      // Xóa điểm cũ
+      Object.keys(driverMarkers).forEach(id => {
+        map.removeLayer(driverMarkers[id]);
+        delete driverMarkers[id];
+      });
 
-    const typeNames = { 'bike': '🛵 Xe máy', 'car': '🚕 Ô tô', 'driver': '👤 Lái xe hộ', 'truck': '🚚 Xe chở hàng' };
+      // Lọc tài xế theo Tab hiện tại đang chọn
+      const filteredDrivers = rawDriversData.filter(d => d.vehicle_type === currentFilter);
+
+      filteredDrivers.forEach(driver => {
+        if (!driver.lat || !driver.lng) return;
+
+        const icon = icons[driver.vehicle_type] || icons['bike'];
+        const marker = L.marker([driver.lat, driver.lng], { icon: icon }).addTo(map);
+        
+        marker.on('click', () => {
+          selectedDriver = driver;
+          document.getElementById('driverNameTxt').innerText = driver.name;
+          document.getElementById('vehicleDetailTxt').innerText = driver.vehicle || 'Chưa cập nhật biển số';
+          document.getElementById('driverPanel').style.display = 'block'; // Hiển thị nút gọi
+        });
+
+        driverMarkers[driver.id] = marker;
+      });
+    }
+
+    // --- CHỨC NĂNG LIÊN HỆ ---
+    function callDriver() {
+      if (selectedDriver) window.location.href = `tel:${selectedDriver.phone}`;
+    }
 
     function openZalo() {
       if (!selectedDriver) return;
@@ -225,51 +358,14 @@
       });
     }
 
-    async function loadDrivers() {
-      const { data } = await supabaseClient.from('drivers').select('*').eq('is_online', true);
-      rawDriversData = data || [];
-      renderDriverMarkers();
-    }
-
-    function renderDriverMarkers() {
-      Object.keys(driverMarkers).forEach(id => {
-        map.removeLayer(driverMarkers[id]);
-        delete driverMarkers[id];
-      });
-
-      const filteredDrivers = rawDriversData.filter(d => activeFilters.has(d.vehicle_type));
-
-      filteredDrivers.forEach(driver => {
-        if (!driver.lat || !driver.lng) return;
-
-        const icon = icons[driver.vehicle_type] || icons['bike'];
-        const typeBadge = typeNames[driver.vehicle_type] || 'Tài xế';
-
-        const marker = L.marker([driver.lat, driver.lng], { icon: icon }).addTo(map);
-        marker.bindPopup(`<b>${typeBadge}: ${driver.name}</b>`);
-        
-        marker.on('click', () => {
-          selectedDriver = driver;
-          document.getElementById('driver-info').innerHTML = `Tài xế: <b>${driver.name}</b><br>Dịch vụ: ${typeBadge}<br>Xe: ${driver.vehicle}`;
-          document.getElementById('phoneBtn').href = `tel:${driver.phone}`;
-          updatePrice();
-          document.getElementById('zaloBtn').style.display = 'block';
-          document.getElementById('phoneBtn').style.display = 'block';
-        });
-
-        driverMarkers[driver.id] = marker;
-      });
-    }
-
+    // Khởi chạy
     loadDrivers();
-    supabaseClient.channel('realtime-drivers').on('postgres_changes', { event: '*', schema: 'public', table: 'drivers' }, () => loadDrivers()).subscribe();
+    supabaseClient.channel('realtime-client').on('postgres_changes', { event: '*', schema: 'public', table: 'drivers' }, () => loadDrivers()).subscribe();
   </script>
 
   <script>
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js').then(() => {
-        console.log("App đã sẵn sàng hoạt động!");
-      });
+      navigator.serviceWorker.register('sw.js');
     }
   </script>
 </body>
