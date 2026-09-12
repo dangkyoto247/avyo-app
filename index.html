@@ -301,14 +301,19 @@
         const marker = L.marker([driver.lat, driver.lng], { icon: icon }).addTo(map);
         marker.bindPopup(`<b>${typeBadge}: ${driver.name}</b>`);
        
-        marker.on('click', () => {
+        marker.on('click', async () => {
           selectedDriver = driver;
-          
-          // TĂNG LƯỢT XEM HỒ SƠ LÊN DATABASE (NGẦM)
-          driver.click_count = (driver.click_count || 0) + 1;
-          supabaseClient.from('drivers')
-            .update({ click_count: driver.click_count })
-            .eq('id', driver.id);
+
+          // Gọi hàm RPC tăng lượt xem trên Supabase
+          const { error } = await supabaseClient.rpc('increment_driver_click', { target_id: driver.id });
+          if (error) {
+            // Dự phòng nếu chưa tạo hàm RPC
+            await supabaseClient.from('drivers')
+              .update({ click_count: (driver.click_count || 0) + 1 })
+              .eq('id', driver.id);
+          } else {
+            driver.click_count = (driver.click_count || 0) + 1;
+          }
 
           const avatarUrl = getOptimizedAvatar(driver.avatar_url);
 
