@@ -33,6 +33,10 @@
     }
     #map { height: 280px; width: 100%; border-radius: 12px; margin-top: 10px; }
    
+    .filter-bar { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; flex-wrap: wrap; }
+    .filter-chip { background: #e2e8f0; color: #475569; padding: 7px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; user-select: none; transition: all 0.2s; border: 1px solid #cbd5e1; }
+    .filter-chip.active { background: #0f172a; color: white; border-color: #0f172a; box-shadow: 0 2px 6px rgba(15,23,42,0.3); }
+
     .form-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -92,6 +96,18 @@
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
       <h2 style="margin:0; color:#0f172a;">⚙️ Quản Lý Hệ Thống Avyo</h2>
       <button onclick="logout()" style="background:#cbd5e1; color:#334155; padding:6px 12px; font-size:12px;">Đăng xuất</button>
+    </div>
+
+    <!-- BỘ LỌC LOẠI XE -->
+    <div class="card" style="padding: 12px 16px;">
+      <div style="font-size: 13px; font-weight: bold; color: #475569; margin-bottom: 8px;">🔍 Lọc danh sách & bản đồ theo loại xe:</div>
+      <div class="filter-bar">
+        <div class="filter-chip active" onclick="setAdminFilter('all', this)">🌐 Tất cả</div>
+        <div class="filter-chip" onclick="setAdminFilter('bike', this)">🛵 Xe máy</div>
+        <div class="filter-chip" onclick="setAdminFilter('car', this)">🚕 Ô tô</div>
+        <div class="filter-chip" onclick="setAdminFilter('driver', this)">👤 Lái xe hộ</div>
+        <div class="filter-chip" onclick="setAdminFilter('truck', this)">🚚 Xe chở hàng</div>
+      </div>
     </div>
 
     <div class="card">
@@ -169,6 +185,8 @@
 
     let map = null;
     let adminMarkers = {};
+    let rawAdminDriversData = [];
+    let currentAdminFilter = 'all';
 
     const icons = {
       'bike': L.divIcon({ html: '<div class="vehicle-icon">🛵</div>', className: 'custom-icon', iconSize: [26, 26] }),
@@ -184,12 +202,24 @@
       L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(map);
     }
 
+    function setAdminFilter(type, element) {
+      currentAdminFilter = type;
+      document.querySelectorAll('.filter-chip').forEach(chip => chip.classList.remove('active'));
+      element.classList.add('active');
+      renderAdminData();
+    }
+
     async function loadAllData() {
       const { data: drivers, error } = await supabaseClient
         .from('drivers')
         .select('*')
         .order('created_at', { ascending: false });
      
+      rawAdminDriversData = drivers || [];
+      renderAdminData();
+    }
+
+    function renderAdminData() {
       const tbody = document.getElementById('driverTableBody');
       tbody.innerHTML = '';
      
@@ -198,13 +228,18 @@
 
       let onlineCount = 0;
 
-      if (!drivers || drivers.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Chưa có tài xế nào.</td></tr>';
+      const filteredDrivers = rawAdminDriversData.filter(d => {
+        if (currentAdminFilter === 'all') return true;
+        return d.vehicle_type === currentAdminFilter;
+      });
+
+      if (!filteredDrivers || filteredDrivers.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 15px; color: #64748b;">Không có tài xế nào trong mục này.</td></tr>';
         document.getElementById('onlineCount').innerText = '0';
         return;
       }
 
-      drivers.forEach(d => {
+      filteredDrivers.forEach(d => {
         if (d.is_online) onlineCount++;
 
         let joinDate = '--';
