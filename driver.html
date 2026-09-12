@@ -89,7 +89,12 @@
       font-size: 12px;
       color: #334155;
     }
-    .small-text { font-size: 11px; color: #64748b; display: block; margin-top: 2px; }
+    .small-text { 
+      font-size: 11px; 
+      color: #64748b; 
+      display: block; 
+      margin-top: 2px; 
+    }
     .logout-text {
       color: #64748b;
       font-size: 14px;
@@ -190,10 +195,11 @@
     let isOnline = false;
     let watchId = null;
     let currentDriverId = localStorage.getItem('avyo_driver_id');
+    let currentSessionToken = localStorage.getItem('avyo_session_token');
     let driverMap = null;
     let driverMarker = null;
 
-    const LOCK_TIME_MS = 60 * 60 * 1000; // 1 giờ
+    const LOCK_TIME_MS = 60 * 60 * 1000; // Thời gian khóa: 1 giờ
 
     const typeLabels = { 
       'bike': '🛵 Xe máy', 
@@ -217,7 +223,7 @@
       document.getElementById('loginScreen').style.display = 'block';
     }
 
-    // THAY ĐỔI HÀM LOGIN HOÀN TOÀN: Kiểm tra Database thay vì chỉ LocalStorage
+    // XỬ LÝ ĐĂNG NHẬP & BẢO MẬT KHÓA TÀI KHOẢN
     async function login() {
       const phone = document.getElementById('phoneInput').value.trim();
       const pin = document.getElementById('pinInput').value.trim();
@@ -229,7 +235,7 @@
       const btn = document.querySelector('#loginScreen button');
       btn.innerText = "Đang kiểm tra...";
 
-      // 1. Tìm thông tin tài xế bằng Số điện thoại
+      // 1. Kiểm tra sự tồn tại của SĐT
       const { data: driverInfo, error: findError } = await supabaseClient
         .from('drivers')
         .select('*')
@@ -244,26 +250,26 @@
 
       const now = Date.now();
 
-      // 2. Kiểm tra xem tài khoản này có đang bị KHÓA trên Database không
+      // 2. Kiểm tra trạng thái khóa 1 giờ trên Supabase
       if (driverInfo.locked_until && parseInt(driverInfo.locked_until) > now) {
         const lockedMinutes = Math.ceil((parseInt(driverInfo.locked_until) - now) / 60000);
         btn.innerText = "ĐĂNG NHẬP";
-        return alert(`⛔ Tài khoản đang bị KHÓA TẠM THỜI (còn ${lockedMinutes} phút)!\n\nVui lòng bấm '🎧 Gọi Tổng Đài CSKH' bên dưới để hỗ trợ mở khóa khẩn cấp.`);
+        return alert(`⛔ Tài khoản đang bị KHÓA TẠM THỜI (còn ${lockedMinutes} phút)!\n\nVui lòng bấm nút '🎧 Gọi Tổng Đài CSKH' bên dưới để hỗ trợ mở khóa khẩn cấp.`);
       }
 
-      // 3. Nếu tài khoản mở, kiểm tra MÃ PIN
+      // 3. Kiểm tra Mã PIN (Sai 3 lần sẽ khóa 1 giờ)
       if (driverInfo.pin !== pin) {
-        // Ghi nhận số lần sai vào máy
         let failCount = parseInt(localStorage.getItem(`fail_${phone}`) || '0') + 1;
         localStorage.setItem(`fail_${phone}`, failCount.toString());
 
         if (failCount >= 3) {
-          // Khóa 1 giờ (3600000 ms)
           const lockUntilMs = now + LOCK_TIME_MS;
           
-          // Cập nhật trạng thái khóa lên cơ sở dữ liệu Supabase để Admin thấy
-          await supabaseClient.from('drivers').update({ locked_until: lockUntilMs.toString() }).eq('id', driverInfo.id);
-          
+          await supabaseClient
+            .from('drivers')
+            .update({ locked_until: lockUntilMs.toString() })
+            .eq('id', driverInfo.id);
+
           alert("❌ Bạn đã nhập sai PIN 3 lần!\nTài khoản đã bị KHÓA TRÊN HỆ THỐNG trong 1 giờ.");
         } else {
           alert(`❌ Sai Mã PIN!\nCảnh báo: Bạn còn ${3 - failCount} lần thử trước khi bị khóa.`);
@@ -272,23 +278,35 @@
         return;
       }
 
-      // 4. Nếu đúng PIN nhưng tài khoản bị Admin cho nghỉ
+      // 4. Kiểm tra tài khoản có bị ngưng hoạt động không
       if (driverInfo.is_active === false) {
         alert("⛔ Tài khoản của bạn đã bị cho nghỉ. Vui lòng liên hệ Admin!");
         btn.innerText = "ĐĂNG NHẬP";
         return;
       }
 
-      // 5. ĐĂNG NHẬP THÀNH CÔNG
-      localStorage.removeItem(`fail_${phone}`); // Xóa lịch sử sai phạm
+      // 5. Đăng nhập thành công -> Tạo Session Token mới để chống đăng nhập nhiều thiết bị
+      const newToken = Date.now().toString() + '_' + Math.random().toString(36).substring(2, 9);
       
-      // Nếu trước đó đang có khóa cũ đã hết hạn, clear nó trên Database cho sạch data
-      if (driverInfo.locked_until) {
-        await supabaseClient.from('drivers').update({ locked_until: null }).eq('id', driverInfo.id);
+      const { error: updateError } = await supabaseClient
+        .from('drivers')
+        .update({ 
+          session_token: newToken,
+          locked_until: null 
+        })
+        .eq('id', driverInfo.id);
+
+      if (updateError) {
+        alert("❌ Lỗi hệ thống: " + updateError.message);
+        btn.innerText = "ĐĂNG NHẬP";
+        return;
       }
 
+      localStorage.removeItem(`fail_${phone}`);
       localStorage.setItem('avyo_driver_id', driverInfo.id);
       localStorage.setItem('avyo_driver_name', driverInfo.name);
+      localStorage.setItem('avyo_session_token', newToken);
+
       alert("✅ Đăng nhập thành công!");
       window.location.reload();
     }
@@ -303,8 +321,20 @@
     }
 
     async function loadDriverProfile() {
-      const { data } = await supabaseClient.from('drivers').select('*').eq('id', currentDriverId).single();
+      const { data } = await supabaseClient
+        .from('drivers')
+        .select('*')
+        .eq('id', currentDriverId)
+        .single();
+
       if (data) {
+        // Kiểm tra xem có thiết bị khác đăng nhập đè lên không
+        if (data.session_token && data.session_token !== currentSessionToken) {
+          alert("⚠️ Tài khoản của bạn vừa được đăng nhập trên một thiết bị khác!\nThiết bị này sẽ bị đăng xuất tự động.");
+          logout(true);
+          return;
+        }
+
         if (data.is_active === false) {
           alert("⛔ Tài khoản của bạn đã tạm ngưng hoạt động (Đã nghỉ). Vui lòng liên hệ Admin!");
           logout(true);
@@ -351,9 +381,12 @@
 
     function logout(force = false) {
       if (force || confirm("Bạn có chắc chắn muốn đăng xuất không?")) {
-        if (isOnline) toggleOnline();
+        if (isOnline) {
+          toggleOnline();
+        }
         localStorage.removeItem('avyo_driver_id');
         localStorage.removeItem('avyo_driver_name');
+        localStorage.removeItem('avyo_session_token');
         window.location.reload();
       }
     }
@@ -385,7 +418,9 @@
         status.innerHTML = '🟢 ĐANG PHÁT GPS ĐỂ ĐÓN KHÁCH';
         status.style.color = '#16a34a';
 
-        setTimeout(() => { if (driverMap) driverMap.invalidateSize(); }, 200);
+        setTimeout(() => { 
+          if (driverMap) driverMap.invalidateSize(); 
+        }, 200);
 
         let lastUpdateTime = 0;
        
@@ -427,10 +462,22 @@
       }
     }
 
+    // LẮNG NGHE THAY ĐỔI THEO THỜI GIAN THỰC (REALTIME)
     if (currentDriverId) {
       supabaseClient.channel('driver-self-update')
-        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'drivers', filter: `id=eq.${currentDriverId}` }, (payload) => {
+        .on('postgres_changes', { 
+          event: 'UPDATE', 
+          schema: 'public', 
+          table: 'drivers', 
+          filter: `id=eq.${currentDriverId}` 
+        }, (payload) => {
           if (payload.new) {
+            // Tự động văng ra nếu thiết bị khác đăng nhập làm thay đổi session_token
+            if (payload.new.session_token && payload.new.session_token !== currentSessionToken) {
+              alert("⚠️ Tài khoản của bạn vừa được đăng nhập ở một thiết bị khác!\nỨng dụng sẽ đăng xuất thiết bị này.");
+              logout(true);
+              return;
+            }
             if (payload.new.is_active === false) {
               alert("⛔ Tài khoản của bạn đã chuyển sang trạng thái Đã nghỉ!");
               logout(true);
