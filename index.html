@@ -21,6 +21,28 @@
     #map { height: 320px; width: 100%; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-bottom: 12px; }
     .card { background: white; padding: 14px; border-radius: 16px; margin-bottom: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
     
+    /* KHUNG HƯỚNG DẪN THÔNG MINH CHO KHÁCH HÀNG */
+    .guide-box {
+      background: #eff6ff;
+      border: 1.5px solid #93c5fd;
+      color: #1e40af;
+      padding: 10px 14px;
+      border-radius: 12px;
+      margin-bottom: 10px;
+      font-size: 13px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 2px 6px rgba(30, 64, 175, 0.08);
+      transition: all 0.3s ease;
+    }
+    .guide-box.success {
+      background: #f0fdf4;
+      border-color: #86efac;
+      color: #166534;
+    }
+
     /* KHUNG HIỂN THỊ GIÁ NỔI BẬT */
     .price-container {
       background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
@@ -76,7 +98,12 @@
 <body>
 
   <h3 style="text-align: center; color: #0f172a; margin: 8px 0 12px 0;">🚕 Avyo - Chạm Chọn Chuyến</h3>
- 
+
+  <!-- THANH HƯỚNG DẪN THÔNG MINH -->
+  <div id="guideBox" class="guide-box">
+    💡 <span id="guideText">Đang tải hướng dẫn...</span>
+  </div>
+
   <div class="filter-bar">
     <div class="filter-chip active" onclick="toggleFilter('bike', this)">🛵 Xe máy</div>
     <div class="filter-chip active" onclick="toggleFilter('car', this)">🚕 Ô tô</div>
@@ -127,6 +154,36 @@
     let currentDistance = 0, currentPrice = 0;
     let selectedDriver = null;
     let rawDriversData = [];
+
+    // HÀM CẬP NHẬT HƯỚNG DẪN THEO TRẠNG THÁI THAO TÁC CỦA KHÁCH HÀNG
+    function updateGuide() {
+      const guideBox = document.getElementById('guideBox');
+      const guideText = document.getElementById('guideText');
+      if (!guideText) return;
+
+      const hasPickup = !!markerStart;
+      const hasDest = !!markerEnd;
+      const hasDriver = !!selectedDriver;
+
+      guideBox.classList.remove('success');
+
+      if (!hasPickup && !hasDest && !hasDriver) {
+        guideText.innerHTML = "📍 <b>Bước 1:</b> Chạm bản đồ để <b>Chọn điểm đón</b> (hoặc bấm nút màu xanh), hoặc chạm chọn <b>Tài xế</b>.";
+      } else if (hasPickup && !hasDest && !hasDriver) {
+        guideText.innerHTML = "🚩 <b>Bước 2:</b> Chạm tiếp bản đồ để <b>Chọn điểm đến</b> hoặc chọn <b>Tài xế</b> gần bạn.";
+      } else if (hasPickup && hasDest && !hasDriver) {
+        guideText.innerHTML = "🚕 <b>Bước 3:</b> Hãy chạm vào <b>Biểu tượng Tài xế</b> trên bản đồ để xem giá & liên hệ.";
+      } else if (hasDriver && !hasPickup && !hasDest) {
+        guideText.innerHTML = `📍 Đã chọn tài xế <b>${selectedDriver.name}</b>! Hãy chạm bản đồ để <b>Chọn điểm đón</b>.`;
+      } else if (hasDriver && hasPickup && !hasDest) {
+        guideText.innerHTML = `🚩 Đã có điểm đón! Hãy chạm tiếp bản đồ để <b>Chọn điểm đến</b> tính cước phí.`;
+      } else if (hasDriver && !hasPickup && hasDest) {
+        guideText.innerHTML = `📍 Đã có điểm đến! Hãy chạm bản đồ để <b>Chọn điểm đón</b>.`;
+      } else if (hasPickup && hasDest && hasDriver) {
+        guideBox.classList.add('success');
+        guideText.innerHTML = `🎉 <b>Hoàn tất!</b> Bấm <b>"💬 Nhắn Zalo"</b> hoặc <b>"📞 Gọi Điện"</b> để đặt xe ngay.`;
+      }
+    }
 
     function getOptimizedAvatar(url) {
       const defaultAvatar = 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
@@ -192,6 +249,7 @@
       if (markerEnd) calculateRoute();
 
       renderDriverMarkers();
+      updateGuide();
     }
 
     function useCurrentLocationAsPickup() {
@@ -212,9 +270,9 @@
           .openPopup();
           
         markerEnd.on('dragend', calculateRoute);
-        
         calculateRoute();
       }
+      updateGuide();
     });
 
     async function calculateRoute() {
@@ -244,6 +302,7 @@
 
       document.getElementById('distance').innerText = currentDistance;
       if (selectedDriver) updatePrice();
+      updateGuide();
     }
 
     function drawFallbackRoute(start, end) {
@@ -302,6 +361,7 @@
       document.getElementById('resetBtn').style.display = 'none';
 
       renderDriverMarkers();
+      updateGuide();
     }
 
     const SUPABASE_URL = 'https://yvucyqkglbgxvozrznir.supabase.co';
@@ -449,6 +509,7 @@
        
         marker.on('click', async () => {
           selectedDriver = driver;
+          updateGuide();
 
           if (userLatLng) {
             const distKm = getHaversineDistance(userLatLng.lat, userLatLng.lng, driver.lat, driver.lng);
@@ -506,6 +567,7 @@
     }
 
     loadDrivers();
+    updateGuide();
     supabaseClient.channel('realtime-drivers').on('postgres_changes', { event: '*', schema: 'public', table: 'drivers' }, () => loadDrivers()).subscribe();
   </script>
 
