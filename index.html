@@ -426,7 +426,7 @@
 
     async function loadDrivers() {
       const { data } = await supabaseClient
-        .from('drivers')
+        .from('public_drivers')
         .select('*')
         .eq('is_online', true)
         .neq('is_active', false);
@@ -441,6 +441,7 @@
           deselectDriver();
         }
       }
+
 
       renderDriverMarkers();
     }
