@@ -74,6 +74,27 @@
     let selectedDriver = null;
     let rawDriversData = [];
 
+    // --- KHAI BÁO ICON ĐIỂM ĐÓN (ĐỎ) VÀ ĐIỂM ĐẾN (XANH DƯƠNG) ---
+    const pickupIcon = L.divIcon({
+      html: `<svg width="34" height="34" viewBox="0 0 24 24" fill="#dc2626" stroke="#ffffff" stroke-width="1.5" style="filter: drop-shadow(0 3px 6px rgba(0,0,0,0.4));">
+               <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+             </svg>`,
+      className: 'custom-pin-icon',
+      iconSize: [34, 34],
+      iconAnchor: [17, 34],
+      popupAnchor: [0, -34]
+    });
+
+    const destinationIcon = L.divIcon({
+      html: `<svg width="34" height="34" viewBox="0 0 24 24" fill="#2563eb" stroke="#ffffff" stroke-width="1.5" style="filter: drop-shadow(0 3px 6px rgba(0,0,0,0.4));">
+               <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+             </svg>`,
+      className: 'custom-pin-icon',
+      iconSize: [34, 34],
+      iconAnchor: [17, 34],
+      popupAnchor: [0, -34]
+    });
+
     const activeFilters = new Set(['bike', 'car', 'driver', 'truck']);
 
     function toggleFilter(type, element) {
@@ -98,8 +119,8 @@
     function setPickupLocation(latlng, isAuto = false) {
       if (markerStart) map.removeLayer(markerStart);
      
-      markerStart = L.marker(latlng, { draggable: true }).addTo(map)
-        .bindPopup(isAuto ? "<b>📍 Điểm đón của bạn</b><br><small><i>(Nhấn giữ & kéo để đổi vị trí khác)</i></small>" : "<b>📍 Điểm đón</b><br><small><i>(Nhấn giữ & kéo để đổi vị trí khác)</i></small>")
+      markerStart = L.marker(latlng, { icon: pickupIcon, draggable: true }).addTo(map)
+        .bindPopup(isAuto ? "<b style='color:#dc2626;'>📍 Điểm đón của bạn</b><br><small><i>(Nhấn giữ & kéo để đổi vị trí khác)</i></small>" : "<b style='color:#dc2626;'>📍 Điểm đón</b><br><small><i>(Nhấn giữ & kéo để đổi vị trí khác)</i></small>")
         .openPopup();
        
       markerStart.on('dragend', calculateRoute);
@@ -121,8 +142,8 @@
       if (!markerStart) {
         setPickupLocation(e.latlng, false);
       } else if (!markerEnd) {
-        markerEnd = L.marker(e.latlng, { draggable: true }).addTo(map)
-          .bindPopup("<b>🚩 Điểm đến</b><br><small><i>(Nhấn giữ & kéo để đổi vị trí khác)</i></small>")
+        markerEnd = L.marker(e.latlng, { icon: destinationIcon, draggable: true }).addTo(map)
+          .bindPopup("<b style='color:#2563eb;'>🚩 Điểm đến</b><br><small><i>(Nhấn giữ & kéo để đổi vị trí khác)</i></small>")
           .openPopup();
          
         markerEnd.on('dragend', calculateRoute);
