@@ -24,7 +24,7 @@
     .guide-box { background: #eff6ff; border: 1.5px solid #93c5fd; color: #1e40af; padding: 10px 14px; border-radius: 12px; margin-bottom: 10px; font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 8px; box-shadow: 0 2px 6px rgba(30, 64, 175, 0.08); transition: all 0.3s ease; }
     .guide-box.success { background: #f0fdf4; border-color: #86efac; color: #166534; }
 
-    /* KHUNG NHẬP TÌM KIẾM ĐỊA CHỈ */
+    /* KHUNG NHẬP TÌM KIẾM ĐỊA CHỈ & GỢI Ý */
     .search-input-group { position: relative; margin-bottom: 8px; }
     .search-input-group input { width: 100%; padding: 11px 12px; border: 1.5px solid #cbd5e1; border-radius: 10px; font-size: 14px; outline: none; box-sizing: border-box; transition: border 0.2s; }
     .search-input-group input:focus { border-color: #00b14f; box-shadow: 0 0 0 3px rgba(0, 177, 79, 0.15); }
@@ -84,7 +84,7 @@
     </div>
   </div>
 
-  <!-- BẢN ĐỒ CARTO-DB -->
+  <!-- BẢN ĐỒ CARTO-DB VOYAGER -->
   <div id="map"></div>
  
   <div class="card">
@@ -95,7 +95,7 @@
     </div>
 
     <div class="price-container">
-      <div style="font-size: 11px; color: #166534; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;">Ước Tính Cước Chuyến</div>
+      <div style="font-size: 11px; color: #166534; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;">Ưước Tính Cước Chuyến</div>
       <div id="price" class="price">0 VNĐ</div>
       <small id="rate-label" style="font-size: 12px; color: #15803d; font-weight: 600; line-height: 1.3;"></small>
     </div>
@@ -112,7 +112,7 @@
   </div>
 
   <script>
-    // --- 1. CẤU HÌNH BẢN ĐỒ NỀN CARTODB (0 VNĐ) ---
+    // --- 1. KHỞI TẠO BẢN ĐỒ CARTODB (MIỄN PHÍ 100%) ---
     const map = L.map('map').setView([18.7034, 105.6832], 13);
    
     L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
@@ -123,8 +123,8 @@
 
     setTimeout(() => { if (map) map.invalidateSize(); }, 300);
 
-    // --- 2. CẤU HÌNH KẾT NỐI API & TÌM KIẾM GOONG MAPS ---
-    const GOONG_API_KEY = ''; // Dán API Key Goong Maps của bạn vào đây khi cần kích hoạt
+    // --- 2. CẤU HÌNH API GOONG MAPS (TÙY CHỌN) ---
+    const GOONG_API_KEY = ''; // Dán API Key Goong Maps vào đây nếu có
 
     let userLatLng = null;
     let markerStart = null, markerEnd = null;
@@ -261,7 +261,7 @@
       }
     });
 
-    // --- 3. XỬ LÝ NHẬP TÌM KIẾM ĐỊA CHỈ & AUTOCOMPLETE ---
+    // --- 3. BỘ TÌM KIẾM ĐỊA CHỈ TỰ ĐỘNG (PHOTON API + GOONG FALLBACK) ---
     function onSearchInput(type) {
       clearTimeout(searchTimer);
       const query = document.getElementById(type + 'Input').value.trim();
@@ -298,11 +298,11 @@
           });
           listEl.style.display = 'block';
         });
-      }, 350);
+      }, 300);
     }
 
     async function fetchAddressSuggestions(query, callback) {
-      // Ưu tiên dùng Goong Maps nếu có API Key
+      // 1. Ưu tiên Goong Maps nếu có API Key
       if (GOONG_API_KEY) {
         try {
           const res = await fetch(`https://api.goong.io/Place/AutoComplete?api_key=${GOONG_API_KEY}&input=${encodeURIComponent(query)}`);
@@ -310,7 +310,6 @@
           if (data.predictions) {
             const results = [];
             for (let p of data.predictions.slice(0, 5)) {
-              // Lấy chi tiết tọa độ từ Goong Place Detail
               const detailRes = await fetch(`https://api.goong.io/Place/Detail?api_key=${GOONG_API_KEY}&place_id=${p.place_id}`);
               const detailData = await detailRes.json();
               if (detailData.result && detailData.result.geometry) {
@@ -323,22 +322,31 @@
             }
             return callback(results);
           }
-        } catch(e) { console.error("Lỗi Goong Search:", e); }
+        } catch(e) { console.error("Goong Search Error:", e); }
       }
 
-      // Nguồn dự phòng miễn phí OpenStreetMap Nominatim
+      // 2. Dự phòng Miễn phí 100% bằng Photon API (Cho phép gọi trực tiếp từ Trình duyệt)
       try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=vn&limit=5`);
+        const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=5`);
         const data = await res.json();
-        callback(data.map(item => ({
-          label: item.display_name,
-          lat: parseFloat(item.lat),
-          lng: parseFloat(item.lon)
-        })));
-      } catch(e) { callback([]); }
+        if (data.features) {
+          const results = data.features.map(f => {
+            const p = f.properties;
+            const fullAddr = [p.name, p.street, p.district, p.city, p.country].filter(Boolean).join(', ');
+            return {
+              label: fullAddr || p.name,
+              lat: f.geometry.coordinates[1],
+              lng: f.geometry.coordinates[0]
+            };
+          });
+          return callback(results);
+        }
+      } catch(e) {
+        console.error("Photon Search Error:", e);
+        callback([]);
+      }
     }
 
-    // Ẩn bảng gợi ý khi bấm ra ngoài
     document.addEventListener('click', (e) => {
       if (!e.target.closest('.search-input-group')) {
         document.getElementById('pickupSuggestions').style.display = 'none';
@@ -346,7 +354,7 @@
       }
     });
 
-    // --- 4. TÍNH TOÁN LỘ TRÌNH & KHOẢNG CÁCH (HAVERSINE + GOONG ROUTING) ---
+    // --- 4. TÍNH KHOẢNG CÁCH THÔ (HAVERSINE) & ĐỊNH TUYẾN LỘ TRÌNH ---
     async function calculateRoute() {
       if (!markerStart || !markerEnd) return;
 
@@ -355,11 +363,10 @@
 
       if (routeLine) map.removeLayer(routeLine);
 
-      // Bước 1: Tính km thô tức thì bằng Haversine (JS Client-side - 0 VNĐ)
+      // Tính km thô bằng HaversineJS trước (0 VNĐ)
       const rawKm = calculateDistance(start.lat, start.lng, end.lat, end.lng);
       currentDistance = rawKm.toFixed(1);
 
-      // Bước 2: Gọi API Chốt lộ trình (Goong Maps hoặc OSRM)
       if (GOONG_API_KEY) {
         try {
           const res = await fetch(`https://api.goong.io/Direction?origin=${start.lat},${start.lng}&destination=${end.lat},${end.lng}&vehicle=car&api_key=${GOONG_API_KEY}`);
