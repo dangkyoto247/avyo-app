@@ -33,6 +33,9 @@
 
     .driver-profile-box { display: flex; align-items: center; gap: 12px; margin-top: 4px; }
     .driver-avatar-img { width: 54px; height: 54px; border-radius: 50%; object-fit: cover; border: 2px solid #16a34a; flex-shrink: 0; background: #e2e8f0; }
+    
+    .star-btn { cursor: pointer; filter: grayscale(100%); transition: transform 0.1s; }
+    .star-btn:active { transform: scale(1.3); }
   </style>
 </head>
 <body>
@@ -284,6 +287,41 @@
       renderDriverMarkers();
     }
 
+    function calcRating(driver) {
+      const sum = driver.rating_sum || 25;
+      const count = driver.rating_count || 5;
+      return {
+        score: (sum / count).toFixed(1),
+        count: count
+      };
+    }
+
+    async function submitRating(stars) {
+      if (!selectedDriver) return;
+      const ratedKey = `avyo_rated_${selectedDriver.id}`;
+      
+      if (localStorage.getItem(ratedKey)) {
+        return alert("⭐ Bạn đã gửi đánh giá cho tài xế này rồi!");
+      }
+
+      localStorage.setItem(ratedKey, 'true');
+      const { error } = await supabaseClient.rpc('add_driver_rating', { 
+        target_id: selectedDriver.id, 
+        stars: stars 
+      });
+
+      if (!error) {
+        selectedDriver.rating_sum = (selectedDriver.rating_sum || 25) + stars;
+        selectedDriver.rating_count = (selectedDriver.rating_count || 5) + 1;
+        const rating = calcRating(selectedDriver);
+        
+        document.getElementById('rating-display').innerText = `${rating.score} / 5.0 (${rating.count} lượt)`;
+        alert(`🌟 Cảm ơn bạn đã đánh giá ${stars} sao cho tài xế ${selectedDriver.name}!`);
+      } else {
+        alert("Có lỗi xảy ra, vui lòng thử lại!");
+      }
+    }
+
     function renderDriverMarkers() {
       Object.keys(driverMarkers).forEach(id => {
         map.removeLayer(driverMarkers[id]);
@@ -304,35 +342,41 @@
         marker.on('click', async () => {
           selectedDriver = driver;
 
-          // --- NÂNG CẤP: GIỚI HẠN LƯỢT XEM CÙNG 1 MÁY (5 PHÚT) ---
-          const VIEW_COOLDOWN = 5 * 60 * 1000; // 5 phút (300.000 ms)
+          // Giới hạn lượt xem 5 phút / máy
+          const VIEW_COOLDOWN = 5 * 60 * 1000;
           const lastViewKey = `avyo_last_view_${driver.id}`;
           const lastViewTime = localStorage.getItem(lastViewKey);
           const now = Date.now();
 
-          // Chỉ tăng đếm nếu chưa từng xem hoặc đã qua 5 phút
           if (!lastViewTime || (now - parseInt(lastViewTime)) > VIEW_COOLDOWN) {
             localStorage.setItem(lastViewKey, now.toString());
-
             const { error } = await supabaseClient.rpc('increment_driver_click', { target_id: driver.id });
-            if (error) {
-              await supabaseClient.from('drivers')
-                .update({ click_count: (driver.click_count || 0) + 1 })
-                .eq('id', driver.id);
-            } else {
-              driver.click_count = (driver.click_count || 0) + 1;
-            }
+            if (!error) driver.click_count = (driver.click_count || 0) + 1;
           }
 
           const avatarUrl = getOptimizedAvatar(driver.avatar_url);
+          const rating = calcRating(driver);
 
           document.getElementById('driver-info').innerHTML = `
             <div class="driver-profile-box">
               <img src="${avatarUrl}" class="driver-avatar-img" alt="${driver.name}" onerror="this.src='https://cdn-icons-png.flaticon.com/512/149/149071.png'">
               <div>
                 <div style="font-size: 15px; font-weight: bold; color: #0f172a;">${driver.name}</div>
-                <div style="font-size: 13px; color: #16a34a; font-weight: 600;">${typeBadge}</div>
-                <div style="font-size: 12px; color: #64748b;">${driver.vehicle || 'Chưa cập nhật loại xe'}</div>
+                <div style="font-size: 13px; color: #16a34a; font-weight: 600;">${typeBadge} • ${driver.vehicle || 'Xe chuẩn'}</div>
+                <div style="font-size: 12px; color: #eab308; font-weight: bold; margin-top: 2px;">
+                  ⭐ <span id="rating-display">${rating.score} / 5.0 (${rating.count} lượt)</span>
+                </div>
+              </div>
+            </div>
+            
+            <div style="margin-top: 8px; padding-top: 6px; border-top: 1px dashed #e2e8f0; text-align: center;">
+              <span style="font-size: 11px; color: #64748b; display: block; margin-bottom: 2px;">Chạm chọn số sao để đánh giá dịch vụ:</span>
+              <div style="font-size: 22px; user-select: none;">
+                <span class="star-btn" onclick="submitRating(1)">⭐</span>
+                <span class="star-btn" onclick="submitRating(2)">⭐</span>
+                <span class="star-btn" onclick="submitRating(3)">⭐</span>
+                <span class="star-btn" onclick="submitRating(4)">⭐</span>
+                <span class="star-btn" onclick="submitRating(5)">⭐</span>
               </div>
             </div>
           `;

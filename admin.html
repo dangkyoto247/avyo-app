@@ -149,7 +149,7 @@
           <tr>
             <th>Loại xe</th>
             <th>Thông tin Tài xế</th>
-            <th>Lượt xem</th>
+            <th>Đánh giá & Lượt xem</th>
             <th>Đăng nhập (SĐT & PIN)</th>
             <th>Trạng Thái</th>
             <th>Thao Tác</th>
@@ -275,6 +275,10 @@
         }
 
         const avatarUrl = getOptimizedAvatar(d.avatar_url);
+        
+        const rSum = d.rating_sum || 25;
+        const rCount = d.rating_count || 5;
+        const rScore = (rSum / rCount).toFixed(1);
 
         const tr = document.createElement('tr');
         tr.innerHTML = `
@@ -294,7 +298,8 @@
             </div>
           </td>
           <td>
-            👁️ <b style="color:#16a34a; font-size:14px;">${d.click_count || 0}</b> lượt
+            ⭐ <b style="color:#eab308; font-size:14px;">${rScore}</b> <span class="small-text">(${rCount} lượt)</span>
+            👁️ <b style="color:#16a34a; font-size:13px;">${d.click_count || 0}</b> lượt xem
           </td>
           <td>
             SĐT: <b>${d.phone}</b><br>
@@ -353,6 +358,8 @@
       } else {
         payload.is_online = false;
         payload.click_count = 0;
+        payload.rating_sum = 25;
+        payload.rating_count = 5;
         response = await supabaseClient.from('drivers').insert([payload]);
       }
 

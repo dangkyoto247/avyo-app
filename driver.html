@@ -80,9 +80,16 @@
       <p id="vehicleLabel" style="margin: 5px 0 0 0; font-size: 14px; color: #166534;">--</p>
     </div>
 
-    <!-- KHUNG LƯỢT XEM HỒ SƠ -->
-    <div style="background: #f8fafc; padding: 10px; border-radius: 10px; margin-bottom: 15px; border: 1px solid #cbd5e1;">
-      <p style="margin: 0; font-size: 14px; color: #475569;">👁️ Lượt xem hồ sơ: <b id="clickCountLabel" style="color: #16a34a; font-size: 18px;">0</b> lượt</p>
+    <!-- KHUNG ĐÁNH GIÁ & LƯỢT XEM HỒ SƠ -->
+    <div style="display: flex; gap: 8px; margin-bottom: 15px;">
+      <div style="flex: 1; background: #f8fafc; padding: 10px; border-radius: 10px; border: 1px solid #cbd5e1;">
+        <span style="font-size: 12px; color: #64748b; display: block;">👁️ Lượt xem</span>
+        <b id="clickCountLabel" style="color: #16a34a; font-size: 16px;">0</b>
+      </div>
+      <div style="flex: 1; background: #f8fafc; padding: 10px; border-radius: 10px; border: 1px solid #cbd5e1;">
+        <span style="font-size: 12px; color: #64748b; display: block;">⭐ Đánh giá</span>
+        <b id="ratingLabel" style="color: #eab308; font-size: 16px;">5.0 / 5.0</b>
+      </div>
     </div>
 
     <div id="status" class="status" style="color: #ef4444;">🔴 Đang tắt định vị (Nghỉ ngơi)</div>
@@ -116,6 +123,10 @@
         document.getElementById('driverNameLabel').innerText = "Tài xế: " + data.name;
         document.getElementById('vehicleLabel').innerText = data.vehicle || 'Chưa cập nhật xe';
         document.getElementById('clickCountLabel').innerText = data.click_count || 0;
+        
+        const sum = data.rating_sum || 25;
+        const count = data.rating_count || 5;
+        document.getElementById('ratingLabel').innerText = `${(sum / count).toFixed(1)} (${count} lượt)`;
       }
     }
 
@@ -233,12 +244,18 @@
       }
     }
 
-    // Lắng nghe biến click_count thay đổi Realtime để nhảy số ngay tức thì
     if (currentDriverId) {
       supabaseClient.channel('driver-self-update')
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'drivers', filter: `id=eq.${currentDriverId}` }, (payload) => {
-          if (payload.new && payload.new.click_count !== undefined) {
-            document.getElementById('clickCountLabel').innerText = payload.new.click_count;
+          if (payload.new) {
+            if (payload.new.click_count !== undefined) {
+              document.getElementById('clickCountLabel').innerText = payload.new.click_count;
+            }
+            if (payload.new.rating_sum !== undefined && payload.new.rating_count !== undefined) {
+              const sum = payload.new.rating_sum || 25;
+              const count = payload.new.rating_count || 5;
+              document.getElementById('ratingLabel').innerText = `${(sum / count).toFixed(1)} (${count} lượt)`;
+            }
           }
         })
         .subscribe();
