@@ -107,12 +107,12 @@
 </head>
 <body>
 
+  <!-- KHUNG ĐĂNG NHẬP -->
   <div id="login-modal">
     <div class="login-box">
       <h3 style="margin-top:0; color:#0f172a;">🔒 Đăng Nhập Admin</h3>
       <p style="font-size:12px; color:#64748b; margin-bottom:12px;">Nhập tài khoản để truy cập hệ thống</p>
       
-      <!-- Đã thêm trường nhập Email -->
       <input type="email" id="emailInput" placeholder="Email Admin..." style="width: 80%; text-align: center; margin-bottom: 8px;">
       <input type="password" id="passInput" placeholder="Mật khẩu..." style="width: 80%; text-align: center; margin-bottom: 12px;">
       
@@ -126,6 +126,7 @@
       <button onclick="logout()" style="background:#cbd5e1; color:#334155; padding:6px 12px; font-size:12px;">Đăng xuất</button>
     </div>
 
+    <!-- BỘ LỌC TÌM KIẾM -->
     <div class="card" style="padding: 14px 16px;">
       <div style="font-size: 13px; font-weight: bold; color: #475569; margin-bottom: 8px;">🔍 Tìm kiếm & Bộ lọc tài xế:</div>
       
@@ -148,11 +149,13 @@
       </div>
     </div>
 
+    <!-- BẢN ĐỒ -->
     <div class="card">
       <h4 style="margin: 0; color: #334155;">📍 Bản Đồ Giám Sát Xe Đang Chạy (<span id="onlineCount">0</span> xe)</h4>
       <div id="map"></div>
     </div>
 
+    <!-- FORM THÊM/SỬA TÀI XẾ -->
     <div class="card">
       <h4 id="formTitle" style="margin: 0 0 8px 0; color: #334155;">➕ Thêm Tài Xế Mới</h4>
       <input type="hidden" id="driverId">
@@ -179,6 +182,7 @@
       </div>
     </div>
 
+    <!-- BẢNG DỮ LIỆU -->
     <div class="card" style="overflow-x: auto;">
       <h4 style="margin: 0 0 8px 0; color: #334155;">📋 Danh Sách Tất Cả Tài Xế</h4>
       <table>
@@ -200,23 +204,66 @@
   </div>
 
   <script>
+    // ----------------------------------------------------------------------
+    // 1. CẤU HÌNH SUPABASE
+    // ----------------------------------------------------------------------
     const SUPABASE_URL = 'https://yvucyqkglbgxvozrznir.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl2dWN5cWtnbGJneHZvenJ6bmlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkxMzA3ODAsImV4cCI6MjEwNDcwNjc4MH0.Zagl4i2LPmxW3w9ih0h4LRsrm-OOGtPcWgvEs2vHBqo';
-   
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    // KHI TẢI TRANG: Kiểm tra xem Admin đã đăng nhập trước đó chưa
+    // Thời gian khóa thiết bị khi sai 3 lần (1 giờ)
+    const ADMIN_LOCK_TIME_MS = 60 * 60 * 1000;
+
+    // ----------------------------------------------------------------------
+    // 2. XÁC THỰC VÀ BẢO MẬT (LOGIN / LOGOUT / LOCK DEVICE / INACTIVITY)
+    // ----------------------------------------------------------------------
+    
+    // Kiểm tra xem thiết bị có đang bị khóa không
+    function checkDeviceLockState() {
+      const lockUntil = localStorage.getItem('avyo_admin_lock_until');
+      const now = Date.now();
+
+      if (lockUntil && parseInt(lockUntil) > now) {
+        const remainingMinutes = Math.ceil((parseInt(lockUntil) - now) / 60000);
+        const loginBtn = document.getElementById('loginBtn');
+        loginBtn.disabled = true;
+        loginBtn.style.background = '#94a3b8';
+        loginBtn.innerText = `⛔ KHÓA THIẾT BỊ (${remainingMinutes}p)`;
+        return true;
+      } else if (lockUntil) {
+        // Hết thời gian khóa -> Reset lại
+        localStorage.removeItem('avyo_admin_lock_until');
+        localStorage.removeItem('avyo_admin_fail_count');
+        const loginBtn = document.getElementById('loginBtn');
+        loginBtn.disabled = false;
+        loginBtn.style.background = '#16a34a';
+        loginBtn.innerText = 'VÀO TRANG QUẢN TRỊ';
+      }
+      return false;
+    }
+
+    // KHI TẢI TRANG
     document.addEventListener('DOMContentLoaded', async () => {
+      if (checkDeviceLockState()) {
+        alert("⛔ Thiết bị này đang bị KHÓA đăng nhập do nhập sai mật khẩu 3 lần!");
+      }
+
       const { data: { session } } = await supabaseClient.auth.getSession();
       if (session) {
         document.getElementById('login-modal').style.display = 'none';
         initMap();
         loadAllData();
+        resetInactivityTimer();
       }
     });
 
-    // HÀM ĐĂNG NHẬP MỚI DÙNG SUPABASE AUTH
+    // Hàm đăng nhập
     async function checkPass() {
+      if (checkDeviceLockState()) {
+        alert("⛔ Thiết bị này đang bị KHÓA đăng nhập!");
+        return;
+      }
+
       const email = document.getElementById('emailInput').value.trim();
       const password = document.getElementById('passInput').value;
       const loginBtn = document.getElementById('loginBtn');
@@ -234,25 +281,61 @@
       });
 
       if (error) {
-        alert("❌ Đăng nhập thất bại!\nSai Email hoặc Mật khẩu.");
-        loginBtn.innerText = "VÀO TRANG QUẢN TRỊ";
+        // Xử lý đếm số lần sai
+        let failCount = parseInt(localStorage.getItem('avyo_admin_fail_count') || '0') + 1;
+        localStorage.setItem('avyo_admin_fail_count', failCount.toString());
+
+        if (failCount >= 3) {
+          const lockTimeMs = Date.now() + ADMIN_LOCK_TIME_MS;
+          localStorage.setItem('avyo_admin_lock_until', lockTimeMs.toString());
+          checkDeviceLockState();
+          alert("❌ BẠN ĐÃ NHẬP SAI MẬT KHẨU 3 LẦN!\nThiết bị này đã bị KHÓA đăng nhập trong 1 giờ.");
+        } else {
+          alert(`❌ Đăng nhập thất bại!\nSai Email hoặc Mật khẩu.\n\n⚠️ Cảnh báo: Còn ${3 - failCount} lần thử trước khi khóa thiết bị này.`);
+          loginBtn.innerText = "VÀO TRANG QUẢN TRỊ";
+        }
       } else {
+        // Đăng nhập thành công -> Xóa đếm sai
+        localStorage.removeItem('avyo_admin_fail_count');
+        localStorage.removeItem('avyo_admin_lock_until');
+        
         document.getElementById('login-modal').style.display = 'none';
         initMap();
         loadAllData();
         loginBtn.innerText = "VÀO TRANG QUẢN TRỊ";
+        resetInactivityTimer();
       }
     }
 
-    // HÀM ĐĂNG XUẤT
+    // Đăng xuất
     async function logout() {
       await supabaseClient.auth.signOut();
       document.getElementById('login-modal').style.display = 'flex';
       document.getElementById('passInput').value = '';
-      // Có thể xóa dòng dưới nếu muốn trình duyệt tự nhớ Email
-      document.getElementById('emailInput').value = ''; 
+      clearTimeout(inactivityTimer);
     }
 
+    // Tự động đăng xuất sau 15 phút không thao tác
+    const INACTIVITY_LIMIT = 15 * 60 * 1000;
+    let inactivityTimer;
+
+    function resetInactivityTimer() {
+      clearTimeout(inactivityTimer);
+      if (document.getElementById('login-modal').style.display === 'none') {
+        inactivityTimer = setTimeout(() => {
+          alert("⏱️ Bạn đã không thao tác trong 15 phút. Hệ thống tự động đăng xuất để bảo mật!");
+          logout();
+        }, INACTIVITY_LIMIT);
+      }
+    }
+
+    ['mousemove', 'keydown', 'touchstart', 'scroll', 'click'].forEach(eventType => {
+      document.addEventListener(eventType, resetInactivityTimer, true);
+    });
+
+    // ----------------------------------------------------------------------
+    // 3. LOGIC HIỂN THỊ VÀ QUẢN LÝ TÀI XẾ
+    // ----------------------------------------------------------------------
     let map = null;
     let adminMarkers = {};
     let rawAdminDriversData = [];
