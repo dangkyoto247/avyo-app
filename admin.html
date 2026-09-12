@@ -70,6 +70,8 @@
     .badge-offline { background: #f1f5f9; color: #64748b; padding: 3px 8px; border-radius: 12px; font-weight: bold; font-size: 11px; }
     .small-text { font-size: 11px; color: #64748b; display: block; margin-top: 2px; }
 
+    .admin-avatar { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; vertical-align: middle; border: 1px solid #cbd5e1; }
+
     #login-modal {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
       background: #0f172a; display: flex; align-items: center; justify-content: center; z-index: 9999;
@@ -98,7 +100,6 @@
       <button onclick="logout()" style="background:#cbd5e1; color:#334155; padding:6px 12px; font-size:12px;">Đăng xuất</button>
     </div>
 
-    <!-- BỘ LỌC LOẠI XE -->
     <div class="card" style="padding: 12px 16px;">
       <div style="font-size: 13px; font-weight: bold; color: #475569; margin-bottom: 8px;">🔍 Lọc danh sách & bản đồ theo loại xe:</div>
       <div class="filter-bar">
@@ -123,6 +124,7 @@
         <input type="text" id="driverName" placeholder="Tên tài xế (VD: Nguyễn Văn A)">
         <input type="text" id="driverPhone" placeholder="Số điện thoại Zalo (Dùng đăng nhập)">
         <input type="text" id="driverPin" placeholder="Mã PIN (Mật khẩu đăng nhập, VD: 1234)">
+        <input type="text" id="driverAvatarUrl" placeholder="Link ảnh đại diện (URL)">
         <input type="text" id="driverCccd" placeholder="Số CCCD (Tùy chọn)">
         <input type="text" id="driverAddress" placeholder="Nơi thường trú (Tùy chọn)">
         <select id="vehicleType">
@@ -248,6 +250,9 @@
           joinDate = dateObj.toLocaleDateString('vi-VN');
         }
 
+        const defaultAvatar = 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+        const avatarUrl = d.avatar_url || defaultAvatar;
+
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td>
@@ -255,10 +260,15 @@
             <span class="small-text">${d.vehicle || '--'}</span>
           </td>
           <td>
-            <b>${d.name}</b>
-            <span class="small-text">CCCD: ${d.cccd || '---'}</span>
-            <span class="small-text">📍 ${d.address || 'Chưa có địa chỉ'}</span>
-            <span class="small-text">📅 Tham gia: ${joinDate}</span>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <img src="${avatarUrl}" class="admin-avatar" onerror="this.src='${defaultAvatar}'">
+              <div>
+                <b>${d.name}</b>
+                <span class="small-text">CCCD: ${d.cccd || '---'}</span>
+                <span class="small-text">📍 ${d.address || 'Chưa có địa chỉ'}</span>
+                <span class="small-text">📅 Tham gia: ${joinDate}</span>
+              </div>
+            </div>
           </td>
           <td>
             SĐT: <b>${d.phone}</b><br>
@@ -268,7 +278,7 @@
             ${d.is_online ? '<span class="badge-online">🟢 BẬT GPS</span>' : '<span class="badge-offline">⚪ Tắt</span>'}
           </td>
           <td>
-            <button class="btn-edit" onclick="editDriver('${d.id}', '${d.name}', '${d.phone}', '${d.pin || ''}', '${d.cccd || ''}', '${d.address || ''}', '${d.vehicle_type}', '${d.vehicle || ''}')">Sửa</button>
+            <button class="btn-edit" onclick="editDriver('${d.id}', '${d.name}', '${d.phone}', '${d.pin || ''}', '${d.avatar_url || ''}', '${d.cccd || ''}', '${d.address || ''}', '${d.vehicle_type}', '${d.vehicle || ''}')">Sửa</button>
             <button class="btn-del" onclick="deleteDriver('${d.id}', '${d.name}')">Xóa</button>
           </td>
         `;
@@ -290,6 +300,7 @@
       const name = document.getElementById('driverName').value.trim();
       const phone = document.getElementById('driverPhone').value.trim();
       const pin = document.getElementById('driverPin').value.trim() || '1234';
+      const avatar_url = document.getElementById('driverAvatarUrl').value.trim();
       const cccd = document.getElementById('driverCccd').value.trim();
       const address = document.getElementById('driverAddress').value.trim();
       const vehicle_type = document.getElementById('vehicleType').value;
@@ -303,6 +314,7 @@
         name: name,
         phone: phone,
         pin: pin,
+        avatar_url: avatar_url,
         cccd: cccd,
         address: address,
         vehicle_type: vehicle_type,
@@ -326,11 +338,12 @@
       }
     }
 
-    function editDriver(id, name, phone, pin, cccd, address, type, vehicle) {
+    function editDriver(id, name, phone, pin, avatar_url, cccd, address, type, vehicle) {
       document.getElementById('driverId').value = id;
       document.getElementById('driverName').value = name;
       document.getElementById('driverPhone').value = phone;
       document.getElementById('driverPin').value = pin;
+      document.getElementById('driverAvatarUrl').value = avatar_url;
       document.getElementById('driverCccd').value = cccd;
       document.getElementById('driverAddress').value = address;
       document.getElementById('vehicleType').value = type;
@@ -346,6 +359,7 @@
       document.getElementById('driverName').value = '';
       document.getElementById('driverPhone').value = '';
       document.getElementById('driverPin').value = '';
+      document.getElementById('driverAvatarUrl').value = '';
       document.getElementById('driverCccd').value = '';
       document.getElementById('driverAddress').value = '';
       document.getElementById('vehicleDetail').value = '';
