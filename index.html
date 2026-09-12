@@ -124,7 +124,7 @@
     <div class="price-container">
       <div>
         <div style="font-size: 11px; color: #166534; font-weight: bold; text-transform: uppercase;">Ước Tính Cước Chuyến</div>
-        <small id="rate-label" style="font-size: 12px; color: #15803d; font-weight: 500;"></small>
+        <small id="rate-label" style="font-size: 12px; color: #15803d; font-weight: 600;"></small>
       </div>
       <div id="price" class="price">0 VNĐ</div>
     </div>
@@ -176,7 +176,7 @@
       } else if (hasDriver && !hasPickup && !hasDest) {
         guideText.innerHTML = `📍 Đã chọn <b>${selectedDriver.name}</b>! Chạm bản đồ để <b>Chọn điểm đón</b> (Chạm lại tài xế để bỏ chọn).`;
       } else if (hasDriver && hasPickup && !hasDest) {
-        guideText.innerHTML = `🚩 Đã có điểm đón! Chạm tiếp bản đồ để <b>Chọn điểm đến</b> tính cước phí.`;
+        guideText.innerHTML = `🚩 Đã có điểm đón! Chạm tiếp bản đồ để <b>Chọn điểm đến</b> tính tổng tiền cước.`;
       } else if (hasDriver && !hasPickup && hasDest) {
         guideText.innerHTML = `📍 Đã có điểm đến! Chạm bản đồ để <b>Chọn điểm đón</b>.`;
       } else if (hasPickup && hasDest && hasDriver) {
@@ -301,7 +301,7 @@
       }
 
       document.getElementById('distance').innerText = currentDistance;
-      if (selectedDriver) updatePrice();
+      updatePrice();
       updateGuide();
     }
 
@@ -326,34 +326,57 @@
       return getHaversineDistance(lat1, lon1, lat2, lon2) * 1.28;
     }
 
+    // TÍNH CƯỚC VỚI LOGIC ÁP DỤNG TỐI THIỂU 3KM KHI CÓ QUÃNG ĐƯỜNG
     function updatePrice() {
-      if (!selectedDriver) {
-        document.getElementById('price').innerText = '0 VNĐ';
-        document.getElementById('rate-label').innerText = currentDistance > 0 ? '(Chưa chọn tài xế)' : '';
-        return;
-      }
+      const priceEl = document.getElementById('price');
+      const rateLabelEl = document.getElementById('rate-label');
 
-      if (currentDistance == 0) {
-        document.getElementById('price').innerText = '0 VNĐ';
-        document.getElementById('rate-label').innerText = '';
+      if (!selectedDriver) {
+        priceEl.innerText = '0 VNĐ';
+        rateLabelEl.innerText = currentDistance > 0 ? '(Vui lòng chọn tài xế)' : '';
         return;
       }
 
       const type = selectedDriver.vehicle_type;
-     
-      if (type === 'truck') {
-        document.getElementById('price').innerText = 'Thỏa thuận';
-        document.getElementById('rate-label').innerText = '(Xe chở hàng)';
-        currentPrice = 'Thỏa thuận';
-      } else {
-        let rate = 6000;
-        let label = 'Xe máy 6k/km';
-        if (type === 'car') { rate = 11000; label = 'Ô tô 11k/km'; }
-        if (type === 'driver') { rate = 11000; label = 'Lái xe hộ 11k/km'; }
+      let rateText = '';
+      let rateVal = 0;
 
-        currentPrice = Math.round(currentDistance * rate);
-        document.getElementById('price').innerText = currentPrice.toLocaleString('vi-VN') + ' VNĐ';
-        document.getElementById('rate-label').innerText = `(${label})`;
+      if (type === 'truck') {
+        rateText = 'Thỏa thuận với tài xế';
+      } else if (type === 'car') {
+        rateVal = 11000;
+        rateText = 'Đơn giá: 11.000 VNĐ/km (Ô tô)';
+      } else if (type === 'driver') {
+        rateVal = 11000;
+        rateText = 'Đơn giá: 11.000 VNĐ/km (Lái xe hộ)';
+      } else {
+        rateVal = 6000;
+        rateText = 'Đơn giá: 6.000 VNĐ/km (Xe máy)';
+      }
+
+      // 1. CHƯA CHỌN ĐỦ 2 ĐIỂM ĐÓN/ĐẾN -> CHỈ HIỆN ĐƠN GIÁ CƯỚC
+      if (!markerStart || !markerEnd || currentDistance == 0) {
+        priceEl.innerText = type === 'truck' ? 'Thỏa thuận' : '0 VNĐ';
+        rateLabelEl.innerText = rateText;
+      } else {
+        // 2. ĐÃ CÓ QUÃNG ĐƯỜNG -> ÁP DỤNG QUY TẮC CƯỚC TỐI THIỂU 3KM
+        if (type === 'truck') {
+          priceEl.innerText = 'Thỏa thuận';
+          rateLabelEl.innerText = '(Xe chở hàng)';
+          currentPrice = 'Thỏa thuận';
+        } else {
+          const isMinFare = parseFloat(currentDistance) < 3.0;
+          const calcDistance = isMinFare ? 3.0 : parseFloat(currentDistance);
+
+          currentPrice = Math.round(calcDistance * rateVal);
+          priceEl.innerText = currentPrice.toLocaleString('vi-VN') + ' VNĐ';
+
+          if (isMinFare) {
+            rateLabelEl.innerText = `⚠️ Cước tối thiểu 3km (${currentDistance} km)`;
+          } else {
+            rateLabelEl.innerText = `(${rateText} • ${currentDistance} km)`;
+          }
+        }
       }
     }
 
@@ -447,13 +470,11 @@
         
       rawDriversData = data || [];
       
-      // GIỮ NGUYÊN TÀI XẾ ĐÃ CHỌN KHI DỮ LIỆU REALTIME CẬP NHẬT
       if (selectedDriver) {
         const freshDriverData = rawDriversData.find(d => d.id === selectedDriver.id);
         if (freshDriverData) {
           selectedDriver = freshDriverData;
         } else {
-          // Nếu tài xế vừa chọn offline hoặc tắt app thì mới deselect
           deselectDriver();
         }
       }
@@ -540,7 +561,6 @@
 
         const marker = L.marker([driver.lat, driver.lng], { icon: icon }).addTo(map);
         
-        // HIỂN THỊ LUÔN SỐ SAO TRÊN POPUP BẢN ĐỒ
         marker.bindPopup(`
           <div style="text-align:center;">
             <b>${typeBadge}: ${driver.name}</b><br>
@@ -550,7 +570,6 @@
         `);
        
         marker.on('click', async () => {
-          // CHẠM LẠI TÀI XẾ ĐÃ CHỌN -> BỎ CHỌN (TOGGLE)
           if (selectedDriver && selectedDriver.id === driver.id) {
             deselectDriver();
             return;
