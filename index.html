@@ -78,7 +78,6 @@
     let selectedDriver = null;
     let rawDriversData = [];
 
-    // Hàm tối ưu hóa & nén dung lượng ảnh về ~20KB
     function getOptimizedAvatar(url) {
       const defaultAvatar = 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
       if (!url) return defaultAvatar;
@@ -304,6 +303,13 @@
        
         marker.on('click', () => {
           selectedDriver = driver;
+          
+          // TĂNG LƯỢT XEM HỒ SƠ LÊN DATABASE (NGẦM)
+          driver.click_count = (driver.click_count || 0) + 1;
+          supabaseClient.from('drivers')
+            .update({ click_count: driver.click_count })
+            .eq('id', driver.id);
+
           const avatarUrl = getOptimizedAvatar(driver.avatar_url);
 
           document.getElementById('driver-info').innerHTML = `

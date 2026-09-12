@@ -35,7 +35,6 @@
    
     .filter-bar { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; flex-wrap: wrap; }
     .filter-chip { background: #e2e8f0; color: #475569; padding: 7px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; user-select: none; transition: all 0.2s; border: 1px solid #cbd5e1; }
-    /* Cập nhật nút bộ lọc khi chọn sang màu xanh lá cây */
     .filter-chip.active { background: #16a34a; color: white; border-color: #16a34a; box-shadow: 0 2px 6px rgba(22,163,74,0.3); }
 
     .form-grid {
@@ -150,13 +149,14 @@
           <tr>
             <th>Loại xe</th>
             <th>Thông tin Tài xế</th>
+            <th>Lượt xem</th>
             <th>Đăng nhập (SĐT & PIN)</th>
             <th>Trạng Thái</th>
             <th>Thao Tác</th>
           </tr>
         </thead>
         <tbody id="driverTableBody">
-          <tr><td colspan="5" style="text-align:center;">Đang tải dữ liệu...</td></tr>
+          <tr><td colspan="6" style="text-align:center;">Đang tải dữ liệu...</td></tr>
         </tbody>
       </table>
     </div>
@@ -260,7 +260,7 @@
       const filteredDrivers = rawAdminDriversData.filter(d => activeAdminFilters.has(d.vehicle_type));
 
       if (!filteredDrivers || filteredDrivers.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 15px; color: #64748b;">Không có tài xế nào khớp với bộ lọc hiện tại.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 15px; color: #64748b;">Không có tài xế nào khớp với bộ lọc hiện tại.</td></tr>';
         document.getElementById('onlineCount').innerText = '0';
         return;
       }
@@ -292,6 +292,9 @@
                 <span class="small-text">📅 Tham gia: ${joinDate}</span>
               </div>
             </div>
+          </td>
+          <td>
+            👁️ <b style="color:#16a34a; font-size:14px;">${d.click_count || 0}</b> lượt
           </td>
           <td>
             SĐT: <b>${d.phone}</b><br>
@@ -349,6 +352,7 @@
         response = await supabaseClient.from('drivers').update(payload).eq('id', id);
       } else {
         payload.is_online = false;
+        payload.click_count = 0;
         response = await supabaseClient.from('drivers').insert([payload]);
       }
 
