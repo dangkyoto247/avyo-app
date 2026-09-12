@@ -500,7 +500,7 @@
           const now = Date.now();
           const movedKm = getHaversineDistance(lat, lng, lastSentLat, lastSentLng);
 
-          if ((now - lastUpdateTime >= 30000 && movedKm > 0.01) || lastSentLat === 0) {
+          if ((now - lastUpdateTime >= 3000 && movedKm > 0.01) || lastSentLat === 0) {
             await updateLocation(lat, lng);
             lastUpdateTime = now;
             lastSentLat = lat;
