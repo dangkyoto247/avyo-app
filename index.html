@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Avyo - Gọi Xe Tinh Gọn 0Đ</title>
  
+  <link rel="icon" href="data:;base64,iVBORw0KGgo=">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#00b14f">
   <link rel="apple-touch-icon" href="logo.png">
@@ -108,7 +109,6 @@
   </div>
 
   <script>
-    // 1. TỐI ƯU BẢN ĐỒ VỚI CANVAS MODE (60 FPS)
     const map = L.map('map', { preferCanvas: true }).setView([18.7034, 105.6832], 13);
    
     L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
@@ -259,12 +259,11 @@
       }
     });
 
-    // 2. BỘ TÌM KIẾM ĐỊA CHỈ TỐI ƯU VỚI LOCALSTORAGE CACHE
     function onSearchInput(type) {
       clearTimeout(searchTimer);
       const query = document.getElementById(type + 'Input').value.trim();
       const listEl = document.getElementById(type + 'Suggestions');
-      
+     
       if (query.length < 2) {
         listEl.style.display = 'none';
         return;
@@ -281,11 +280,11 @@
             const div = document.createElement('div');
             div.className = 'suggestion-item';
             div.innerHTML = item.is_cached ? `⚡ <b>${item.label}</b>` : item.label;
-            
+           
             div.onclick = async () => {
               document.getElementById(type + 'Input').value = item.label;
               listEl.style.display = 'none';
-              
+             
               if (item.lat && item.lng) {
                 const latlng = L.latLng(item.lat, item.lng);
                 map.setView(latlng, 15);
@@ -314,14 +313,13 @@
       const qLower = query.toLowerCase();
       const localKey = `avyo_search_${qLower}`;
       const localCache = localStorage.getItem(localKey);
-      
+     
       if (localCache) {
         try {
           return callback(JSON.parse(localCache));
         } catch(e) {}
       }
 
-      // 1. Tìm trong Supabase Cache
       try {
         const { data: cachedData } = await supabaseClient
           .from('cached_locations')
@@ -341,7 +339,6 @@
         }
       } catch (err) {}
 
-      // 2. Tìm qua Goong Maps
       if (GOONG_API_KEY) {
         try {
           const res = await fetch(`https://api.goong.io/Place/AutoComplete?api_key=${GOONG_API_KEY}&input=${encodeURIComponent(query)}`);
@@ -368,7 +365,6 @@
         } catch(e) {}
       }
 
-      // 3. Dự phòng Photon API
       try {
         const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=5`);
         const data = await res.json();
@@ -550,7 +546,7 @@
     const icons = {
       'bike': L.divIcon({ html: '<div class="vehicle-icon">🛵</div>', className: 'custom-icon', iconSize: [30, 30], iconAnchor: [15, 15] }),
       'car': L.divIcon({ html: '<div class="vehicle-icon">🚕</div>', className: 'custom-icon', iconSize: [30, 30], iconAnchor: [15, 15] }),
-      'driver': L.divIcon({ html: '<div class="vehicle-icon"><svg viewBox="0 0 24 24" fill="#00b14f" width="30px" height="30px"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg></div>', className: 'custom-icon', iconSize: [30, 30], iconAnchor: [15, 15] }),
+      'driver': L.divIcon({ html: '<div class="vehicle-icon"><svg viewBox="0 0 24 24" fill="#00b14f" width="30px" height="30px"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4s-4 1.79-4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg></div>', className: 'custom-icon', iconSize: [30, 30], iconAnchor: [15, 15] }),
       'truck': L.divIcon({ html: '<div class="vehicle-icon">🚚</div>', className: 'custom-icon', iconSize: [30, 30], iconAnchor: [15, 15] })
     };
 
@@ -674,7 +670,6 @@
       alert(`🌟 Cảm ơn bạn đã đánh giá ${stars} sao cho tài xế ${selectedDriver.name}!`);
     }
 
-    // 3. HIỂN THỊ TỐI ĐA 20 XE GẦN NHẤT ĐỂ GIỮ HỆ THỐNG CHẠY NHẸ
     function renderDriverMarkers() {
       Object.keys(driverMarkers).forEach(id => {
         map.removeLayer(driverMarkers[id]);

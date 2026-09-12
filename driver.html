@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Avyo - App Tài Xế</title>
  
-  <link rel="shortcut icon" href="#">
+  <link rel="icon" href="data:;base64,iVBORw0KGgo=">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#16a34a">
   <meta name="mobile-web-app-capable" content="yes">
@@ -213,7 +213,7 @@
     let watchId = null;
     let currentDriverId = localStorage.getItem('avyo_driver_id');
     let currentSessionToken = localStorage.getItem('avyo_session_token');
-    
+   
     let driverData = null; 
     let timeInterval = null;
     let wakeLock = null;
@@ -344,7 +344,7 @@
       }
 
       const newToken = Date.now().toString() + '_' + Math.random().toString(36).substring(2, 9);
-      
+     
       const { error: updateError } = await supabaseClient
         .from('drivers')
         .update({ session_token: newToken, locked_until: null })
@@ -365,11 +365,10 @@
       window.location.reload();
     }
 
-    // 1. TỐI ƯU BẢN ĐỒ VỚI PREFER CANVAS (LƯỚT MƯỢT TRÊN ĐIỆN THOẠI YẾU)
     function initDriverMap() {
       if (driverMap) return;
       driverMap = L.map('driverMap', { preferCanvas: true }).setView([18.7034, 105.6832], 14);
-      
+     
       L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
         maxZoom: 19,
         subdomains: 'abcd',
@@ -408,7 +407,7 @@
         document.getElementById('clickCountLabel').innerText = data.click_count || 0;
         document.getElementById('zaloCountLabel').innerText = data.zalo_count || 0;
         document.getElementById('callCountLabel').innerText = data.call_count || 0;
-        
+       
         const sum = data.rating_sum || 25;
         const count = data.rating_count || 5;
         document.getElementById('ratingLabel').innerText = `${(sum / count).toFixed(1)} (${count})`;
@@ -417,7 +416,7 @@
         const monthStr = getLocalMonthStr();
         let displayMinsToday = data.online_minutes_today || 0;
         let displayMinsMonth = data.online_minutes_month || 0;
-        
+       
         if (data.last_online_date !== todayStr) displayMinsToday = 0;
         if (data.last_online_month !== monthStr) displayMinsMonth = 0;
 
@@ -492,7 +491,7 @@
 
         timeInterval = setInterval(async () => {
           if (!isOnline) return;
-          
+         
           driverData.online_minutes_today = (driverData.online_minutes_today || 0) + 1;
           driverData.online_minutes_month = (driverData.online_minutes_month || 0) + 1;
 
@@ -508,7 +507,6 @@
         }, 60000);
 
         let lastUpdateTime = 0;
-        // 2. TỐI ƯU PHÁT GPS: GỬI LÊN SUPABASE MỖI 30S VÀ CHỈ GỬI KHI DI CHUYỂN > 10 MÉT
         watchId = navigator.geolocation.watchPosition(async (pos) => {
           if (!isOnline) return;
           const lat = pos.coords.latitude;
@@ -572,7 +570,7 @@
               logout(true); 
               return;
             }
-            
+           
             if (payload.new.click_count !== undefined) {
               document.getElementById('clickCountLabel').innerText = payload.new.click_count;
             }

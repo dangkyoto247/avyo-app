@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Avyo - Trang Quản Trị Hệ Thống</title>
  
-  <link rel="shortcut icon" href="#">
+  <link rel="icon" href="data:;base64,iVBORw0KGgo=">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0f172a">
   <link rel="apple-touch-icon" href="logo.png">
@@ -250,11 +250,10 @@
     };
     const typeLabels = { 'bike': '🛵 Xe máy', 'car': '🚕 Ô tô', 'driver': '👤 Lái xe hộ', 'truck': '🚚 Chở hàng' };
 
-    // TỐI ƯU BẢN ĐỒ ADMIN VỚI PREFER CANVAS (GIẢM TẢI TRÌNH DUYỆT)
     function initMap() {
       if (map) return;
       map = L.map('map', { preferCanvas: true }).setView([18.7034, 105.6832], 12);
-      
+     
       L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
         maxZoom: 19,
         subdomains: 'abcd',
@@ -266,7 +265,7 @@
 
     function toggleAdminFilter(type, element) {
       const allBtn = document.getElementById('chip-all');
-      
+     
       if (type === 'all') {
         activeAdminFilters.clear();
         ['bike', 'car', 'driver', 'truck'].forEach(t => activeAdminFilters.add(t));
@@ -295,7 +294,7 @@
         .from('drivers')
         .select('*')
         .order('created_at', { ascending: false });
-      
+     
       rawAdminDriversData = drivers || [];
       renderAdminData();
     }
@@ -303,7 +302,7 @@
     function renderAdminData() {
       const tbody = document.getElementById('driverTableBody');
       tbody.innerHTML = '';
-      
+     
       Object.keys(adminMarkers).forEach(id => map.removeLayer(adminMarkers[id]));
       adminMarkers = {};
 
@@ -352,7 +351,7 @@
         }
 
         const avatarUrl = getOptimizedAvatar(d.avatar_url);
-        
+       
         const rSum = d.rating_sum || 25;
         const rCount = d.rating_count || 5;
         const rScore = (rSum / rCount).toFixed(1);
