@@ -11,6 +11,9 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
  
+  <!-- Thêm thư viện Leaflet CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
  
   <style>
@@ -46,8 +49,17 @@
     }
     .status {
       font-weight: bold;
-      margin: 15px 0;
+      margin: 15px 0 10px 0;
       font-size: 16px;
+    }
+    /* Style cho khung bản đồ mini */
+    #driverMap {
+      height: 220px;
+      width: 100%;
+      border-radius: 12px;
+      margin-top: 10px;
+      border: 1px solid #cbd5e1;
+      box-shadow: inset 0 0 5px rgba(0,0,0,0.1);
     }
     .logout-text {
       color: #64748b;
@@ -93,7 +105,10 @@
     </div>
 
     <div id="status" class="status" style="color: #ef4444;">🔴 Đang tắt định vị (Nghỉ ngơi)</div>
-    <p style="font-size: 12px; color: #64748b;">Tọa độ GPS: <span id="coords">--</span></p>
+    
+    <!-- KHUNG BẢN ĐỒ MINH HỌA VỊ TRÍ TÀI XẾ -->
+    <div id="driverMap"></div>
+    <p style="font-size: 12px; color: #64748b; margin-top: 8px;">Tọa độ GPS: <span id="coords">--</span></p>
 
     <button id="toggleBtn" onclick="toggleOnline()">BẮT ĐẦU NHẬN KHÁCH (BẬT GPS)</button>
 
@@ -109,12 +124,31 @@
     let isOnline = false;
     let watchId = null;
     let currentDriverId = localStorage.getItem('avyo_driver_id');
+    
+    // Khởi tạo các biến quản lý bản đồ
+    let driverMap = null;
+    let driverMarker = null;
 
     if (currentDriverId) {
       document.getElementById('appScreen').style.display = 'block';
       loadDriverProfile();
+      initDriverMap();
     } else {
       document.getElementById('loginScreen').style.display = 'block';
+    }
+
+    // Hàm khởi tạo bản đồ Leaflet Mini
+    function initDriverMap() {
+      if (driverMap) return;
+      
+      // Khởi tạo bản đồ mặc định
+      driverMap = L.map('driverMap').setView([18.7034, 105.6832], 14);
+      
+      // Load gạch bản đồ OpenStreetMap (OSM)
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 18,
+        attribution: '© OpenStreetMap'
+      }).addTo(driverMap);
     }
 
     async function loadDriverProfile() {
@@ -133,7 +167,27 @@
         const sum = data.rating_sum || 25;
         const count = data.rating_count || 5;
         document.getElementById('ratingLabel').innerText = `${(sum / count).toFixed(1)} (${count} lượt)`;
+
+        // Nếu tài xế có tọa độ lưu sẵn trên server, hiển thị lên bản đồ
+        if (data.lat && data.lng) {
+          updateMapMarker(data.lat, data.lng);
+        }
       }
+    }
+
+    // Hàm cập nhật Marker & Tâm bản đồ
+    function updateMapMarker(lat, lng) {
+      if (!driverMap) initDriverMap();
+
+      const latLng = [lat, lng];
+      if (!driverMarker) {
+        driverMarker = L.marker(latLng).addTo(driverMap)
+          .bindPopup("📍 <b>Vị trí của bạn</b>")
+          .openPopup();
+      } else {
+        driverMarker.setLatLng(latLng);
+      }
+      driverMap.setView(latLng, 16);
     }
 
     async function login() {
@@ -212,6 +266,11 @@
         status.innerHTML = '🟢 ĐANG PHÁT GPS ĐỂ ĐÓN KHÁCH';
         status.style.color = '#16a34a';
 
+        // Load lại kích thước map nếu giao diện có thay đổi
+        setTimeout(() => {
+          if (driverMap) driverMap.invalidateSize();
+        }, 200);
+
         let lastUpdateTime = 0;
        
         watchId = navigator.geolocation.watchPosition(async (pos) => {
@@ -221,6 +280,9 @@
           const lng = pos.coords.longitude;
           document.getElementById('coords').innerText = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
          
+          // Cập nhật vị trí trực tiếp lên bản đồ Leaflet mini
+          updateMapMarker(lat, lng);
+
           const now = Date.now();
           if (now - lastUpdateTime >= 3000) {
             await updateLocation(lat, lng);
