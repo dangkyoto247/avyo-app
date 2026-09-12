@@ -164,7 +164,7 @@
         </div>
       </div>
 
-      <!-- BẢNG DỮ LIỆU ĐÃ BỔ SUNG CỘT ĐẾM GIỜ -->
+      <!-- BẢNG DỮ LIỆU THỐNG KÊ & THỜI GIAN ONLINE -->
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px;">
         <div style="background: #f8fafc; padding: 8px; border-radius: 10px; border: 1px solid #e2e8f0; text-align: center;">
           <span style="font-size: 11px; color: #64748b; display: block;">👁️ Xem hồ sơ</span>
@@ -216,6 +216,7 @@
     
     let driverData = null; 
     let timeInterval = null;
+    let wakeLock = null; // Biến kiểm soát giữ sáng màn hình
 
     let driverMap = null;
     let driverMarker = null;
@@ -230,6 +231,32 @@
       if (url.startsWith('data:image')) return url;
       return `https://images.weserv.nl/?url=${encodeURIComponent(url)}&w=200&h=200&fit=cover&q=80&output=jpg`;
     }
+
+    // --- HÀM GIỮ MÀN HÌNH LUÔN SÁNG (SCREEN WAKE LOCK API) ---
+    async function requestWakeLock() {
+      try {
+        if ('wakeLock' in navigator) {
+          wakeLock = await navigator.wakeLock.request('screen');
+        }
+      } catch (err) {
+        console.log('Chức năng giữ sáng màn hình:', err.message);
+      }
+    }
+
+    function releaseWakeLock() {
+      if (wakeLock !== null) {
+        wakeLock.release().then(() => {
+          wakeLock = null;
+        });
+      }
+    }
+
+    // Khôi phục lại khóa màn hình sáng nếu tài xế bấm sang app khác rồi mở lại Avyo
+    document.addEventListener('visibilitychange', async () => {
+      if (wakeLock !== null && document.visibilityState === 'visible' && isOnline) {
+        await requestWakeLock();
+      }
+    });
 
     // Các hàm tính Thời gian & Formatter
     function getLocalDateStr() {
@@ -353,7 +380,7 @@
           logout(true); return;
         }
 
-        driverData = data; // Lưu biến môi trường
+        driverData = data; 
 
         document.getElementById('driverNameLabel').innerText = data.name;
         document.getElementById('driverAvatar').src = getOptimizedAvatar(data.avatar_url);
@@ -374,7 +401,6 @@
         const count = data.rating_count || 5;
         document.getElementById('ratingLabel').innerText = `${(sum / count).toFixed(1)} (${count})`;
 
-        // Kiểm tra và hiển thị thời gian Online
         const todayStr = getLocalDateStr();
         const monthStr = getLocalMonthStr();
         let displayMinsToday = data.online_minutes_today || 0;
@@ -406,6 +432,7 @@
     function logout(force = false) {
       if (force || confirm("Bạn có chắc chắn muốn đăng xuất không?")) {
         if (isOnline) toggleOnline();
+        releaseWakeLock(); // Hủy giữ màn hình sáng
         localStorage.removeItem('avyo_driver_id');
         localStorage.removeItem('avyo_driver_name');
         localStorage.removeItem('avyo_session_token');
@@ -433,6 +460,8 @@
         if (!navigator.geolocation) return alert('Thiết bị không hỗ trợ GPS');
        
         isOnline = true;
+        await requestWakeLock(); // BẬT GIỮ MÀN HÌNH LUÔN SÁNG
+
         btn.innerText = 'TẮT NHẬN KHÁCH (NGHỈ NGƠI)';
         btn.style.background = '#ef4444';
         status.innerHTML = '🟢 ĐANG PHÁT GPS ĐỂ ĐÓN KHÁCH';
@@ -459,14 +488,13 @@
           document.getElementById('timeTodayLabel').innerText = formatTime(driverData.online_minutes_today);
           document.getElementById('timeMonthLabel').innerText = formatTime(driverData.online_minutes_month);
 
-          // Cập nhật ngầm lên DB mỗi 1 phút
           await supabaseClient.from('drivers').update({
             online_minutes_today: driverData.online_minutes_today,
             online_minutes_month: driverData.online_minutes_month,
             last_online_date: todayStr,
             last_online_month: monthStr
           }).eq('id', currentDriverId);
-        }, 60000); // 60,000ms = 1 phút
+        }, 60000);
 
         // Khởi động GPS Tracking
         let lastUpdateTime = 0;
@@ -488,6 +516,8 @@
 
       } else {
         isOnline = false;
+        releaseWakeLock(); // TẮT GIỮ MÀN HÌNH LUÔN SÁNG (Màn hình trở lại tắt theo cài đặt máy)
+
         if (watchId) {
           navigator.geolocation.clearWatch(watchId);
           watchId = null;
