@@ -155,7 +155,7 @@
     let selectedDriver = null;
     let rawDriversData = [];
 
-    // HÀM CẬP NHẬT HƯỚNG DẪN THEO TRẠNG THÁI THAO TÁC CỦA KHÁCH HÀNG
+    // CẬP NHẬT HƯỚNG DẪN THÔNG MINH
     function updateGuide() {
       const guideBox = document.getElementById('guideBox');
       const guideText = document.getElementById('guideText');
@@ -168,17 +168,17 @@
       guideBox.classList.remove('success');
 
       if (!hasPickup && !hasDest && !hasDriver) {
-        guideText.innerHTML = "📍 <b>Bước 1:</b> Chạm bản đồ để <b>Chọn điểm đón</b> (hoặc bấm nút màu xanh), hoặc chạm chọn <b>Tài xế</b>.";
+        guideText.innerHTML = "📍 <b>Bước 1:</b> Chạm bản đồ chọn <b>Điểm đón</b> (hoặc nút xanh), hoặc chọn <b>Tài xế</b>.";
       } else if (hasPickup && !hasDest && !hasDriver) {
-        guideText.innerHTML = "🚩 <b>Bước 2:</b> Chạm tiếp bản đồ để <b>Chọn điểm đến</b> hoặc chọn <b>Tài xế</b> gần bạn.";
+        guideText.innerHTML = "🚩 <b>Bước 2:</b> Chạm tiếp bản đồ chọn <b>Điểm đến</b> hoặc chọn <b>Tài xế</b> gần bạn.";
       } else if (hasPickup && hasDest && !hasDriver) {
-        guideText.innerHTML = "🚕 <b>Bước 3:</b> Hãy chạm vào <b>Biểu tượng Tài xế</b> trên bản đồ để xem giá & liên hệ.";
+        guideText.innerHTML = "🚕 <b>Bước 3:</b> Hãy chạm vào <b>Biểu tượng Tài xế</b> trên bản đồ để tính giá & liên hệ.";
       } else if (hasDriver && !hasPickup && !hasDest) {
-        guideText.innerHTML = `📍 Đã chọn tài xế <b>${selectedDriver.name}</b>! Hãy chạm bản đồ để <b>Chọn điểm đón</b>.`;
+        guideText.innerHTML = `📍 Đã chọn <b>${selectedDriver.name}</b>! Chạm bản đồ để <b>Chọn điểm đón</b> (Chạm lại tài xế để bỏ chọn).`;
       } else if (hasDriver && hasPickup && !hasDest) {
-        guideText.innerHTML = `🚩 Đã có điểm đón! Hãy chạm tiếp bản đồ để <b>Chọn điểm đến</b> tính cước phí.`;
+        guideText.innerHTML = `🚩 Đã có điểm đón! Chạm tiếp bản đồ để <b>Chọn điểm đến</b> tính cước phí.`;
       } else if (hasDriver && !hasPickup && hasDest) {
-        guideText.innerHTML = `📍 Đã có điểm đến! Hãy chạm bản đồ để <b>Chọn điểm đón</b>.`;
+        guideText.innerHTML = `📍 Đã có điểm đến! Chạm bản đồ để <b>Chọn điểm đón</b>.`;
       } else if (hasPickup && hasDest && hasDriver) {
         guideBox.classList.add('success');
         guideText.innerHTML = `🎉 <b>Hoàn tất!</b> Bấm <b>"💬 Nhắn Zalo"</b> hoặc <b>"📞 Gọi Điện"</b> để đặt xe ngay.`;
@@ -327,7 +327,18 @@
     }
 
     function updatePrice() {
-      if (!selectedDriver || currentDistance == 0) return;
+      if (!selectedDriver) {
+        document.getElementById('price').innerText = '0 VNĐ';
+        document.getElementById('rate-label').innerText = currentDistance > 0 ? '(Chưa chọn tài xế)' : '';
+        return;
+      }
+
+      if (currentDistance == 0) {
+        document.getElementById('price').innerText = '0 VNĐ';
+        document.getElementById('rate-label').innerText = '';
+        return;
+      }
+
       const type = selectedDriver.vehicle_type;
      
       if (type === 'truck') {
@@ -346,6 +357,7 @@
       }
     }
 
+    // ĐẶT LẠI ĐIỂM ĐÓN / ĐẾN (VẪN GIỮ NGUYÊN TÀI XẾ ĐÃ CHỌN)
     function resetRoute() {
       if (markerStart) map.removeLayer(markerStart);
       if (markerEnd) map.removeLayer(markerEnd);
@@ -356,11 +368,20 @@
       currentDistance = 0;
       currentPrice = 0;
       document.getElementById('distance').innerText = '0';
-      document.getElementById('price').innerText = '0 VNĐ';
-      document.getElementById('rate-label').innerText = '';
       document.getElementById('resetBtn').style.display = 'none';
 
+      updatePrice();
       renderDriverMarkers();
+      updateGuide();
+    }
+
+    // HÀM BỎ CHỌN TÀI XẾ
+    function deselectDriver() {
+      selectedDriver = null;
+      document.getElementById('driver-info').innerHTML = '<i>Chạm vào icon tài xế trên bản đồ...</i>';
+      document.getElementById('zaloBtn').style.display = 'none';
+      document.getElementById('phoneBtn').style.display = 'none';
+      updatePrice();
       updateGuide();
     }
 
@@ -425,6 +446,18 @@
         .neq('is_active', false);
         
       rawDriversData = data || [];
+      
+      // GIỮ NGUYÊN TÀI XẾ ĐÃ CHỌN KHI DỮ LIỆU REALTIME CẬP NHẬT
+      if (selectedDriver) {
+        const freshDriverData = rawDriversData.find(d => d.id === selectedDriver.id);
+        if (freshDriverData) {
+          selectedDriver = freshDriverData;
+        } else {
+          // Nếu tài xế vừa chọn offline hoặc tắt app thì mới deselect
+          deselectDriver();
+        }
+      }
+
       renderDriverMarkers();
     }
 
@@ -503,11 +536,26 @@
       filteredDrivers.forEach(driver => {
         const icon = icons[driver.vehicle_type] || icons['bike'];
         const typeBadge = typeNames[driver.vehicle_type] || 'Tài xế';
+        const rating = calcRating(driver);
 
         const marker = L.marker([driver.lat, driver.lng], { icon: icon }).addTo(map);
-        marker.bindPopup(`<b>${typeBadge}: ${driver.name}</b>`);
+        
+        // HIỂN THỊ LUÔN SỐ SAO TRÊN POPUP BẢN ĐỒ
+        marker.bindPopup(`
+          <div style="text-align:center;">
+            <b>${typeBadge}: ${driver.name}</b><br>
+            <span style="color:#eab308; font-weight:bold;">⭐ ${rating.score} / 5.0</span> 
+            <small style="color:#64748b;">(${rating.count} lượt)</small>
+          </div>
+        `);
        
         marker.on('click', async () => {
+          // CHẠM LẠI TÀI XẾ ĐÃ CHỌN -> BỎ CHỌN (TOGGLE)
+          if (selectedDriver && selectedDriver.id === driver.id) {
+            deselectDriver();
+            return;
+          }
+
           selectedDriver = driver;
           updateGuide();
 
@@ -530,7 +578,6 @@
           }
 
           const avatarUrl = getOptimizedAvatar(driver.avatar_url);
-          const rating = calcRating(driver);
 
           document.getElementById('driver-info').innerHTML = `
             <div class="driver-profile-box">
