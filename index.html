@@ -36,6 +36,17 @@
     
     .star-btn { cursor: pointer; filter: grayscale(100%); opacity: 0.4; transition: all 0.15s ease; display: inline-block; margin: 0 2px; }
     .star-btn.active { filter: grayscale(0%); opacity: 1; transform: scale(1.2); }
+
+    /* CSS CHO NÚT VÀ POPUP TIÊU CHUẨN TÀI XẾ */
+    .driver-standards-btn { background: #f1f5f9; border: 1px solid #cbd5e1; color: #0f172a; padding: 4px 8px; font-size: 12px; border-radius: 8px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; font-weight: 600; transition: all 0.2s;}
+    .driver-standards-btn:active { background: #e2e8f0; }
+    .modal-backdrop { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0, 0, 0, 0.6); z-index: 9999; align-items: center; justify-content: center; backdrop-filter: blur(2px); }
+    .modal-card { background: #ffffff; width: 90%; max-width: 400px; padding: 20px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); position: relative; }
+    .close-icon { position: absolute; top: 12px; right: 16px; font-size: 24px; cursor: pointer; color: #64748b; line-height: 1; }
+    .modal-title { margin: 0 0 12px 0; font-size: 18px; color: #0f172a; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; }
+    .standards-list { padding-left: 20px; margin: 0 0 16px 0; color: #475569; font-size: 14px; line-height: 1.6; }
+    .standards-list li { margin-bottom: 8px; }
+    .btn-confirm { width: 100%; background: #16a34a; color: white; border: none; padding: 12px; border-radius: 10px; cursor: pointer; font-weight: bold; font-size: 15px; }
   </style>
 </head>
 <body>
@@ -59,14 +70,44 @@
   </div>
 
   <div class="card">
-    <h4 style="margin: 0 0 8px 0; color: #334155;">Tài Xế Được Chọn</h4>
+    <!-- TIÊU ĐỀ KÈM NÚT MỞ POPUP TIÊU CHUẨN TÀI XẾ -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+      <h4 style="margin: 0; color: #334155;">Tài Xế Được Chọn</h4>
+      <button class="driver-standards-btn" onclick="openModal()">🛡️ Tiêu chuẩn</button>
+    </div>
+
     <div id="driver-info" style="color: #64748b;"><i>Chạm vào icon tài xế trên bản đồ...</i></div>
    
     <button id="zaloBtn" class="btn-zalo" style="display:none;" onclick="openZalo()">💬 Nhắn Zalo (Tự động Copy)</button>
     <a id="phoneBtn" href="#" class="btn-phone" style="display:none;" onclick="trackContact()">📞 Gọi Điện Trực Tiếp</a>
   </div>
 
+  <!-- HỘP THÔNG TIN (MODAL POPUP) TIÊU CHUẨN TÀI XẾ -->
+  <div id="driverModal" class="modal-backdrop" onclick="closeModal(event)">
+    <div class="modal-card">
+      <span class="close-icon" onclick="closeModal(true)">&times;</span>
+      <h3 class="modal-title">Tiêu Chuẩn Tài Xế</h3>
+      <ul class="standards-list">
+        <li><strong>Lý lịch minh bạch:</strong> Không có tiền án, tiền sự.</li>
+        <li><strong>Tuyệt đối an toàn:</strong> Không sử dụng ma túy và các chất kích thích.</li>
+        <li><strong>Sức khỏe đảm bảo:</strong> Không mắc các bệnh truyền nhiễm nguy hiểm, bệnh xã hội (AIDS...).</li>
+        <li><strong>Kiểm tra định kỳ:</strong> Công ty thực hiện lấy máu xét nghiệm kiểm tra 6 tháng/lần.</li>
+      </ul>
+      <button class="btn-confirm" onclick="closeModal(true)">Đã hiểu</button>
+    </div>
+  </div>
+
   <script>
+    // SCRIPTS CHO POPUP TIÊU CHUẨN TÀI XẾ
+    function openModal() {
+      document.getElementById('driverModal').style.display = 'flex';
+    }
+    function closeModal(force) {
+      if (force || event.target.id === 'driverModal') {
+        document.getElementById('driverModal').style.display = 'none';
+      }
+    }
+
     const map = L.map('map').setView([18.7034, 105.6832], 13);
    
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -135,12 +176,12 @@
       markerStart = L.marker(latlng, { icon: pickupIcon, draggable: true }).addTo(map)
         .bindPopup(isAuto ? "<b style='color:#dc2626;'>📍 Điểm đón của bạn</b><br><small><i>(Nhấn giữ & kéo để đổi vị trí khác)</i></small>" : "<b style='color:#dc2626;'>📍 Điểm đón</b><br><small><i>(Nhấn giữ & kéo để đổi vị trí khác)</i></small>")
         .openPopup();
-        
+       
       markerStart.on('dragend', () => {
         calculateRoute();
         renderDriverMarkers(); // Cập nhật lại danh sách tài xế trong 10km khi kéo điểm đón
       });
-        
+       
       document.getElementById('resetBtn').style.display = 'block';
       if (markerEnd) calculateRoute();
 
@@ -164,9 +205,9 @@
         markerEnd = L.marker(e.latlng, { icon: destinationIcon, draggable: true }).addTo(map)
           .bindPopup("<b style='color:#2563eb;'>🚩 Điểm đến</b><br><small><i>(Nhấn giữ & kéo để đổi vị trí khác)</i></small>")
           .openPopup();
-          
+         
         markerEnd.on('dragend', calculateRoute);
-        
+       
         calculateRoute();
       }
     });
@@ -319,7 +360,7 @@
         .select('*')
         .eq('is_online', true)
         .neq('is_active', false);
-        
+       
       rawDriversData = data || [];
       renderDriverMarkers();
     }
@@ -371,7 +412,7 @@
       selectedDriver.rating_sum = (selectedDriver.rating_sum || 25) + stars;
       selectedDriver.rating_count = (selectedDriver.rating_count || 5) + 1;
       const rating = calcRating(selectedDriver);
-      
+     
       document.getElementById('rating-display').innerText = `${rating.score} / 5.0 (${rating.count} lượt)`;
       alert(`🌟 Cảm ơn bạn đã đánh giá ${stars} sao cho tài xế ${selectedDriver.name}!`);
     }
@@ -441,7 +482,7 @@
                 </div>
               </div>
             </div>
-            
+           
             <div style="margin-top: 8px; padding-top: 6px; border-top: 1px dashed #e2e8f0; text-align: center;">
               <span style="font-size: 11px; color: #64748b; display: block; margin-bottom: 2px;">Chạm chọn số sao để đánh giá dịch vụ:</span>
               <div style="font-size: 22px; user-select: none;" onmouseleave="highlightStars(0)">
