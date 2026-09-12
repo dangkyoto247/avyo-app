@@ -70,7 +70,7 @@
     .badge-offline { background: #f1f5f9; color: #64748b; padding: 3px 8px; border-radius: 12px; font-weight: bold; font-size: 11px; }
     .small-text { font-size: 11px; color: #64748b; display: block; margin-top: 2px; }
 
-    .admin-avatar { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; vertical-align: middle; border: 1px solid #cbd5e1; }
+    .admin-avatar { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; vertical-align: middle; border: 1px solid #cbd5e1; background: #e2e8f0; }
 
     #login-modal {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -190,6 +190,13 @@
     let rawAdminDriversData = [];
     let currentAdminFilter = 'all';
 
+    function getOptimizedAvatar(url) {
+      const defaultAvatar = 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+      if (!url) return defaultAvatar;
+      if (url.startsWith('data:image')) return url;
+      return `https://images.weserv.nl/?url=${encodeURIComponent(url)}&w=200&h=200&fit=cover&q=80&output=jpg`;
+    }
+
     const icons = {
       'bike': L.divIcon({ html: '<div class="vehicle-icon">🛵</div>', className: 'custom-icon', iconSize: [26, 26] }),
       'car': L.divIcon({ html: '<div class="vehicle-icon">🚕</div>', className: 'custom-icon', iconSize: [26, 26] }),
@@ -250,8 +257,7 @@
           joinDate = dateObj.toLocaleDateString('vi-VN');
         }
 
-        const defaultAvatar = 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
-        const avatarUrl = d.avatar_url || defaultAvatar;
+        const avatarUrl = getOptimizedAvatar(d.avatar_url);
 
         const tr = document.createElement('tr');
         tr.innerHTML = `
@@ -261,7 +267,7 @@
           </td>
           <td>
             <div style="display:flex; align-items:center; gap:8px;">
-              <img src="${avatarUrl}" class="admin-avatar" onerror="this.src='${defaultAvatar}'">
+              <img src="${avatarUrl}" class="admin-avatar" onerror="this.src='https://cdn-icons-png.flaticon.com/512/149/149071.png'">
               <div>
                 <b>${d.name}</b>
                 <span class="small-text">CCCD: ${d.cccd || '---'}</span>

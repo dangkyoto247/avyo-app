@@ -31,7 +31,6 @@
     .filter-chip { background: #e2e8f0; color: #475569; padding: 6px 12px; border-radius: 20px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; user-select: none; transition: all 0.2s; border: 1px solid #cbd5e1; }
     .filter-chip.active { background: #16a34a; color: white; border-color: #16a34a; box-shadow: 0 2px 6px rgba(22,163,74,0.3); }
 
-    /* Khung Avatar Tài xế */
     .driver-profile-box { display: flex; align-items: center; gap: 12px; margin-top: 4px; }
     .driver-avatar-img { width: 54px; height: 54px; border-radius: 50%; object-fit: cover; border: 2px solid #16a34a; flex-shrink: 0; background: #e2e8f0; }
   </style>
@@ -78,6 +77,14 @@
     let currentDistance = 0, currentPrice = 0;
     let selectedDriver = null;
     let rawDriversData = [];
+
+    // Hàm tối ưu hóa & nén dung lượng ảnh về ~20KB
+    function getOptimizedAvatar(url) {
+      const defaultAvatar = 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+      if (!url) return defaultAvatar;
+      if (url.startsWith('data:image')) return url;
+      return `https://images.weserv.nl/?url=${encodeURIComponent(url)}&w=200&h=200&fit=cover&q=80&output=jpg`;
+    }
 
     const pickupIcon = L.divIcon({
       html: `<svg width="34" height="34" viewBox="0 0 24 24" fill="#dc2626" stroke="#ffffff" stroke-width="1.5" style="filter: drop-shadow(0 3px 6px rgba(0,0,0,0.4));">
@@ -297,14 +304,11 @@
        
         marker.on('click', () => {
           selectedDriver = driver;
-          
-          // Ảnh mặc định nếu tài xế chưa cập nhật avatar
-          const defaultAvatar = 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
-          const avatarUrl = driver.avatar_url ? driver.avatar_url : defaultAvatar;
+          const avatarUrl = getOptimizedAvatar(driver.avatar_url);
 
           document.getElementById('driver-info').innerHTML = `
             <div class="driver-profile-box">
-              <img src="${avatarUrl}" class="driver-avatar-img" alt="${driver.name}" onerror="this.src='${defaultAvatar}'">
+              <img src="${avatarUrl}" class="driver-avatar-img" alt="${driver.name}" onerror="this.src='https://cdn-icons-png.flaticon.com/512/149/149071.png'">
               <div>
                 <div style="font-size: 15px; font-weight: bold; color: #0f172a;">${driver.name}</div>
                 <div style="font-size: 13px; color: #16a34a; font-weight: 600;">${typeBadge}</div>
