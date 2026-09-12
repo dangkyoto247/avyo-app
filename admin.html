@@ -121,7 +121,6 @@
       <button onclick="logout()" style="background:#cbd5e1; color:#334155; padding:6px 12px; font-size:12px;">Đăng xuất</button>
     </div>
 
-    <!-- KHUNG TÌM KIẾM VÀ BỘ LỌC ĐA NĂNG -->
     <div class="card" style="padding: 14px 16px;">
       <div style="font-size: 13px; font-weight: bold; color: #475569; margin-bottom: 8px;">🔍 Tìm kiếm & Bộ lọc tài xế:</div>
       
@@ -144,13 +143,11 @@
       </div>
     </div>
 
-    <!-- KHUNG BẢN ĐỒ GIÁM SÁT REALTIME -->
     <div class="card">
       <h4 style="margin: 0; color: #334155;">📍 Bản Đồ Giám Sát Xe Đang Chạy (<span id="onlineCount">0</span> xe)</h4>
       <div id="map"></div>
     </div>
 
-    <!-- KHUNG FORM THÊM / SỬA TÀI XẾ -->
     <div class="card">
       <h4 id="formTitle" style="margin: 0 0 8px 0; color: #334155;">➕ Thêm Tài Xế Mới</h4>
       <input type="hidden" id="driverId">
@@ -177,7 +174,6 @@
       </div>
     </div>
 
-    <!-- KHUNG BẢNG DANH SÁCH TÀI XẾ -->
     <div class="card" style="overflow-x: auto;">
       <h4 style="margin: 0 0 8px 0; color: #334155;">📋 Danh Sách Tất Cả Tài Xế</h4>
       <table>
@@ -187,7 +183,7 @@
             <th>Thông tin Tài xế</th>
             <th>Đánh giá & Tương tác</th>
             <th>Đăng nhập (SĐT & PIN)</th>
-            <th>Trạng Thái</th>
+            <th>Trạng Thái / Giờ làm</th>
             <th>Thao Tác</th>
           </tr>
         </thead>
@@ -232,6 +228,19 @@
       if (!url) return defaultAvatar;
       if (url.startsWith('data:image')) return url;
       return `https://images.weserv.nl/?url=${encodeURIComponent(url)}&w=200&h=200&fit=cover&q=80&output=jpg`;
+    }
+
+    // Các hàm tính thời gian hiển thị cho Admin
+    function getLocalDateStr() {
+      const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+    function getLocalMonthStr() {
+      const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    }
+    function formatTime(minutes) {
+      if (!minutes) return '0p';
+      const h = Math.floor(minutes / 60); const m = minutes % 60;
+      return h > 0 ? `${h}h ${m}p` : `${m}p`;
     }
 
     const icons = {
@@ -352,6 +361,18 @@
           statusBadge = '<span class="badge-offline">⚪ Tắt GPS</span>';
         }
 
+        // Xử lý đếm giờ Local hiển thị trên Admin
+        let displayMinsToday = d.online_minutes_today || 0;
+        let displayMinsMonth = d.online_minutes_month || 0;
+        if (d.last_online_date !== getLocalDateStr()) displayMinsToday = 0;
+        if (d.last_online_month !== getLocalMonthStr()) displayMinsMonth = 0;
+
+        const timeString = `
+          <div style="margin-top: 6px; border-top: 1px dashed #cbd5e1; padding-top: 4px;">
+            <span class="small-text">⏱️ HN: <b style="color:#d97706;">${formatTime(displayMinsToday)}</b></span>
+            <span class="small-text">⏳ TH: <b style="color:#d97706;">${formatTime(displayMinsMonth)}</b></span>
+          </div>`;
+
         const unlockButtonHtml = isLocked 
           ? `<button class="btn-unlock" onclick="unlockDriver('${d.id}', '${d.name}', '${d.pin || '1234'}')">🔓 Mở khóa & PIN</button>` 
           : '';
@@ -384,6 +405,7 @@
           </td>
           <td>
             ${statusBadge}
+            ${timeString}
           </td>
           <td>
             <button class="btn-edit" onclick="editDriver('${d.id}', '${d.name}', '${d.phone}', '${d.pin || ''}', '${d.avatar_url || ''}', '${d.cccd || ''}', '${d.address || ''}', '${d.vehicle_type}', '${d.vehicle || ''}')">Sửa</button>

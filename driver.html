@@ -164,11 +164,15 @@
         </div>
       </div>
 
-      <!-- BẢNG ĐẾM LƯỢT CHUYÊN BIỆT CÂN ĐỐI 2x2 -->
+      <!-- BẢNG DỮ LIỆU ĐÃ BỔ SUNG CỘT ĐẾM GIỜ -->
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px;">
         <div style="background: #f8fafc; padding: 8px; border-radius: 10px; border: 1px solid #e2e8f0; text-align: center;">
           <span style="font-size: 11px; color: #64748b; display: block;">👁️ Xem hồ sơ</span>
           <b id="clickCountLabel" style="color: #16a34a; font-size: 14px;">0</b>
+        </div>
+        <div style="background: #f8fafc; padding: 8px; border-radius: 10px; border: 1px solid #e2e8f0; text-align: center;">
+          <span style="font-size: 11px; color: #64748b; display: block;">⭐ Đánh giá</span>
+          <b id="ratingLabel" style="color: #eab308; font-size: 14px;">5.0 (0)</b>
         </div>
         <div style="background: #f0fdf4; padding: 8px; border-radius: 10px; border: 1px solid #bbf7d0; text-align: center;">
           <span style="font-size: 11px; color: #15803d; display: block;">💬 Nhắn Zalo</span>
@@ -178,9 +182,13 @@
           <span style="font-size: 11px; color: #0369a1; display: block;">📞 Cuộc gọi</span>
           <b id="callCountLabel" style="color: #0284c7; font-size: 14px;">0</b>
         </div>
-        <div style="background: #f8fafc; padding: 8px; border-radius: 10px; border: 1px solid #e2e8f0; text-align: center;">
-          <span style="font-size: 11px; color: #64748b; display: block;">⭐ Đánh giá</span>
-          <b id="ratingLabel" style="color: #eab308; font-size: 14px;">5.0 (0)</b>
+        <div style="background: #fffbeb; padding: 8px; border-radius: 10px; border: 1px solid #fde68a; text-align: center;">
+          <span style="font-size: 11px; color: #b45309; display: block;">⏱️ Online Hôm nay</span>
+          <b id="timeTodayLabel" style="color: #d97706; font-size: 14px;">0p</b>
+        </div>
+        <div style="background: #fffbeb; padding: 8px; border-radius: 10px; border: 1px solid #fde68a; text-align: center;">
+          <span style="font-size: 11px; color: #b45309; display: block;">⏳ Online Tháng này</span>
+          <b id="timeMonthLabel" style="color: #d97706; font-size: 14px;">0p</b>
         </div>
       </div>
     </div>
@@ -205,23 +213,40 @@
     let watchId = null;
     let currentDriverId = localStorage.getItem('avyo_driver_id');
     let currentSessionToken = localStorage.getItem('avyo_session_token');
+    
+    let driverData = null; 
+    let timeInterval = null;
+
     let driverMap = null;
     let driverMarker = null;
 
     const LOCK_TIME_MS = 60 * 60 * 1000;
 
-    const typeLabels = { 
-      'bike': '🛵 Xe máy', 
-      'car': '🚕 Ô tô', 
-      'driver': '👤 Lái xe hộ', 
-      'truck': '🚚 Chở hàng' 
-    };
+    const typeLabels = { 'bike': '🛵 Xe máy', 'car': '🚕 Ô tô', 'driver': '👤 Lái xe hộ', 'truck': '🚚 Chở hàng' };
 
     function getOptimizedAvatar(url) {
       const defaultAvatar = 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
       if (!url) return defaultAvatar;
       if (url.startsWith('data:image')) return url;
       return `https://images.weserv.nl/?url=${encodeURIComponent(url)}&w=200&h=200&fit=cover&q=80&output=jpg`;
+    }
+
+    // Các hàm tính Thời gian & Formatter
+    function getLocalDateStr() {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+
+    function getLocalMonthStr() {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    }
+
+    function formatTime(minutes) {
+      if (!minutes) return '0p';
+      const h = Math.floor(minutes / 60);
+      const m = minutes % 60;
+      return h > 0 ? `${h}h ${m}p` : `${m}p`;
     }
 
     if (currentDriverId) {
@@ -288,10 +313,7 @@
       
       const { error: updateError } = await supabaseClient
         .from('drivers')
-        .update({ 
-          session_token: newToken,
-          locked_until: null 
-        })
+        .update({ session_token: newToken, locked_until: null })
         .eq('id', driverInfo.id);
 
       if (updateError) {
@@ -323,31 +345,27 @@
       if (data) {
         if (data.session_token && data.session_token !== currentSessionToken) {
           alert("⚠️ Tài khoản của bạn vừa được đăng nhập trên một thiết bị khác!\nThiết bị này sẽ bị đăng xuất tự động.");
-          logout(true);
-          return;
+          logout(true); return;
         }
 
         if (data.is_active === false) {
           alert("⛔ Tài khoản của bạn đã tạm ngưng hoạt động (Đã nghỉ). Vui lòng liên hệ Admin!");
-          logout(true);
-          return;
+          logout(true); return;
         }
+
+        driverData = data; // Lưu biến môi trường
 
         document.getElementById('driverNameLabel').innerText = data.name;
         document.getElementById('driverAvatar').src = getOptimizedAvatar(data.avatar_url);
         document.getElementById('cccdLabel').innerText = "CCCD: " + (data.cccd || '---');
         document.getElementById('addressLabel').innerText = "📍 " + (data.address || 'Chưa cập nhật địa chỉ');
-        
         if (data.created_at) {
-          const joinDate = new Date(data.created_at).toLocaleDateString('vi-VN');
-          document.getElementById('joinDateLabel').innerText = "📅 Tham gia: " + joinDate;
+          document.getElementById('joinDateLabel').innerText = "📅 Tham gia: " + new Date(data.created_at).toLocaleDateString('vi-VN');
         }
-
         document.getElementById('vehicleTypeLabel').innerText = typeLabels[data.vehicle_type] || 'Phương tiện';
         document.getElementById('vehicleDetailLabel').innerText = data.vehicle || 'Chưa cập nhật chi tiết xe';
         document.getElementById('phoneLabel').innerText = data.phone;
 
-        // Đổ dữ liệu Xem, Zalo, Gọi điện và Đánh giá
         document.getElementById('clickCountLabel').innerText = data.click_count || 0;
         document.getElementById('zaloCountLabel').innerText = data.zalo_count || 0;
         document.getElementById('callCountLabel').innerText = data.call_count || 0;
@@ -355,6 +373,18 @@
         const sum = data.rating_sum || 25;
         const count = data.rating_count || 5;
         document.getElementById('ratingLabel').innerText = `${(sum / count).toFixed(1)} (${count})`;
+
+        // Kiểm tra và hiển thị thời gian Online
+        const todayStr = getLocalDateStr();
+        const monthStr = getLocalMonthStr();
+        let displayMinsToday = data.online_minutes_today || 0;
+        let displayMinsMonth = data.online_minutes_month || 0;
+        
+        if (data.last_online_date !== todayStr) displayMinsToday = 0;
+        if (data.last_online_month !== monthStr) displayMinsMonth = 0;
+
+        document.getElementById('timeTodayLabel').innerText = formatTime(displayMinsToday);
+        document.getElementById('timeMonthLabel').innerText = formatTime(displayMinsMonth);
 
         if (data.lat && data.lng) {
           updateMapMarker(data.lat, data.lng);
@@ -375,9 +405,7 @@
 
     function logout(force = false) {
       if (force || confirm("Bạn có chắc chắn muốn đăng xuất không?")) {
-        if (isOnline) {
-          toggleOnline();
-        }
+        if (isOnline) toggleOnline();
         localStorage.removeItem('avyo_driver_id');
         localStorage.removeItem('avyo_driver_name');
         localStorage.removeItem('avyo_session_token');
@@ -410,15 +438,40 @@
         status.innerHTML = '🟢 ĐANG PHÁT GPS ĐỂ ĐÓN KHÁCH';
         status.style.color = '#16a34a';
 
-        setTimeout(() => { 
-          if (driverMap) driverMap.invalidateSize(); 
-        }, 200);
+        setTimeout(() => { if (driverMap) driverMap.invalidateSize(); }, 200);
 
+        // BẮT ĐẦU VÒNG LẶP ĐẾM GIỜ (1 Phút / Lần)
+        const todayStr = getLocalDateStr();
+        const monthStr = getLocalMonthStr();
+
+        if (driverData.last_online_date !== todayStr) driverData.online_minutes_today = 0;
+        if (driverData.last_online_month !== monthStr) driverData.online_minutes_month = 0;
+
+        document.getElementById('timeTodayLabel').innerText = formatTime(driverData.online_minutes_today);
+        document.getElementById('timeMonthLabel').innerText = formatTime(driverData.online_minutes_month);
+
+        timeInterval = setInterval(async () => {
+          if (!isOnline) return;
+          
+          driverData.online_minutes_today = (driverData.online_minutes_today || 0) + 1;
+          driverData.online_minutes_month = (driverData.online_minutes_month || 0) + 1;
+
+          document.getElementById('timeTodayLabel').innerText = formatTime(driverData.online_minutes_today);
+          document.getElementById('timeMonthLabel').innerText = formatTime(driverData.online_minutes_month);
+
+          // Cập nhật ngầm lên DB mỗi 1 phút
+          await supabaseClient.from('drivers').update({
+            online_minutes_today: driverData.online_minutes_today,
+            online_minutes_month: driverData.online_minutes_month,
+            last_online_date: todayStr,
+            last_online_month: monthStr
+          }).eq('id', currentDriverId);
+        }, 60000); // 60,000ms = 1 phút
+
+        // Khởi động GPS Tracking
         let lastUpdateTime = 0;
-       
         watchId = navigator.geolocation.watchPosition(async (pos) => {
           if (!isOnline) return;
-         
           const lat = pos.coords.latitude;
           const lng = pos.coords.longitude;
           document.getElementById('coords').innerText = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
@@ -438,6 +491,10 @@
         if (watchId) {
           navigator.geolocation.clearWatch(watchId);
           watchId = null;
+        }
+        if (timeInterval) {
+          clearInterval(timeInterval);
+          timeInterval = null;
         }
         await supabaseClient.from('drivers').update({
           is_online: false,
