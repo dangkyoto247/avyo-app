@@ -1,0 +1,25 @@
+{
+  "name": "Avyo - Gọi Xe Tinh Gọn 0Đ",
+  "short_name": "Avyo Khách",
+  "description": "Ứng dụng kết nối gọi xe trực tiếp Avyo",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f8fafc",
+  "theme_color": "#00b14f",
+  "icons": [
+    {
+      "src": "khachhang.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "khachhang.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
