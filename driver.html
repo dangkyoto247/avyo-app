@@ -2,84 +2,53 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Avyo - App Tài Xế</title>
   
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#00B14F">
+  <meta name="theme-color" content="#16a34a">
   
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   
   <style>
-    :root {
-      --grab-green: #00B14F;
-      --grab-dark: #008E3F;
-      --grab-light: #E6F7ED;
-      --grab-red: #EF4444;
-      --bg-slate: #F4F6F8;
-      --text-main: #1C1C1E;
-      --text-sub: #7C7C80;
-    }
     body { 
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
-      padding: 16px; 
+      font-family: sans-serif; 
+      padding: 15px; 
       max-width: 420px; 
       margin: auto; 
-      background: var(--bg-slate); 
-      color: var(--text-main);
-      -webkit-tap-highlight-color: transparent;
+      background: #f0fdf4; 
     }
     .card { 
       background: white; 
-      padding: 24px; 
-      border-radius: 20px; 
-      box-shadow: 0 4px 20px rgba(0,0,0,0.06); 
+      padding: 20px; 
+      border-radius: 16px; 
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08); 
       text-align: center; 
     }
     input, button { 
       width: 100%; 
       padding: 14px; 
-      margin-top: 12px; 
-      border-radius: 12px; 
-      border: 1.5px solid #E2E8F0; 
-      font-size: 15px; 
+      margin-top: 10px; 
+      border-radius: 10px; 
+      border: 1px solid #cbd5e1; 
+      font-size: 16px; 
       box-sizing: border-box; 
-      outline: none;
-      transition: all 0.2s ease;
-    }
-    input:focus {
-      border-color: var(--grab-green);
     }
     button { 
-      background: var(--grab-green); 
+      background: #22c55e; 
       color: white; 
-      font-weight: 700; 
+      font-weight: bold; 
       border: none; 
       cursor: pointer; 
-      box-shadow: 0 4px 14px rgba(0,177,79,0.3);
-      transition: all 0.2s ease;
     }
-    button:active {
-      transform: scale(0.98);
-    }
-    .status-badge { 
-      font-weight: 700; 
-      margin: 18px 0; 
-      font-size: 15px; 
-      padding: 12px;
-      border-radius: 14px;
-    }
-    .status-online {
-      background: var(--grab-light);
-      color: var(--grab-dark);
-    }
-    .status-offline {
-      background: #FEF2F2;
-      color: var(--grab-red);
+    .status { 
+      font-weight: bold; 
+      margin: 15px 0; 
+      font-size: 16px; 
     }
     .logout-text { 
-      color: var(--text-sub); 
-      font-size: 13px; 
+      color: #64748b; 
+      font-size: 14px; 
       text-decoration: underline; 
       margin-top: 20px; 
       display: block; 
@@ -91,27 +60,27 @@
 
   <!-- MÀN HÌNH ĐĂNG NHẬP -->
   <div id="loginScreen" class="card" style="display: none;">
-    <h2 style="margin-top: 0; color: var(--grab-green);">🟢 Avyo Tài Xế</h2>
-    <p style="color: var(--text-sub); font-size: 14px; margin-bottom: 20px;">Đăng nhập để nhận cuốc xe</p>
+    <h2 style="margin-top: 0; color: #16a34a;">🚕 Avyo Tài Xế</h2>
+    <p style="color: #64748b; font-size: 14px; margin-bottom: 20px;">Đăng nhập để nhận cuốc xe</p>
     
     <input type="tel" id="phoneInput" placeholder="Số điện thoại của bạn" autocomplete="off">
     <input type="password" id="pinInput" placeholder="Mã PIN (Mật khẩu)" autocomplete="off">
     
-    <button onclick="login()" style="margin-top: 20px;">ĐĂNG NHẬP HỆ THỐNG</button>
+    <button onclick="login()" style="margin-top: 20px;">ĐĂNG NHẬP</button>
   </div>
 
   <!-- MÀN HÌNH ĐIỀU KHIỂN GPS CỦA TÀI XẾ -->
   <div id="appScreen" class="card" style="display: none;">
     
     <!-- Khung thông tin tài xế -->
-    <div style="background: var(--grab-light); padding: 14px; border-radius: 14px; margin-bottom: 15px;">
-      <h3 id="driverNameLabel" style="margin: 0; color: var(--grab-dark);">--</h3>
-      <p id="vehicleLabel" style="margin: 5px 0 0 0; font-size: 13px; color: #166534;">--</p>
+    <div style="background: #dcfce7; padding: 12px; border-radius: 10px; margin-bottom: 15px;">
+      <h3 id="driverNameLabel" style="margin: 0; color: #15803d;">--</h3>
+      <p id="vehicleLabel" style="margin: 5px 0 0 0; font-size: 14px; color: #166534;">--</p>
     </div>
 
     <!-- Trạng thái GPS -->
-    <div id="status" class="status-badge status-offline">🔴 ĐÃ TẮT ĐỊNH VỊ (Nghỉ ngơi)</div>
-    <p style="font-size: 12px; color: var(--text-sub);">Tọa độ GPS: <span id="coords">--</span></p>
+    <div id="status" class="status" style="color: #ef4444;">🔴 Đang tắt định vị (Nghỉ ngơi)</div>
+    <p style="font-size: 12px; color: #64748b;">Tọa độ GPS: <span id="coords">--</span></p>
 
     <!-- Nút Bật/Tắt -->
     <button id="toggleBtn" onclick="toggleOnline()">BẮT ĐẦU NHẬN KHÁCH (BẬT GPS)</button>
@@ -123,6 +92,8 @@
   <script>
     // --- 1. KẾT NỐI SUPABASE ---
     const SUPABASE_URL = 'https://yvucyqkglbgxvozrznir.supabase.co';
+    
+    // BẠN HÃY THAY MÃ API KEY CHUẨN CỦA BẠN VÀO DÒNG DƯỚI NÀY (Bắt đầu bằng eyJ...)
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl2dWN5cWtnbGJneHZvenJ6bmlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkxMzA3ODAsImV4cCI6MjEwNDcwNjc4MH0.Zagl4i2LPmxW3w9ih0h4LRsrm-OOGtPcWgvEs2vHBqo';
     
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -166,7 +137,7 @@
 
       if (error || !data) {
         alert("❌ Sai Số điện thoại hoặc Mã PIN!");
-        btn.innerText = "ĐĂNG NHẬP HỆ THỐNG";
+        btn.innerText = "ĐĂNG NHẬP";
       } else {
         // Lưu thông tin vào bộ nhớ điện thoại
         localStorage.setItem('avyo_driver_id', data.id);
@@ -221,9 +192,9 @@
         
         isOnline = true;
         btn.innerText = 'TẮT NHẬN KHÁCH (NGHỈ NGƠI)'; 
-        btn.style.background = '#EF4444';
-        status.className = 'status-badge status-online';
+        btn.style.background = '#ef4444';
         status.innerHTML = '🟢 ĐANG PHÁT GPS ĐỂ ĐÓN KHÁCH'; 
+        status.style.color = '#16a34a';
 
         let lastUpdateTime = 0; 
         
@@ -259,11 +230,11 @@
           updated_at: new Date().toISOString() 
         }).eq('id', currentDriverId);
         
-        status.className = 'status-badge status-offline';
         status.innerHTML = '🔴 ĐÃ TẮT ĐỊNH VỊ (Nghỉ ngơi)'; 
+        status.style.color = '#ef4444';
         
         btn.innerText = 'BẮT ĐẦU NHẬN KHÁCH (BẬT GPS)'; 
-        btn.style.background = '#00B14F';
+        btn.style.background = '#22c55e';
       }
     }
   </script>
