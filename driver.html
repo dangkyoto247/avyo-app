@@ -498,21 +498,22 @@
         }, 60000);
 
         let lastUpdateTime = 0;
-        watchId = navigator.geolocation.watchPosition(async (pos) => {
-          if (!isOnline) return;
-          const lat = pos.coords.latitude;
-          const lng = pos.coords.longitude;
-          document.getElementById('coords').innerText = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-          updateMapMarker(lat, lng);
+watchId = navigator.geolocation.watchPosition(async (pos) => {
+  if (!isOnline) return;
+  const lat = pos.coords.latitude;
+  const lng = pos.coords.longitude;
+  document.getElementById('coords').innerText = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+  updateMapMarker(lat, lng);
 
-          const now = Date.now();
-          if (now - lastUpdateTime >= 3000) {
-            await updateLocation(lat, lng);
-            lastUpdateTime = now;
-          }
-        }, (err) => {
-          alert('Lỗi GPS: ' + err.message);
-        }, { enableHighAccuracy: true });
+  const now = Date.now();
+  // ĐỔI 3000 THÀNH 30000 (Gửi GPS lên Supabase mỗi 30 giây/lần)
+  if (now - lastUpdateTime >= 30000) {
+    await updateLocation(lat, lng);
+    lastUpdateTime = now;
+  }
+}, (err) => {
+  alert('Lỗi GPS: ' + err.message);
+}, { enableHighAccuracy: true });
 
       } else {
         isOnline = false;
