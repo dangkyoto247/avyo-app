@@ -651,26 +651,55 @@
       });
     }
 
-    async function loadDrivers() {
-      const { data } = await supabaseClient
-        .from('public_drivers')
-        .select('*')
-        .eq('is_online', true)
-        .neq('is_active', false);
-        
-      rawDriversData = data || [];
-     
-      if (selectedDriver) {
-        const freshDriverData = rawDriversData.find(d => d.id === selectedDriver.id);
-        if (freshDriverData) {
-          selectedDriver = freshDriverData;
-        } else {
-          deselectDriver();
-        }
-      }
+async function loadDrivers() {
+  const centerPoint = markerStart ? markerStart.getLatLng() : userLatLng;
 
-      renderDriverMarkers();
+  // Nếu chưa có vị trí khách hàng, lấy danh sách xe online mặc định
+  if (!centerPoint) {
+    const { data } = await supabaseClient
+      .from('public_drivers')
+      .select('*')
+      .eq('is_online', true)
+      .neq('is_active', false)
+      .eq('vehicle_type', activeFilter)
+      .limit(15);
+    
+    rawDriversData = data || [];
+  } else {
+    // 1. Thử lọc trong bán kính 5km trực tiếp từ Database
+    let { data: nearbyData } = await supabaseClient.rpc('get_nearby_drivers', {
+      user_lat: centerPoint.lat,
+      user_lng: centerPoint.lng,
+      radius_km: 5.0,
+      v_type: activeFilter
+    });
+
+    // 2. Nới rộng bán kính lên 15km nếu trong 5km không có xe
+    if (!nearbyData || nearbyData.length === 0) {
+      let { data: fallbackData } = await supabaseClient.rpc('get_nearby_drivers', {
+        user_lat: centerPoint.lat,
+        user_lng: centerPoint.lng,
+        radius_km: 15.0,
+        v_type: activeFilter
+      });
+      rawDriversData = fallbackData || [];
+    } else {
+      rawDriversData = nearbyData;
     }
+  }
+
+  // Cập nhật lại tài xế đang chọn (nếu có)
+  if (selectedDriver) {
+    const freshDriverData = rawDriversData.find(d => d.id === selectedDriver.id);
+    if (freshDriverData) {
+      selectedDriver = freshDriverData;
+    } else {
+      deselectDriver();
+    }
+  }
+
+  renderDriverMarkers();
+}
 
     function calcRating(driver) {
       const sum = driver.rating_sum || 25;
