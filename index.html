@@ -75,7 +75,7 @@
   <!-- THANH TÌM KIẾM ĐỊA CHỈ ĐÓN / ĐẾN -->
   <div class="card" style="margin-bottom: 8px; padding: 10px 12px;">
     <div class="search-input-group">
-      <input type="text" id="pickupInput" placeholder="📍 Tìm điểm đón (VD: 123 Nguyễn Trãi)..." autocomplete="off" oninput="onSearchInput('pickup')">
+      <input type="text" id="pickupInput" placeholder="📍 Tìm điểm đón (VD: Sân bay Vinh)..." autocomplete="off" oninput="onSearchInput('pickup')">
       <div id="pickupSuggestions" class="suggestions-list"></div>
     </div>
     <div class="search-input-group" style="margin-bottom: 0;">
@@ -123,8 +123,11 @@
 
     setTimeout(() => { if (map) map.invalidateSize(); }, 300);
 
-    // --- 2. CẤU HÌNH API GOONG MAPS (TÙY CHỌN) ---
-    const GOONG_API_KEY = ''; // Dán API Key Goong Maps vào đây nếu có
+    // --- 2. CẤU HÌNH API & KẾT NỐI SUPABASE ---
+    const GOONG_API_KEY = ''; 
+    const SUPABASE_URL = 'https://yvucyqkglbgxvozrznir.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl2dWN5cWtnbGJneHZvenJ6bmlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkxMzA3ODAsImV4cCI6MjEwNDcwNjc4MH0.Zagl4i2LPmxW3w9ih0h4LRsrm-OOGtPcWgvEs2vHBqo';
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     let userLatLng = null;
     let markerStart = null, markerEnd = null;
@@ -261,10 +264,6 @@
       }
     });
 
-    const SUPABASE_URL = 'https://yvucyqkglbgxvozrznir.supabase.co';
-    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl2dWN5cWtnbGJneHZvenJ6bmlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkxMzA3ODAsImV4cCI6MjEwNDcwNjc4MH0.Zagl4i2LPmxW3w9ih0h4LRsrm-OOGtPcWgvEs2vHBqo';
-    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
     // --- 3. BỘ TÌM KIẾM ĐỊA CHỈ THÔNG MINH (SUPABASE CACHE + GOONG + PHOTON) ---
     function onSearchInput(type) {
       clearTimeout(searchTimer);
@@ -298,7 +297,7 @@
                 if (type === 'pickup') setPickupLocation(latlng);
                 else setDestLocation(latlng);
 
-                // Lưu ngay vào CSDL Cache Supabase nếu đây là địa điểm mới lấy từ bên ngoài
+                // Tự động lưu vào Supabase nếu là địa điểm mới tìm qua API bên ngoài
                 if (!item.is_cached) {
                   try {
                     await supabaseClient.from('cached_locations').insert([{
@@ -306,7 +305,7 @@
                       lat: item.lat,
                       lng: item.lng
                     }]);
-                  } catch(e) { console.error("Lỗi lưu cache:", e); }
+                  } catch(e) { console.error("Cache saved skip:", e); }
                 }
               }
             };
@@ -318,7 +317,7 @@
     }
 
     async function fetchAddressSuggestions(query, callback) {
-      // Dấu mốc 1: Tìm trong CSDL Cache Supabase trước (0 VNĐ)
+      // Tầng 1: Tra cứu trong Supabase Cache (0 VNĐ)
       try {
         const { data: cachedData } = await supabaseClient
           .from('cached_locations')
@@ -336,7 +335,7 @@
         }
       } catch (err) { console.error("Lỗi đọc cache:", err); }
 
-      // Dấu mốc 2: Nếu Cache chưa có -> Gọi Goong Maps (Nếu đã điền API Key)
+      // Tầng 2: Gọi Goong Maps (Nếu cấu hình API Key)
       if (GOONG_API_KEY) {
         try {
           const res = await fetch(`https://api.goong.io/Place/AutoComplete?api_key=${GOONG_API_KEY}&input=${encodeURIComponent(query)}`);
@@ -360,7 +359,7 @@
         } catch(e) { console.error("Goong Search Error:", e); }
       }
 
-      // Dấu mốc 3: Dự phòng miễn phí bằng Photon API (Nếu Goong chưa bật)
+      // Tầng 3: Dự phòng Photon API (Miễn phí 100%)
       try {
         const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=5`);
         const data = await res.json();
@@ -399,7 +398,6 @@
 
       if (routeLine) map.removeLayer(routeLine);
 
-      // Tính km thô bằng HaversineJS trước (0 VNĐ)
       const rawKm = calculateDistance(start.lat, start.lng, end.lat, end.lng);
       currentDistance = rawKm.toFixed(1);
 
@@ -666,6 +664,7 @@
       alert(`🌟 Cảm ơn bạn đã đánh giá ${stars} sao cho tài xế ${selectedDriver.name}!`);
     }
 
+    // --- TỐI ƯU BẢN ĐỒ: CHỈ VẼ 20 XE GẦN NHẤT ĐỂ GIỮ APP NHAU VÀ MƯỢT ---
     function renderDriverMarkers() {
       Object.keys(driverMarkers).forEach(id => {
         map.removeLayer(driverMarkers[id]);
@@ -674,7 +673,7 @@
 
       const centerPoint = markerStart ? markerStart.getLatLng() : userLatLng;
 
-      const filteredDrivers = rawDriversData.filter(driver => {
+      let filteredDrivers = rawDriversData.filter(driver => {
         if (!activeFilters.has(driver.vehicle_type)) return false;
         if (!driver.lat || !driver.lng) return false;
 
@@ -686,7 +685,17 @@
         return true;
       });
 
-      filteredDrivers.forEach(driver => {
+      // Sắp xếp tài xế theo thứ tự từ gần tới xa vị trí khách
+      if (centerPoint) {
+        filteredDrivers.sort((a, b) => {
+          const distA = getHaversineDistance(centerPoint.lat, centerPoint.lng, a.lat, a.lng);
+          const distB = getHaversineDistance(centerPoint.lat, centerPoint.lng, b.lat, b.lng);
+          return distA - distB;
+        });
+      }
+
+      // Giới hạn chỉ hiển thị tối đa 20 xe gần nhất trên bản đồ
+      filteredDrivers.slice(0, 20).forEach(driver => {
         const icon = icons[driver.vehicle_type] || icons['bike'];
         const typeBadge = typeNames[driver.vehicle_type] || 'Tài xế';
         const rating = calcRating(driver);
