@@ -110,9 +110,13 @@
   <div id="login-modal">
     <div class="login-box">
       <h3 style="margin-top:0; color:#0f172a;">🔒 Đăng Nhập Admin</h3>
-      <p style="font-size:12px; color:#64748b; margin-bottom:12px;">Nhập mật khẩu để truy cập trang quản trị</p>
+      <p style="font-size:12px; color:#64748b; margin-bottom:12px;">Nhập tài khoản để truy cập hệ thống</p>
+      
+      <!-- Đã thêm trường nhập Email -->
+      <input type="email" id="emailInput" placeholder="Email Admin..." style="width: 80%; text-align: center; margin-bottom: 8px;">
       <input type="password" id="passInput" placeholder="Mật khẩu..." style="width: 80%; text-align: center; margin-bottom: 12px;">
-      <button onclick="checkPass()" style="width: 90%; background: #16a34a; color: white;">VÀO TRANG QUẢN TRỊ</button>
+      
+      <button id="loginBtn" onclick="checkPass()" style="width: 90%; background: #16a34a; color: white;">VÀO TRANG QUẢN TRỊ</button>
     </div>
   </div>
 
@@ -196,28 +200,58 @@
   </div>
 
   <script>
-    const ADMIN_PASS = "123456";
-
-    function checkPass() {
-      const input = document.getElementById('passInput').value;
-      if (input === ADMIN_PASS) {
-        document.getElementById('login-modal').style.display = 'none';
-        initMap();
-        loadAllData();
-      } else {
-        alert("❌ Mật khẩu không đúng!");
-      }
-    }
-
-    function logout() {
-      document.getElementById('login-modal').style.display = 'flex';
-      document.getElementById('passInput').value = '';
-    }
-
     const SUPABASE_URL = 'https://yvucyqkglbgxvozrznir.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl2dWN5cWtnbGJneHZvenJ6bmlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkxMzA3ODAsImV4cCI6MjEwNDcwNjc4MH0.Zagl4i2LPmxW3w9ih0h4LRsrm-OOGtPcWgvEs2vHBqo';
    
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    // KHI TẢI TRANG: Kiểm tra xem Admin đã đăng nhập trước đó chưa
+    document.addEventListener('DOMContentLoaded', async () => {
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      if (session) {
+        document.getElementById('login-modal').style.display = 'none';
+        initMap();
+        loadAllData();
+      }
+    });
+
+    // HÀM ĐĂNG NHẬP MỚI DÙNG SUPABASE AUTH
+    async function checkPass() {
+      const email = document.getElementById('emailInput').value.trim();
+      const password = document.getElementById('passInput').value;
+      const loginBtn = document.getElementById('loginBtn');
+
+      if (!email || !password) {
+        alert("⚠️ Vui lòng nhập đầy đủ Email và Mật khẩu!");
+        return;
+      }
+
+      loginBtn.innerText = "Đang kiểm tra...";
+
+      const { data, error } = await supabaseClient.auth.signInWithPassword({
+        email: email,
+        password: password
+      });
+
+      if (error) {
+        alert("❌ Đăng nhập thất bại!\nSai Email hoặc Mật khẩu.");
+        loginBtn.innerText = "VÀO TRANG QUẢN TRỊ";
+      } else {
+        document.getElementById('login-modal').style.display = 'none';
+        initMap();
+        loadAllData();
+        loginBtn.innerText = "VÀO TRANG QUẢN TRỊ";
+      }
+    }
+
+    // HÀM ĐĂNG XUẤT
+    async function logout() {
+      await supabaseClient.auth.signOut();
+      document.getElementById('login-modal').style.display = 'flex';
+      document.getElementById('passInput').value = '';
+      // Có thể xóa dòng dưới nếu muốn trình duyệt tự nhớ Email
+      document.getElementById('emailInput').value = ''; 
+    }
 
     let map = null;
     let adminMarkers = {};
@@ -291,11 +325,16 @@
     }
 
     async function loadAllData() {
-      const { data: drivers } = await supabaseClient
+      const { data: drivers, error } = await supabaseClient
         .from('drivers')
         .select('*')
         .order('created_at', { ascending: false });
      
+      if (error) {
+        console.error("Lỗi tải dữ liệu (có thể do chưa đăng nhập hoặc lỗi quyền):", error);
+        return;
+      }
+
       rawAdminDriversData = drivers || [];
       renderAdminData();
     }
