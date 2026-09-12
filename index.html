@@ -54,6 +54,37 @@
    
     .star-btn { cursor: pointer; filter: grayscale(100%); opacity: 0.4; transition: all 0.15s ease; display: inline-block; margin: 0 2px; }
     .star-btn.active { filter: grayscale(0%); opacity: 1; transform: scale(1.2); }
+
+    /* CSS CHO DANH SÁCH 3 TÀI XẾ GẦN NHẤT */
+    .top3-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px;
+      background: #f8fafc;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 12px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .top3-item:last-child { margin-bottom: 0; }
+    .top3-item.selected {
+      border-color: #00b14f;
+      background: #f0fdf4;
+      box-shadow: 0 2px 8px rgba(0, 177, 79, 0.15);
+    }
+    .btn-select-driver {
+      padding: 7px 14px;
+      border-radius: 8px;
+      border: none;
+      font-weight: bold;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-select-driver.active { background: #00b14f; color: white; }
+    .btn-select-driver.normal { background: #e2e8f0; color: #334155; }
   </style>
 </head>
 <body>
@@ -100,9 +131,18 @@
     <button id="resetBtn" class="btn-reset" onclick="resetRoute()">🔄 ĐẶT LẠI ĐIỂM ĐÓN / ĐẾN</button>
   </div>
 
+  <!-- DANH SÁCH 3 TÀI XẾ GẦN ĐIỂM ĐÓN NHẤT -->
+  <div id="top3Card" class="card" style="display: none;">
+    <h4 style="margin: 0 0 10px 0; color: #334155; font-size: 14px; display: flex; align-items: center; justify-content: space-between;">
+      <span>⚡ 3 Tài Xế Gần Nhất</span>
+      <small style="font-size: 11px; color: #64748b; font-weight: normal;">Bán kính 5km</small>
+    </h4>
+    <div id="top3List"></div>
+  </div>
+
   <div class="card">
     <h4 style="margin: 0 0 8px 0; color: #334155;">Tài Xế Được Chọn</h4>
-    <div id="driver-info" style="color: #64748b;"><i>Chạm vào icon tài xế trên bản đồ...</i></div>
+    <div id="driver-info" style="color: #64748b;"><i>Chạm chọn tài xế từ danh sách hoặc trên bản đồ...</i></div>
    
     <button id="zaloBtn" class="btn-zalo" style="display:none;" onclick="openZalo()">💬 Nhắn Zalo (Tự động Copy)</button>
     <a id="phoneBtn" href="#" class="btn-phone" style="display:none;" onclick="trackCall(event)">📞 Gọi Điện Trực Tiếp</a>
@@ -146,9 +186,9 @@
       if (!hasPickup && !hasDest && !hasDriver) {
         guideText.innerHTML = "📍 <b>Bước 1:</b> Nhập địa chỉ hoặc chạm bản đồ chọn <b>Điểm đón</b>.";
       } else if (hasPickup && !hasDest && !hasDriver) {
-        guideText.innerHTML = "🚩 <b>Bước 2:</b> Nhập điểm đến hoặc chạm tiếp bản đồ chọn <b>Điểm đến</b>.";
+        guideText.innerHTML = "🚩 <b>Bước 2:</b> Nhập điểm đến hoặc chọn <b>Tài xế gần nhất</b>.";
       } else if (hasPickup && hasDest && !hasDriver) {
-        guideText.innerHTML = "🚕 <b>Bước 3:</b> Chọn <b>Biểu tượng Tài xế</b> trên bản đồ để xem giá & liên hệ.";
+        guideText.innerHTML = "🚕 <b>Bước 3:</b> Chọn <b>Tài xế</b> bên dưới để xem giá & liên hệ.";
       } else if (hasDriver && !hasPickup && !hasDest) {
         guideText.innerHTML = `📍 Đã chọn <b>${selectedDriver.name}</b>! Chọn <b>Điểm đón</b> để tiếp tục.`;
       } else if (hasDriver && hasPickup && !hasDest) {
@@ -188,7 +228,6 @@
       popupAnchor: [0, -34]
     });
 
-    // BỘ LỌC ĐƠN: CHỈ CHỌN 1 LOẠI XE TẠI MỘT THỜI ĐIỂM
     let activeFilter = 'bike';
 
     function selectFilter(type, element) {
@@ -537,7 +576,7 @@
 
     function deselectDriver() {
       selectedDriver = null;
-      document.getElementById('driver-info').innerHTML = '<i>Chạm vào icon tài xế trên bản đồ...</i>';
+      document.getElementById('driver-info').innerHTML = '<i>Chạm chọn tài xế từ danh sách hoặc trên bản đồ...</i>';
       document.getElementById('zaloBtn').style.display = 'none';
       document.getElementById('phoneBtn').style.display = 'none';
       updatePrice();
@@ -673,7 +712,73 @@
       alert(`🌟 Cảm ơn bạn đã đánh giá ${stars} sao cho tài xế ${selectedDriver.name}!`);
     }
 
-    // HIỂN THỊ TỐI ĐA 15 XE GẦN NHẤT TRONG BÁN KÍNH 5KM THUỘC LOẠI XE ĐANG CHỌN
+    // CHỌN TÀI XẾ VÀ HIỂN THỊ THÔNG TIN CHI TIẾT
+    async function selectDriver(driver) {
+      if (selectedDriver && selectedDriver.id === driver.id) {
+        deselectDriver();
+        renderDriverMarkers();
+        return;
+      }
+
+      selectedDriver = driver;
+      updateGuide();
+
+      const centerPoint = markerStart ? markerStart.getLatLng() : userLatLng;
+      if (centerPoint) {
+        const distKm = getHaversineDistance(centerPoint.lat, centerPoint.lng, driver.lat, driver.lng);
+        if (distKm <= 0.1) {
+          localStorage.setItem(`avyo_unlocked_rating_${driver.id}`, 'true');
+        }
+      }
+
+      const VIEW_COOLDOWN = 5 * 60 * 1000;
+      const lastViewKey = `avyo_last_view_${driver.id}`;
+      const lastViewTime = localStorage.getItem(lastViewKey);
+      const now = Date.now();
+
+      if (!lastViewTime || (now - parseInt(lastViewTime)) > VIEW_COOLDOWN) {
+        localStorage.setItem(lastViewKey, now.toString());
+        const { error } = await supabaseClient.rpc('increment_driver_click', { target_id: driver.id });
+        if (!error) driver.click_count = (driver.click_count || 0) + 1;
+      }
+
+      const avatarUrl = getOptimizedAvatar(driver.avatar_url);
+      const typeBadge = typeNames[driver.vehicle_type] || 'Tài xế';
+      const rating = calcRating(driver);
+
+      document.getElementById('driver-info').innerHTML = `
+        <div class="driver-profile-box">
+          <img src="${avatarUrl}" class="driver-avatar-img" alt="${driver.name}" onerror="this.src='https://cdn-icons-png.flaticon.com/512/149/149071.png'">
+          <div>
+            <div style="font-size: 15px; font-weight: bold; color: #0f172a;">${driver.name}</div>
+            <div style="font-size: 13px; color: #00b14f; font-weight: 600;">${typeBadge} • ${driver.vehicle || 'Xe chuẩn'}</div>
+            <div style="font-size: 12px; color: #eab308; font-weight: bold; margin-top: 2px;">
+              ⭐ <span id="rating-display">${rating.score} / 5.0 (${rating.count} lượt)</span>
+            </div>
+          </div>
+        </div>
+       
+        <div style="margin-top: 8px; padding-top: 6px; border-top: 1px dashed #e2e8f0; text-align: center;">
+          <span style="font-size: 11px; color: #64748b; display: block; margin-bottom: 2px;">Chạm chọn số sao để đánh giá dịch vụ:</span>
+          <div style="font-size: 22px; user-select: none;" onmouseleave="highlightStars(0)">
+            <span class="star-btn" onmouseover="highlightStars(1)" onclick="submitRating(1)">⭐</span>
+            <span class="star-btn" onmouseover="highlightStars(2)" onclick="submitRating(2)">⭐</span>
+            <span class="star-btn" onmouseover="highlightStars(3)" onclick="submitRating(3)">⭐</span>
+            <span class="star-btn" onmouseover="highlightStars(4)" onclick="submitRating(4)">⭐</span>
+            <span class="star-btn" onmouseover="highlightStars(5)" onclick="submitRating(5)">⭐</span>
+          </div>
+        </div>
+      `;
+
+      document.getElementById('phoneBtn').href = `tel:${driver.phone}`;
+      updatePrice();
+      document.getElementById('zaloBtn').style.display = 'block';
+      document.getElementById('phoneBtn').style.display = 'block';
+
+      renderDriverMarkers();
+    }
+
+    // RENDER MARKER BẢN ĐỒ VÀ BẢNG 3 TÀI XẾ GẦN NHẤT
     function renderDriverMarkers() {
       Object.keys(driverMarkers).forEach(id => {
         map.removeLayer(driverMarkers[id]);
@@ -683,11 +788,9 @@
       const centerPoint = markerStart ? markerStart.getLatLng() : userLatLng;
 
       let filteredDrivers = rawDriversData.filter(driver => {
-        // Lọc theo 1 loại xe được chọn
         if (driver.vehicle_type !== activeFilter) return false;
         if (!driver.lat || !driver.lng) return false;
 
-        // Lọc bán kính tối đa 5km
         if (centerPoint) {
           const distKm = getHaversineDistance(centerPoint.lat, centerPoint.lng, driver.lat, driver.lng);
           if (distKm > 5) return false;
@@ -704,7 +807,51 @@
         });
       }
 
-      // Giới hạn hiển thị tối đa 15 xe
+      // HẠNG MỤC 1: RENDER DANH SÁCH 3 TÀI XẾ GẦN NHẤT XUỐNG DƯỚI
+      const top3Card = document.getElementById('top3Card');
+      const top3List = document.getElementById('top3List');
+
+      if (centerPoint && filteredDrivers.length > 0) {
+        top3Card.style.display = 'block';
+        top3List.innerHTML = '';
+
+        const top3 = filteredDrivers.slice(0, 3);
+        top3.forEach(driver => {
+          const isSelected = selectedDriver && selectedDriver.id === driver.id;
+          const distKm = getHaversineDistance(centerPoint.lat, centerPoint.lng, driver.lat, driver.lng);
+          const rating = calcRating(driver);
+          const avatarUrl = getOptimizedAvatar(driver.avatar_url);
+          const typeBadge = typeNames[driver.vehicle_type] || 'Tài xế';
+
+          const div = document.createElement('div');
+          div.className = `top3-item ${isSelected ? 'selected' : ''}`;
+          div.onclick = () => selectDriver(driver);
+
+          div.innerHTML = `
+            <div style="display:flex; align-items:center; gap:10px;">
+              <img src="${avatarUrl}" class="driver-avatar-img" style="width:44px; height:44px;" onerror="this.src='https://cdn-icons-png.flaticon.com/512/149/149071.png'">
+              <div>
+                <div style="font-weight:bold; font-size:14px; color:#0f172a;">${driver.name}</div>
+                <div style="font-size:12px; color:#64748b;">${typeBadge} • Cách <b>${distKm.toFixed(1)} km</b></div>
+                <div style="font-size:11px; color:#eab308; font-weight:bold;">⭐ ${rating.score} (${rating.count} lượt)</div>
+              </div>
+            </div>
+            <button class="btn-select-driver ${isSelected ? 'active' : 'normal'}">
+              ${isSelected ? 'ĐÃ CHỌN' : 'CHỌN XE'}
+            </button>
+          `;
+          top3List.appendChild(div);
+        });
+      } else {
+        if (!centerPoint) {
+          top3Card.style.display = 'none';
+        } else {
+          top3Card.style.display = 'block';
+          top3List.innerHTML = '<div style="font-size:13px; color:#64748b; text-align:center; padding:8px;">Chưa có tài xế nào trong bán kính 5km.</div>';
+        }
+      }
+
+      // HẠNG MỤC 2: RENDER MARKER LÊN BẢN ĐỒ (TỐI ĐA 15 XE)
       filteredDrivers.slice(0, 15).forEach(driver => {
         const icon = icons[driver.vehicle_type] || icons['bike'];
         const typeBadge = typeNames[driver.vehicle_type] || 'Tài xế';
@@ -720,65 +867,7 @@
           </div>
         `);
        
-        marker.on('click', async () => {
-          if (selectedDriver && selectedDriver.id === driver.id) {
-            deselectDriver();
-            return;
-          }
-
-          selectedDriver = driver;
-          updateGuide();
-
-          if (userLatLng) {
-            const distKm = getHaversineDistance(userLatLng.lat, userLatLng.lng, driver.lat, driver.lng);
-            if (distKm <= 0.1) {
-              localStorage.setItem(`avyo_unlocked_rating_${driver.id}`, 'true');
-            }
-          }
-
-          const VIEW_COOLDOWN = 5 * 60 * 1000;
-          const lastViewKey = `avyo_last_view_${driver.id}`;
-          const lastViewTime = localStorage.getItem(lastViewKey);
-          const now = Date.now();
-
-          if (!lastViewTime || (now - parseInt(lastViewTime)) > VIEW_COOLDOWN) {
-            localStorage.setItem(lastViewKey, now.toString());
-            const { error } = await supabaseClient.rpc('increment_driver_click', { target_id: driver.id });
-            if (!error) driver.click_count = (driver.click_count || 0) + 1;
-          }
-
-          const avatarUrl = getOptimizedAvatar(driver.avatar_url);
-
-          document.getElementById('driver-info').innerHTML = `
-            <div class="driver-profile-box">
-              <img src="${avatarUrl}" class="driver-avatar-img" alt="${driver.name}" onerror="this.src='https://cdn-icons-png.flaticon.com/512/149/149071.png'">
-              <div>
-                <div style="font-size: 15px; font-weight: bold; color: #0f172a;">${driver.name}</div>
-                <div style="font-size: 13px; color: #00b14f; font-weight: 600;">${typeBadge} • ${driver.vehicle || 'Xe chuẩn'}</div>
-                <div style="font-size: 12px; color: #eab308; font-weight: bold; margin-top: 2px;">
-                  ⭐ <span id="rating-display">${rating.score} / 5.0 (${rating.count} lượt)</span>
-                </div>
-              </div>
-            </div>
-           
-            <div style="margin-top: 8px; padding-top: 6px; border-top: 1px dashed #e2e8f0; text-align: center;">
-              <span style="font-size: 11px; color: #64748b; display: block; margin-bottom: 2px;">Chạm chọn số sao để đánh giá dịch vụ:</span>
-              <div style="font-size: 22px; user-select: none;" onmouseleave="highlightStars(0)">
-                <span class="star-btn" onmouseover="highlightStars(1)" onclick="submitRating(1)">⭐</span>
-                <span class="star-btn" onmouseover="highlightStars(2)" onclick="submitRating(2)">⭐</span>
-                <span class="star-btn" onmouseover="highlightStars(3)" onclick="submitRating(3)">⭐</span>
-                <span class="star-btn" onmouseover="highlightStars(4)" onclick="submitRating(4)">⭐</span>
-                <span class="star-btn" onmouseover="highlightStars(5)" onclick="submitRating(5)">⭐</span>
-              </div>
-            </div>
-          `;
-
-          document.getElementById('phoneBtn').href = `tel:${driver.phone}`;
-          updatePrice();
-          document.getElementById('zaloBtn').style.display = 'block';
-          document.getElementById('phoneBtn').style.display = 'block';
-        });
-
+        marker.on('click', () => selectDriver(driver));
         driverMarkers[driver.id] = marker;
       });
     }
