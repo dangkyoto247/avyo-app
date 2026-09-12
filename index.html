@@ -34,8 +34,9 @@
     .driver-profile-box { display: flex; align-items: center; gap: 12px; margin-top: 4px; }
     .driver-avatar-img { width: 54px; height: 54px; border-radius: 50%; object-fit: cover; border: 2px solid #16a34a; flex-shrink: 0; background: #e2e8f0; }
     
-    .star-btn { cursor: pointer; filter: grayscale(100%); transition: transform 0.1s; }
-    .star-btn:active { transform: scale(1.3); }
+    /* Giao diện nút sao đánh giá */
+    .star-btn { cursor: pointer; filter: grayscale(100%); opacity: 0.5; transition: all 0.15s ease; display: inline-block; margin: 0 2px; }
+    .star-btn.active { filter: grayscale(0%); opacity: 1; transform: scale(1.2); }
   </style>
 </head>
 <body>
@@ -296,15 +297,30 @@
       };
     }
 
+    // Hiệu ứng di chuột làm sáng tất cả các sao từ 1 đến vị trí di chuột
+    function highlightStars(count) {
+      const stars = document.querySelectorAll('.star-btn');
+      stars.forEach((star, index) => {
+        if (index < count) {
+          star.classList.add('active');
+        } else {
+          star.classList.remove('active');
+        }
+      });
+    }
+
     async function submitRating(stars) {
       if (!selectedDriver) return;
+
+      const todayStr = new Date().toDateString(); // Lấy ngày hiện tại (mỗi ngày 1 lượt)
       const ratedKey = `avyo_rated_${selectedDriver.id}`;
+      const lastRatedDate = localStorage.getItem(ratedKey);
       
-      if (localStorage.getItem(ratedKey)) {
-        return alert("⭐ Bạn đã gửi đánh giá cho tài xế này rồi!");
+      if (lastRatedDate === todayStr) {
+        return alert("⭐ Hôm nay máy bạn đã gửi đánh giá cho tài xế này rồi. Vui lòng quay lại vào ngày mai!");
       }
 
-      localStorage.setItem(ratedKey, 'true');
+      localStorage.setItem(ratedKey, todayStr);
       const { error } = await supabaseClient.rpc('add_driver_rating', { 
         target_id: selectedDriver.id, 
         stars: stars 
@@ -371,12 +387,12 @@
             
             <div style="margin-top: 8px; padding-top: 6px; border-top: 1px dashed #e2e8f0; text-align: center;">
               <span style="font-size: 11px; color: #64748b; display: block; margin-bottom: 2px;">Chạm chọn số sao để đánh giá dịch vụ:</span>
-              <div style="font-size: 22px; user-select: none;">
-                <span class="star-btn" onclick="submitRating(1)">⭐</span>
-                <span class="star-btn" onclick="submitRating(2)">⭐</span>
-                <span class="star-btn" onclick="submitRating(3)">⭐</span>
-                <span class="star-btn" onclick="submitRating(4)">⭐</span>
-                <span class="star-btn" onclick="submitRating(5)">⭐</span>
+              <div style="font-size: 22px; user-select: none;" onmouseleave="highlightStars(0)">
+                <span class="star-btn" onmouseover="highlightStars(1)" onclick="submitRating(1)">⭐</span>
+                <span class="star-btn" onmouseover="highlightStars(2)" onclick="submitRating(2)">⭐</span>
+                <span class="star-btn" onmouseover="highlightStars(3)" onclick="submitRating(3)">⭐</span>
+                <span class="star-btn" onmouseover="highlightStars(4)" onclick="submitRating(4)">⭐</span>
+                <span class="star-btn" onmouseover="highlightStars(5)" onclick="submitRating(5)">⭐</span>
               </div>
             </div>
           `;
