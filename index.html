@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Avyo - Gọi Xe Tinh Gọn 0Đ</title>
  
-  <link rel="icon" href="data:;base64,iVBORw0KGgo=">
+  <link rel="icon" type="image/png" sizes="192x192" href="khachhang.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="khachhang.png">
   <link rel="manifest" href="khachhang-manifest.json">
   <meta name="theme-color" content="#00b14f">
-  <link rel="apple-touch-icon" href="logo.png">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -141,7 +141,7 @@
   <div id="top3Card" class="card" style="display: none;">
     <h4 style="margin: 0 0 10px 0; color: #334155; font-size: 14px; display: flex; align-items: center; justify-content: space-between;">
       <span>⚡ 3 Tài Xế Gần Nhất</span>
-      <small style="font-size: 11px; color: #64748b; font-weight: normal;">Bán kính 5km</small>
+      <span id="radiusBadge" style="font-size: 11px; color: #64748b; font-weight: normal;">Bán kính 5km</span>
     </h4>
     <div id="top3List"></div>
   </div>
@@ -607,8 +607,8 @@
       const centerPoint = markerStart ? markerStart.getLatLng() : userLatLng;
       if (centerPoint) {
         const distKm = getHaversineDistance(centerPoint.lat, centerPoint.lng, selectedDriver.lat, selectedDriver.lng);
-        if (distKm > 5) {
-          return alert(`⚠️ Tài xế đang ở cách bạn ${distKm.toFixed(1)}km (ngoài bán kính 5km). Hãy chọn tài xế ở gần hơn!`);
+        if (distKm > 15) {
+          return alert(`⚠️ Tài xế đang ở cách bạn ${distKm.toFixed(1)}km (ngoài bán kính 15km). Hãy chọn tài xế ở gần hơn!`);
         }
       }
 
@@ -623,8 +623,8 @@
       const centerPoint = markerStart ? markerStart.getLatLng() : userLatLng;
       if (centerPoint) {
         const distKm = getHaversineDistance(centerPoint.lat, centerPoint.lng, selectedDriver.lat, selectedDriver.lng);
-        if (distKm > 5) {
-          return alert(`⚠️ Tài xế đang ở cách bạn ${distKm.toFixed(1)}km (ngoài bán kính 5km). Hãy chọn tài xế ở gần hơn!`);
+        if (distKm > 15) {
+          return alert(`⚠️ Tài xế đang ở cách bạn ${distKm.toFixed(1)}km (ngoài bán kính 15km). Hãy chọn tài xế ở gần hơn!`);
         }
       }
 
@@ -791,32 +791,53 @@
 
       const centerPoint = markerStart ? markerStart.getLatLng() : userLatLng;
 
-      let filteredDrivers = rawDriversData.filter(driver => {
+      // 1. Lọc xe đúng loại & có tọa độ
+      let baseFiltered = rawDriversData.filter(driver => {
         if (driver.vehicle_type !== activeFilter) return false;
         if (!driver.lat || !driver.lng) return false;
-
-        if (centerPoint) {
-          const distKm = getHaversineDistance(centerPoint.lat, centerPoint.lng, driver.lat, driver.lng);
-          if (distKm > 5) return false;
-        }
-
         return true;
       });
 
+      let isFallback = false;
+      let filteredDrivers = [];
+
       if (centerPoint) {
-        filteredDrivers.sort((a, b) => {
+        // Sắp xếp tăng dần theo khoảng cách đến điểm đón
+        baseFiltered.sort((a, b) => {
           const distA = getHaversineDistance(centerPoint.lat, centerPoint.lng, a.lat, a.lng);
           const distB = getHaversineDistance(centerPoint.lat, centerPoint.lng, b.lat, b.lng);
           return distA - distB;
         });
+
+        // Tìm xe trong phạm vi 5km chuẩn
+        filteredDrivers = baseFiltered.filter(driver => {
+          return getHaversineDistance(centerPoint.lat, centerPoint.lng, driver.lat, driver.lng) <= 5;
+        });
+
+        // CƠ CHẾ NỚI RỘNG BÁN KÍNH: Nếu 5km trống xe, nới rộng bán kính lên 15km
+        if (filteredDrivers.length === 0) {
+          filteredDrivers = baseFiltered.filter(driver => {
+            return getHaversineDistance(centerPoint.lat, centerPoint.lng, driver.lat, driver.lng) <= 15;
+          });
+          if (filteredDrivers.length > 0) isFallback = true;
+        }
+      } else {
+        filteredDrivers = baseFiltered;
       }
 
       const top3Card = document.getElementById('top3Card');
       const top3List = document.getElementById('top3List');
+      const radiusBadge = document.getElementById('radiusBadge');
 
       if (centerPoint && filteredDrivers.length > 0) {
         top3Card.style.display = 'block';
         top3List.innerHTML = '';
+
+        if (isFallback) {
+          radiusBadge.innerHTML = '<b style="color:#d97706;">Nới rộng 15km (Xung quanh ít xe)</b>';
+        } else {
+          radiusBadge.innerHTML = 'Bán kính 5km';
+        }
 
         const top3 = filteredDrivers.slice(0, 3);
         top3.forEach(driver => {
@@ -850,7 +871,12 @@
           top3Card.style.display = 'none';
         } else {
           top3Card.style.display = 'block';
-          top3List.innerHTML = '<div style="font-size:13px; color:#64748b; text-align:center; padding:8px;">Chưa có tài xế nào trong bán kính 5km.</div>';
+          radiusBadge.innerText = 'Bán kính 15km';
+          top3List.innerHTML = `
+            <div style="font-size:13px; color:#dc2626; text-align:center; padding:12px; background:#fef2f2; border-radius:10px; border:1px solid #fca5a5;">
+              📍 Chưa tìm thấy tài xế nào trong phạm vi 15km quanh đây.<br>
+              <small style="color:#64748b; margin-top:4px; display:block;">Vui lòng chuyển loại xe khác hoặc đổi vị trí đón.</small>
+            </div>`;
         }
       }
 
