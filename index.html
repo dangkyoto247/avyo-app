@@ -54,7 +54,7 @@
   <div class="card">
     <button id="gpsBtn" class="btn-gps" onclick="useCurrentLocationAsPickup()">📍 Đặt điểm đón tại vị trí của tôi</button>
     <p style="margin: 4px 0;"><b>Quãng đường:</b> <span id="distance">0</span> km</p>
-    <p style="margin: 4px 0;"><b>Ưóc tính cước:</b> <span id="price" class="price">0</span> <small id="rate-label" style="font-size: 12px; color: #64748b; font-weight: normal;"></small></p>
+    <p style="margin: 4px 0;"><b>Ước tính cước:</b> <span id="price" class="price">0</span> <small id="rate-label" style="font-size: 12px; color: #64748b; font-weight: normal;"></small></p>
     <button id="resetBtn" class="btn-reset" onclick="resetRoute()">🔄 ĐẶT LẠI ĐIỂM ĐÓN / ĐẾN</button>
   </div>
 
@@ -136,10 +136,16 @@
         .bindPopup(isAuto ? "<b style='color:#dc2626;'>📍 Điểm đón của bạn</b><br><small><i>(Nhấn giữ & kéo để đổi vị trí khác)</i></small>" : "<b style='color:#dc2626;'>📍 Điểm đón</b><br><small><i>(Nhấn giữ & kéo để đổi vị trí khác)</i></small>")
         .openPopup();
         
-      markerStart.on('dragend', calculateRoute);
+      markerStart.on('dragend', () => {
+        calculateRoute();
+        renderDriverMarkers(); // Cập nhật lại danh sách tài xế trong 10km khi kéo điểm đón
+      });
         
       document.getElementById('resetBtn').style.display = 'block';
       if (markerEnd) calculateRoute();
+
+      // Cập nhật lại bản đồ tài xế theo điểm đón mới
+      renderDriverMarkers();
     }
 
     function useCurrentLocationAsPickup() {
@@ -201,12 +207,19 @@
       currentDistance = km.toFixed(1);
     }
 
-    function calculateDistance(lat1, lon1, lat2, lon2) {
-      const R = 6371;
+    // Tính khoảng cách đường chim bay (Haversine Formula) để lọc bán kính 10km chuẩn xác
+    function getHaversineDistance(lat1, lon1, lat2, lon2) {
+      const R = 6371; // Bán kính trái đất (km)
       const dLat = (lat2 - lat1) * Math.PI / 180;
       const dLon = (lon2 - lon1) * Math.PI / 180;
-      const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
-      return (R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))) * 1.28;
+      const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    }
+
+    function calculateDistance(lat1, lon1, lat2, lon2) {
+      return getHaversineDistance(lat1, lon1, lat2, lon2) * 1.28;
     }
 
     function updatePrice() {
@@ -242,6 +255,9 @@
       document.getElementById('price').innerText = '0';
       document.getElementById('rate-label').innerText = '';
       document.getElementById('resetBtn').style.display = 'none';
+
+      // Vẽ lại các tài xế quanh vị trí ban đầu
+      renderDriverMarkers();
     }
 
     const SUPABASE_URL = 'https://yvucyqkglbgxvozrznir.supabase.co';
@@ -262,10 +278,11 @@
     function trackContact() {
       if (!selectedDriver) return;
 
-      if (userLatLng) {
-        const distKm = calculateDistance(userLatLng.lat, userLatLng.lng, selectedDriver.lat, selectedDriver.lng) / 1.28;
+      const centerPoint = markerStart ? markerStart.getLatLng() : userLatLng;
+      if (centerPoint) {
+        const distKm = getHaversineDistance(centerPoint.lat, centerPoint.lng, selectedDriver.lat, selectedDriver.lng);
         if (distKm > 10) {
-          return alert(`⚠️ Tài xế đang ở cách bạn ${distKm.toFixed(1)}km (ngoài vùng phục vụ gần). Hãy chọn tài xế ở gần hơn!`);
+          return alert(`⚠️ Tài xế đang ở cách bạn ${distKm.toFixed(1)}km (ngoài bán kính 10km). Hãy chọn tài xế ở gần hơn!`);
         }
       }
 
@@ -365,11 +382,24 @@
         delete driverMarkers[id];
       });
 
-      const filteredDrivers = rawDriversData.filter(d => activeFilters.has(d.vehicle_type));
+      // Xác định tâm để lọc bán kính 10km (Điểm đón > Vị trí GPS hiện tại của khách)
+      const centerPoint = markerStart ? markerStart.getLatLng() : userLatLng;
+
+      const filteredDrivers = rawDriversData.filter(driver => {
+        // 1. Lọc theo loại xe được chọn
+        if (!activeFilters.has(driver.vehicle_type)) return false;
+        if (!driver.lat || !driver.lng) return false;
+
+        // 2. Lọc chỉ lấy các tài xế nằm trong bán kính 10km quanh điểm đón
+        if (centerPoint) {
+          const distKm = getHaversineDistance(centerPoint.lat, centerPoint.lng, driver.lat, driver.lng);
+          if (distKm > 10) return false;
+        }
+
+        return true;
+      });
 
       filteredDrivers.forEach(driver => {
-        if (!driver.lat || !driver.lng) return;
-
         const icon = icons[driver.vehicle_type] || icons['bike'];
         const typeBadge = typeNames[driver.vehicle_type] || 'Tài xế';
 
@@ -380,8 +410,8 @@
           selectedDriver = driver;
 
           if (userLatLng) {
-            const distKm = calculateDistance(userLatLng.lat, userLatLng.lng, driver.lat, driver.lng) / 1.28;
-            if (distKm <= 0.1) {
+            const distKm = getHaversineDistance(userLatLng.lat, userLatLng.lng, driver.lat, driver.lng);
+            if (distKm <= 0.1) { // Trong khoảng 100m
               localStorage.setItem(`avyo_unlocked_rating_${driver.id}`, 'true');
             }
           }

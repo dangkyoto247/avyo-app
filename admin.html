@@ -102,10 +102,22 @@
       <button onclick="logout()" style="background:#cbd5e1; color:#334155; padding:6px 12px; font-size:12px;">Đăng xuất</button>
     </div>
 
-    <div class="card" style="padding: 12px 16px;">
-      <div style="font-size: 13px; font-weight: bold; color: #475569; margin-bottom: 8px;">🔍 Lọc hiển thị (Chạm để chọn nhiều loại xe cùng lúc):</div>
+    <!-- KHUNG TÌM KIẾM VÀ BỘ LỌC ĐA NĂNG -->
+    <div class="card" style="padding: 14px 16px;">
+      <div style="font-size: 13px; font-weight: bold; color: #475569; margin-bottom: 8px;">🔍 Tìm kiếm & Bộ lọc tài xế:</div>
+      
+      <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px;">
+        <input type="text" id="searchInput" oninput="renderAdminData()" placeholder="🔎 Tìm Tên, SĐT, CCCD, Biển số xe..." style="flex: 2; min-width: 200px;">
+        <select id="statusFilter" onchange="renderAdminData()" style="flex: 1; min-width: 150px;">
+          <option value="all">🌐 Tất cả trạng thái</option>
+          <option value="online">🟢 Đang BẬT GPS</option>
+          <option value="offline">⚪ Tắt GPS</option>
+          <option value="retired">🔴 Đã nghỉ</option>
+        </select>
+      </div>
+
       <div class="filter-bar">
-        <div id="chip-all" class="filter-chip active" onclick="toggleAdminFilter('all', this)">🌐 Tất cả</div>
+        <div id="chip-all" class="filter-chip active" onclick="toggleAdminFilter('all', this)">🌐 Tất cả loại xe</div>
         <div class="filter-chip active" onclick="toggleAdminFilter('bike', this)">🛵 Xe máy</div>
         <div class="filter-chip active" onclick="toggleAdminFilter('car', this)">🚕 Ô tô</div>
         <div class="filter-chip active" onclick="toggleAdminFilter('driver', this)">👤 Lái xe hộ</div>
@@ -259,10 +271,37 @@
 
       let onlineCount = 0;
 
-      const filteredDrivers = rawAdminDriversData.filter(d => activeAdminFilters.has(d.vehicle_type));
+      // Lấy giá trị lọc từ khung Tìm kiếm & Trạng thái
+      const searchQuery = (document.getElementById('searchInput')?.value || '').toLowerCase().trim();
+      const statusFilter = document.getElementById('statusFilter')?.value || 'all';
+
+      // Lọc danh sách tài xế theo cả 3 điều kiện: Loại xe, Trạng thái, và Từ khóa tìm kiếm
+      const filteredDrivers = rawAdminDriversData.filter(d => {
+        // 1. Lọc theo Loại xe
+        if (!activeAdminFilters.has(d.vehicle_type)) return false;
+
+        // 2. Lọc theo Trạng thái
+        if (statusFilter === 'online' && (d.is_active === false || !d.is_online)) return false;
+        if (statusFilter === 'offline' && (d.is_active === false || d.is_online)) return false;
+        if (statusFilter === 'retired' && d.is_active !== false) return false;
+
+        // 3. Lọc theo Từ khóa (Tên, SĐT, CCCD, Biển số/Xe, Địa chỉ)
+        if (searchQuery) {
+          const nameMatch = (d.name || '').toLowerCase().includes(searchQuery);
+          const phoneMatch = (d.phone || '').toLowerCase().includes(searchQuery);
+          const cccdMatch = (d.cccd || '').toLowerCase().includes(searchQuery);
+          const vehicleMatch = (d.vehicle || '').toLowerCase().includes(searchQuery);
+          const addressMatch = (d.address || '').toLowerCase().includes(searchQuery);
+          if (!nameMatch && !phoneMatch && !cccdMatch && !vehicleMatch && !addressMatch) {
+            return false;
+          }
+        }
+
+        return true;
+      });
 
       if (!filteredDrivers || filteredDrivers.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 15px; color: #64748b;">Không có tài xế nào khớp với bộ lọc hiện tại.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 15px; color: #64748b;">Không có tài xế nào khớp với tìm kiếm / bộ lọc hiện tại.</td></tr>';
         document.getElementById('onlineCount').innerText = '0';
         return;
       }
