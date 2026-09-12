@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Avyo - Trang Quản Trị Hệ Thống</title>
  
   <link rel="icon" href="data:;base64,iVBORw0KGgo=">
@@ -23,6 +23,8 @@
       background: #f1f5f9;
       margin: 0;
       padding: 12px;
+      touch-action: manipulation;
+      -webkit-text-size-adjust: 100%;
     }
     .container { max-width: 1050px; margin: auto; }
     .card {
@@ -105,7 +107,6 @@
 </head>
 <body>
 
-  <!-- MODAL ĐĂNG NHẬP ADMIN -->
   <div id="login-modal">
     <div class="login-box">
       <h3 style="margin-top:0; color:#0f172a;">🔒 Đăng Nhập Admin</h3>
@@ -552,6 +553,10 @@
     supabaseClient.channel('admin-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'drivers' }, () => loadAllData())
       .subscribe();
+
+    document.addEventListener('gesturestart', function (e) {
+      e.preventDefault();
+    });
   </script>
 
   <script>

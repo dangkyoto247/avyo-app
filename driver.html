@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Avyo - App Tài Xế</title>
  
   <link rel="icon" href="data:;base64,iVBORw0KGgo=">
@@ -23,6 +23,8 @@
       max-width: 420px;
       margin: auto;
       background: #f0fdf4;
+      touch-action: manipulation;
+      -webkit-text-size-adjust: 100%;
     }
     .card {
       background: white;
@@ -123,7 +125,6 @@
 </head>
 <body>
 
-  <!-- MÀN HÌNH ĐĂNG NHẬP -->
   <div id="loginScreen" class="card" style="display: none; text-align: center;">
     <h2 style="margin-top: 0; color: #16a34a;">🚕 Avyo Tài Xế</h2>
     <p style="color: #64748b; font-size: 14px; margin-bottom: 15px;">Đăng nhập để nhận cuốc xe</p>
@@ -138,7 +139,6 @@
     </a>
   </div>
 
-  <!-- MÀN HÌNH ĐIỀU KHIỂN CỦA TÀI XẾ -->
   <div id="appScreen" style="display: none;">
     <div class="card">
       <div class="profile-header">
@@ -164,7 +164,6 @@
         </div>
       </div>
 
-      <!-- BẢNG DỮ LIỆU THỐNG KÊ & THỜI GIAN ONLINE -->
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px;">
         <div style="background: #f8fafc; padding: 8px; border-radius: 10px; border: 1px solid #e2e8f0; text-align: center;">
           <span style="font-size: 11px; color: #64748b; display: block;">👁️ Xem hồ sơ</span>
@@ -589,6 +588,10 @@
         })
         .subscribe();
     }
+
+    document.addEventListener('gesturestart', function (e) {
+      e.preventDefault();
+    });
   </script>
  
   <script>

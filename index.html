@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Avyo - Gọi Xe Tinh Gọn 0Đ</title>
  
   <link rel="icon" href="data:;base64,iVBORw0KGgo=">
@@ -18,7 +18,15 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 12px; max-width: 480px; margin: auto; background: #f8fafc; }
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+      padding: 12px; 
+      max-width: 480px; 
+      margin: auto; 
+      background: #f8fafc; 
+      touch-action: manipulation;
+      -webkit-text-size-adjust: 100%;
+    }
     #map { height: 320px; width: 100%; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-bottom: 12px; }
     .card { background: white; padding: 14px; border-radius: 16px; margin-bottom: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
    
@@ -55,7 +63,6 @@
     .star-btn { cursor: pointer; filter: grayscale(100%); opacity: 0.4; transition: all 0.15s ease; display: inline-block; margin: 0 2px; }
     .star-btn.active { filter: grayscale(0%); opacity: 1; transform: scale(1.2); }
 
-    /* CSS CHO DANH SÁCH 3 TÀI XẾ GẦN NHẤT */
     .top3-item {
       display: flex;
       align-items: center;
@@ -131,7 +138,6 @@
     <button id="resetBtn" class="btn-reset" onclick="resetRoute()">🔄 ĐẶT LẠI ĐIỂM ĐÓN / ĐẾN</button>
   </div>
 
-  <!-- DANH SÁCH 3 TÀI XẾ GẦN ĐIỂM ĐÓN NHẤT -->
   <div id="top3Card" class="card" style="display: none;">
     <h4 style="margin: 0 0 10px 0; color: #334155; font-size: 14px; display: flex; align-items: center; justify-content: space-between;">
       <span>⚡ 3 Tài Xế Gần Nhất</span>
@@ -712,7 +718,6 @@
       alert(`🌟 Cảm ơn bạn đã đánh giá ${stars} sao cho tài xế ${selectedDriver.name}!`);
     }
 
-    // CHỌN TÀI XẾ VÀ HIỂN THỊ THÔNG TIN CHI TIẾT
     async function selectDriver(driver) {
       if (selectedDriver && selectedDriver.id === driver.id) {
         deselectDriver();
@@ -778,7 +783,6 @@
       renderDriverMarkers();
     }
 
-    // RENDER MARKER BẢN ĐỒ VÀ BẢNG 3 TÀI XẾ GẦN NHẤT
     function renderDriverMarkers() {
       Object.keys(driverMarkers).forEach(id => {
         map.removeLayer(driverMarkers[id]);
@@ -807,7 +811,6 @@
         });
       }
 
-      // HẠNG MỤC 1: RENDER DANH SÁCH 3 TÀI XẾ GẦN NHẤT XUỐNG DƯỚI
       const top3Card = document.getElementById('top3Card');
       const top3List = document.getElementById('top3List');
 
@@ -851,7 +854,6 @@
         }
       }
 
-      // HẠNG MỤC 2: RENDER MARKER LÊN BẢN ĐỒ (TỐI ĐA 15 XE)
       filteredDrivers.slice(0, 15).forEach(driver => {
         const icon = icons[driver.vehicle_type] || icons['bike'];
         const typeBadge = typeNames[driver.vehicle_type] || 'Tài xế';
@@ -875,6 +877,10 @@
     loadDrivers();
     updateGuide();
     supabaseClient.channel('realtime-drivers').on('postgres_changes', { event: '*', schema: 'public', table: 'drivers' }, () => loadDrivers()).subscribe();
+
+    document.addEventListener('gesturestart', function (e) {
+      e.preventDefault();
+    });
   </script>
 
   <script>
