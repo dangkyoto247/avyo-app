@@ -290,7 +290,6 @@
       document.getElementById('loginScreen').style.display = 'block';
     }
 
-    // HÀM ĐĂNG NHẬP MỚI (Dùng SQL RPC check_driver_login)
     async function login() {
       const phone = document.getElementById('phoneInput').value.trim();
       const pin = document.getElementById('pinInput').value.trim();
@@ -302,7 +301,6 @@
       const btn = document.querySelector('#loginScreen button');
       btn.innerText = "Đang kiểm tra...";
 
-      // Gọi hàm SQL bảo mật trên Supabase
       const { data: result, error } = await supabaseClient.rpc('check_driver_login', {
         p_phone: phone,
         p_pin: pin
@@ -434,7 +432,6 @@
       }
     }
 
-    // HÀM CẬP NHẬT VỊ TRÍ MỚI (Dùng SQL RPC update_driver_location)
     async function updateLocation(lat, lng) {
       if (!currentDriverId || !isOnline) return;
       await supabaseClient.rpc('update_driver_location', {
@@ -455,6 +452,14 @@
        
         isOnline = true;
         await requestWakeLock();
+
+        // Cập nhật ngay is_online: true lên cơ sở dữ liệu và reset bộ đếm tọa độ
+        lastSentLat = 0;
+        lastSentLng = 0;
+        await supabaseClient.from('drivers').update({
+          is_online: true,
+          updated_at: new Date().toISOString()
+        }).eq('id', currentDriverId);
 
         btn.innerText = 'TẮT NHẬN KHÁCH (NGHỈ NGƠI)';
         btn.style.background = '#ef4444';
