@@ -43,54 +43,6 @@
       color: #166534;
     }
 
-    /* KHUNG TÌM KIẾM ĐỊA CHỈ TỰ ĐỘNG GỢI Ý */
-    .search-group {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      margin-bottom: 10px;
-    }
-    .search-input-wrapper {
-      position: relative;
-    }
-    .search-input-wrapper input {
-      width: 100%;
-      padding: 10px 12px;
-      border: 1px solid #cbd5e1;
-      border-radius: 10px;
-      font-size: 13px;
-      box-sizing: border-box;
-      outline: none;
-      transition: border-color 0.2s;
-    }
-    .search-input-wrapper input:focus {
-      border-color: #00b14f;
-    }
-    .search-dropdown {
-      position: absolute;
-      top: 100%;
-      left: 0;
-      right: 0;
-      background: white;
-      border: 1px solid #cbd5e1;
-      border-radius: 10px;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.12);
-      z-index: 1000;
-      max-height: 200px;
-      overflow-y: auto;
-      display: none;
-      margin-top: 4px;
-    }
-    .search-item {
-      padding: 10px 12px;
-      border-bottom: 1px solid #f1f5f9;
-      cursor: pointer;
-      font-size: 13px;
-      text-align: left;
-    }
-    .search-item:last-child { border-bottom: none; }
-    .search-item:hover { background: #f8fafc; }
-
     /* KHUNG HIỂN THỊ GIÁ NỔI BẬT (TỐI ƯU MÀN HÌNH NHỎ) */
     .price-container {
       background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
@@ -164,18 +116,6 @@
   <div id="map"></div>
  
   <div class="card">
-    <!-- KHUNG GÕ TÌM ĐỊA CHỈ -->
-    <div class="search-group">
-      <div class="search-input-wrapper">
-        <input type="text" id="pickupSearch" placeholder="🔍 Tìm địa chỉ Điểm Đón (Gõ để tìm...)" oninput="searchAddress('pickup', this.value)" autocomplete="off">
-        <div id="pickupResults" class="search-dropdown"></div>
-      </div>
-      <div class="search-input-wrapper">
-        <input type="text" id="destSearch" placeholder="🔍 Tìm địa chỉ Điểm Đến (Gõ để tìm...)" oninput="searchAddress('dest', this.value)" autocomplete="off">
-        <div id="destResults" class="search-dropdown"></div>
-      </div>
-    </div>
-
     <button id="gpsBtn" class="btn-gps" onclick="useCurrentLocationAsPickup()">📍 Đặt điểm đón tại vị trí của tôi</button>
     
     <div style="margin: 6px 0 4px 0; font-size: 14px; color: #334155;">
@@ -215,85 +155,6 @@
     let selectedDriver = null;
     let rawDriversData = [];
 
-    // XỬ LÝ TÌM KIẾM ĐỊA CHỈ ƯU TIÊN KHU VỰC BẢN ĐỒ HIỆN TẠI (VIEWBOX FIX)
-    let searchTimeout = null;
-    function searchAddress(type, query) {
-      clearTimeout(searchTimeout);
-      const resultsDiv = document.getElementById(type + 'Results');
-      
-      if (!query || query.trim().length < 2) {
-        resultsDiv.style.display = 'none';
-        resultsDiv.innerHTML = '';
-        return;
-      }
-
-      searchTimeout = setTimeout(async () => {
-        try {
-          // Lấy tọa độ khu vực bản đồ đang hiển thị để ưu tiên tìm địa điểm xung quanh trước
-          const bounds = map.getBounds();
-          const viewbox = `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`;
-          
-          const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=vn&viewbox=${viewbox}&bounded=0&limit=5`);
-          const data = await res.json();
-          
-          if (!data || data.length === 0) {
-            resultsDiv.innerHTML = '<div class="search-item" style="color:#94a3b8;">Không tìm thấy địa chỉ phù hợp</div>';
-          } else {
-            resultsDiv.innerHTML = data.map(item => {
-              const nameParts = item.display_name.split(',');
-              const mainName = nameParts[0].trim();
-              const subAddress = nameParts.slice(1, 4).join(',').trim();
-              const safeName = item.display_name.replace(/'/g, "\\'");
-
-              return `
-                <div class="search-item" onclick="selectAddress('${type}', ${item.lat}, ${item.lon}, '${safeName}')">
-                  📍 <b>${mainName}</b>
-                  <small style="display:block; color:#64748b; font-size:11px; margin-top:2px;">${subAddress}</small>
-                </div>
-              `;
-            }).join('');
-          }
-          resultsDiv.style.display = 'block';
-        } catch (err) {
-          console.error(err);
-        }
-      }, 400);
-    }
-
-    function selectAddress(type, lat, lon, fullAddress) {
-      const latlng = L.latLng(parseFloat(lat), parseFloat(lon));
-      const shortName = fullAddress.split(',')[0];
-      
-      document.getElementById(type + 'Results').style.display = 'none';
-      document.getElementById(type + 'Search').value = shortName;
-
-      if (type === 'pickup') {
-        setPickupLocation(latlng, false);
-        map.setView(latlng, 15);
-      } else {
-        if (!markerStart) {
-          setPickupLocation(latlng, false);
-        } else {
-          if (markerEnd) map.removeLayer(markerEnd);
-          markerEnd = L.marker(latlng, { icon: destinationIcon, draggable: true }).addTo(map)
-            .bindPopup("<b style='color:#2563eb;'>🚩 Điểm đến</b><br><small><i>" + shortName + "</i></small>")
-            .openPopup();
-            
-          markerEnd.on('dragend', calculateRoute);
-          calculateRoute();
-        }
-        map.setView(latlng, 15);
-      }
-      updateGuide();
-    }
-
-    // ẨN DROPDOWN KHI CLICK RA NGOÀI
-    document.addEventListener('click', function(e) {
-      if (!e.target.closest('.search-input-wrapper')) {
-        document.querySelectorAll('.search-dropdown').forEach(el => el.style.display = 'none');
-      }
-    });
-
     // CẬP NHẬT HƯỚNG DẪN THÔNG MINH
     function updateGuide() {
       const guideBox = document.getElementById('guideBox');
@@ -307,17 +168,17 @@
       guideBox.classList.remove('success');
 
       if (!hasPickup && !hasDest && !hasDriver) {
-        guideText.innerHTML = "📍 <b>Bước 1:</b> Gõ tìm kiếm hoặc chạm bản đồ chọn <b>Điểm đón</b> (hoặc chọn <b>Tài xế</b>).";
+        guideText.innerHTML = "📍 <b>Bước 1:</b> Chạm bản đồ chọn <b>Điểm đón</b> (hoặc nút xanh), hoặc chọn <b>Tài xế</b>.";
       } else if (hasPickup && !hasDest && !hasDriver) {
-        guideText.innerHTML = "🚩 <b>Bước 2:</b> Gõ tìm kiếm hoặc chạm bản đồ chọn <b>Điểm đến</b> (hoặc chọn <b>Tài xế</b>).";
+        guideText.innerHTML = "🚩 <b>Bước 2:</b> Chạm tiếp bản đồ chọn <b>Điểm đến</b> hoặc chọn <b>Tài xế</b> gần bạn.";
       } else if (hasPickup && hasDest && !hasDriver) {
         guideText.innerHTML = "🚕 <b>Bước 3:</b> Hãy chạm vào <b>Biểu tượng Tài xế</b> trên bản đồ để tính giá & liên hệ.";
       } else if (hasDriver && !hasPickup && !hasDest) {
-        guideText.innerHTML = `📍 Đã chọn <b>${selectedDriver.name}</b>! Hãy chọn <b>Điểm đón</b> (Chạm lại tài xế để bỏ chọn).`;
+        guideText.innerHTML = `📍 Đã chọn <b>${selectedDriver.name}</b>! Chạm bản đồ để <b>Chọn điểm đón</b> (Chạm lại tài xế để bỏ chọn).`;
       } else if (hasDriver && hasPickup && !hasDest) {
-        guideText.innerHTML = `🚩 Đã có điểm đón! Hãy chọn <b>Điểm đến</b> để tính tổng tiền cước.`;
+        guideText.innerHTML = `🚩 Đã có điểm đón! Chạm tiếp bản đồ để <b>Chọn điểm đến</b> tính tổng tiền cước.`;
       } else if (hasDriver && !hasPickup && hasDest) {
-        guideText.innerHTML = `📍 Đã có điểm đến! Hãy chọn <b>Điểm đón</b>.`;
+        guideText.innerHTML = `📍 Đã có điểm đến! Chạm bản đồ để <b>Chọn điểm đón</b>.`;
       } else if (hasPickup && hasDest && hasDriver) {
         guideBox.classList.add('success');
         guideText.innerHTML = `🎉 <b>Hoàn tất!</b> Bấm <b>"💬 Nhắn Zalo"</b> hoặc <b>"📞 Gọi Điện"</b> để đặt xe ngay.`;
@@ -493,10 +354,12 @@
         rateText = 'Đơn giá: 6.000 VNĐ/km (Xe máy)';
       }
 
+      // 1. CHƯA CHỌN ĐỦ 2 ĐIỂM ĐÓN/ĐẾN -> CHỈ HIỆN ĐƠN GIÁ CƯỚC
       if (!markerStart || !markerEnd || currentDistance == 0) {
         priceEl.innerText = type === 'truck' ? 'Thỏa thuận' : '0 VNĐ';
         rateLabelEl.innerText = rateText;
       } else {
+        // 2. ĐÃ CÓ QUÃNG ĐƯỜNG -> ÁP DỤNG QUY TẮC CƯỚC TỐI THIỂU 3KM
         if (type === 'truck') {
           priceEl.innerText = 'Thỏa thuận';
           rateLabelEl.innerText = '(Xe chở hàng)';
@@ -517,7 +380,7 @@
       }
     }
 
-    // ĐẶT LẠI ĐIỂM ĐÓN / ĐẾN
+    // ĐẶT LẠI ĐIỂM ĐÓN / ĐẾN (VẪN GIỮ NGUYÊN TÀI XẾ ĐÃ CHỌN)
     function resetRoute() {
       if (markerStart) map.removeLayer(markerStart);
       if (markerEnd) map.removeLayer(markerEnd);
@@ -530,14 +393,12 @@
       document.getElementById('distance').innerText = '0';
       document.getElementById('resetBtn').style.display = 'none';
 
-      document.getElementById('pickupSearch').value = '';
-      document.getElementById('destSearch').value = '';
-
       updatePrice();
       renderDriverMarkers();
       updateGuide();
     }
 
+    // HÀM BỎ CHỌN TÀI XẾ
     function deselectDriver() {
       selectedDriver = null;
       document.getElementById('driver-info').innerHTML = '<i>Chạm vào icon tài xế trên bản đồ...</i>';
