@@ -230,7 +230,6 @@
       return `https://images.weserv.nl/?url=${encodeURIComponent(url)}&w=200&h=200&fit=cover&q=80&output=jpg`;
     }
 
-    // Các hàm tính thời gian hiển thị cho Admin
     function getLocalDateStr() {
       const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     }
@@ -251,10 +250,18 @@
     };
     const typeLabels = { 'bike': '🛵 Xe máy', 'car': '🚕 Ô tô', 'driver': '👤 Lái xe hộ', 'truck': '🚚 Chở hàng' };
 
+    // --- BẢN ĐỒ CARTODB THAY THẾ CHO OSM GỐC ---
     function initMap() {
       if (map) return;
       map = L.map('map').setView([18.7034, 105.6832], 12);
-      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(map);
+      
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+        maxZoom: 19,
+        subdomains: 'abcd',
+        attribution: '&copy; OpenStreetMap &copy; CARTO'
+      }).addTo(map);
+
+      setTimeout(() => { if (map) map.invalidateSize(); }, 300);
     }
 
     function toggleAdminFilter(type, element) {
@@ -288,7 +295,7 @@
         .from('drivers')
         .select('*')
         .order('created_at', { ascending: false });
-     
+      
       rawAdminDriversData = drivers || [];
       renderAdminData();
     }
@@ -296,7 +303,7 @@
     function renderAdminData() {
       const tbody = document.getElementById('driverTableBody');
       tbody.innerHTML = '';
-     
+      
       Object.keys(adminMarkers).forEach(id => map.removeLayer(adminMarkers[id]));
       adminMarkers = {};
 
@@ -361,7 +368,6 @@
           statusBadge = '<span class="badge-offline">⚪ Tắt GPS</span>';
         }
 
-        // Xử lý đếm giờ Local hiển thị trên Admin
         let displayMinsToday = d.online_minutes_today || 0;
         let displayMinsMonth = d.online_minutes_month || 0;
         if (d.last_online_date !== getLocalDateStr()) displayMinsToday = 0;
@@ -455,7 +461,7 @@
         vehicle: vehicle,
         is_active: true
       };
-     
+      
       let response;
       if (id) {
         response = await supabaseClient.from('drivers').update(payload).eq('id', id);

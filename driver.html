@@ -216,7 +216,7 @@
     
     let driverData = null; 
     let timeInterval = null;
-    let wakeLock = null; // Biến kiểm soát giữ sáng màn hình
+    let wakeLock = null;
 
     let driverMap = null;
     let driverMarker = null;
@@ -232,14 +232,13 @@
       return `https://images.weserv.nl/?url=${encodeURIComponent(url)}&w=200&h=200&fit=cover&q=80&output=jpg`;
     }
 
-    // --- HÀM GIỮ MÀN HÌNH LUÔN SÁNG (SCREEN WAKE LOCK API) ---
     async function requestWakeLock() {
       try {
         if ('wakeLock' in navigator) {
           wakeLock = await navigator.wakeLock.request('screen');
         }
       } catch (err) {
-        console.log('Chức năng giữ sáng màn hình:', err.message);
+        console.log('Wake Lock:', err.message);
       }
     }
 
@@ -251,14 +250,12 @@
       }
     }
 
-    // Khôi phục lại khóa màn hình sáng nếu tài xế bấm sang app khác rồi mở lại Avyo
     document.addEventListener('visibilitychange', async () => {
       if (wakeLock !== null && document.visibilityState === 'visible' && isOnline) {
         await requestWakeLock();
       }
     });
 
-    // Các hàm tính Thời gian & Formatter
     function getLocalDateStr() {
       const d = new Date();
       return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -358,13 +355,18 @@
       window.location.reload();
     }
 
+    // --- BẢN ĐỒ CARTODB VOYAGER THAY THẾ CHO OSM ---
     function initDriverMap() {
       if (driverMap) return;
       driverMap = L.map('driverMap').setView([18.7034, 105.6832], 14);
-      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 18,
-        attribution: '© OpenStreetMap'
+      
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+        maxZoom: 19,
+        subdomains: 'abcd',
+        attribution: '&copy; OpenStreetMap &copy; CARTO'
       }).addTo(driverMap);
+
+      setTimeout(() => { if (driverMap) driverMap.invalidateSize(); }, 300);
     }
 
     async function loadDriverProfile() {
@@ -432,7 +434,7 @@
     function logout(force = false) {
       if (force || confirm("Bạn có chắc chắn muốn đăng xuất không?")) {
         if (isOnline) toggleOnline();
-        releaseWakeLock(); // Hủy giữ màn hình sáng
+        releaseWakeLock();
         localStorage.removeItem('avyo_driver_id');
         localStorage.removeItem('avyo_driver_name');
         localStorage.removeItem('avyo_session_token');
@@ -460,7 +462,7 @@
         if (!navigator.geolocation) return alert('Thiết bị không hỗ trợ GPS');
        
         isOnline = true;
-        await requestWakeLock(); // BẬT GIỮ MÀN HÌNH LUÔN SÁNG
+        await requestWakeLock();
 
         btn.innerText = 'TẮT NHẬN KHÁCH (NGHỈ NGƠI)';
         btn.style.background = '#ef4444';
@@ -469,7 +471,6 @@
 
         setTimeout(() => { if (driverMap) driverMap.invalidateSize(); }, 200);
 
-        // BẮT ĐẦU VÒNG LẶP ĐẾM GIỜ (1 Phút / Lần)
         const todayStr = getLocalDateStr();
         const monthStr = getLocalMonthStr();
 
@@ -496,7 +497,6 @@
           }).eq('id', currentDriverId);
         }, 60000);
 
-        // Khởi động GPS Tracking
         let lastUpdateTime = 0;
         watchId = navigator.geolocation.watchPosition(async (pos) => {
           if (!isOnline) return;
@@ -516,7 +516,7 @@
 
       } else {
         isOnline = false;
-        releaseWakeLock(); // TẮT GIỮ MÀN HÌNH LUÔN SÁNG (Màn hình trở lại tắt theo cài đặt máy)
+        releaseWakeLock();
 
         if (watchId) {
           navigator.geolocation.clearWatch(watchId);
