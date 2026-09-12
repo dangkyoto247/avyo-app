@@ -6,7 +6,7 @@
   <title>Avyo - Gọi Xe Tinh Gọn 0Đ</title>
  
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#16a34a">
+  <meta name="theme-color" content="#00b14f">
   <link rel="apple-touch-icon" href="logo.png">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -20,52 +20,57 @@
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 12px; max-width: 480px; margin: auto; background: #f8fafc; }
     #map { height: 320px; width: 100%; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-bottom: 12px; }
     .card { background: white; padding: 14px; border-radius: 16px; margin-bottom: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
-    .price { font-size: 22px; font-weight: bold; color: #16a34a; }
+    
+    /* KHUNG HIỂN THỊ GIÁ NỔI BẬT */
+    .price-container {
+      background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+      border: 1.5px solid #86efac;
+      border-radius: 12px;
+      padding: 10px 14px;
+      margin-top: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: inset 0 1px 2px rgba(255,255,255,0.6), 0 2px 6px rgba(22,163,74,0.1);
+    }
+    .price { font-size: 26px; font-weight: 800; color: #15803d; letter-spacing: -0.5px; }
+    
     .btn-zalo { background: #0068ff; color: white; padding: 12px; border-radius: 10px; text-decoration: none; display: block; text-align: center; font-weight: bold; margin-top: 8px; border: none; width: 100%; font-size: 16px; cursor: pointer; }
     .btn-phone { background: #22c55e; color: white; padding: 12px; border-radius: 10px; text-decoration: none; display: block; text-align: center; font-weight: bold; margin-top: 8px; }
     .btn-reset { background: #f97316; color: white; padding: 10px; border-radius: 10px; border: none; font-weight: bold; width: 100%; margin-top: 8px; cursor: pointer; display: none; font-size: 14px; }
-    .btn-gps { background: #0f172a; color: white; padding: 9px; border-radius: 10px; border: none; font-weight: bold; width: 100%; cursor: pointer; font-size: 13px; margin-bottom: 8px; }
+    
+    /* NÚT GPS KIỂU GRAB GREEN */
+    .btn-gps { 
+      background: #00b14f; 
+      color: white; 
+      padding: 12px; 
+      border-radius: 12px; 
+      border: none; 
+      font-weight: bold; 
+      width: 100%; 
+      cursor: pointer; 
+      font-size: 14px; 
+      margin-bottom: 8px;
+      box-shadow: 0 3px 10px rgba(0, 177, 79, 0.3);
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .btn-gps:active { background: #009643; transform: scale(0.99); }
+    
     .vehicle-icon { font-size: 30px; text-align: center; line-height: 1; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3)); }
    
     .filter-bar { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 6px; }
     .filter-chip { background: #e2e8f0; color: #475569; padding: 6px 12px; border-radius: 20px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; user-select: none; transition: all 0.2s; border: 1px solid #cbd5e1; }
-    .filter-chip.active { background: #16a34a; color: white; border-color: #16a34a; box-shadow: 0 2px 6px rgba(22,163,74,0.3); }
+    .filter-chip.active { background: #00b14f; color: white; border-color: #00b14f; box-shadow: 0 2px 6px rgba(0,177,79,0.3); }
 
     .driver-profile-box { display: flex; align-items: center; gap: 12px; margin-top: 4px; }
-    .driver-avatar-img { width: 54px; height: 54px; border-radius: 50%; object-fit: cover; border: 2px solid #16a34a; flex-shrink: 0; background: #e2e8f0; }
+    .driver-avatar-img { width: 54px; height: 54px; border-radius: 50%; object-fit: cover; border: 2px solid #00b14f; flex-shrink: 0; background: #e2e8f0; }
     
     .star-btn { cursor: pointer; filter: grayscale(100%); opacity: 0.4; transition: all 0.15s ease; display: inline-block; margin: 0 2px; }
     .star-btn.active { filter: grayscale(0%); opacity: 1; transform: scale(1.2); }
-
-    /* CSS CHO NÚT VÀ POPUP TIÊU CHUẨN TÀI XẾ */
-    .driver-standards-btn { background: #f1f5f9; border: 1px solid #cbd5e1; color: #0f172a; padding: 4px 8px; font-size: 12px; border-radius: 8px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; font-weight: 600; transition: all 0.2s;}
-    .driver-standards-btn:active { background: #e2e8f0; }
-    .modal-backdrop { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0, 0, 0, 0.6); z-index: 9999; align-items: center; justify-content: center; backdrop-filter: blur(2px); }
-    .modal-card { background: #ffffff; width: 90%; max-width: 400px; padding: 20px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); position: relative; }
-    .close-icon { position: absolute; top: 12px; right: 16px; font-size: 24px; cursor: pointer; color: #64748b; line-height: 1; }
-    .modal-title { margin: 0 0 12px 0; font-size: 18px; color: #0f172a; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; }
-    
-    .standards-list { padding-left: 20px; margin: 0 0 16px 0; color: #475569; font-size: 14px; line-height: 1.6; }
-    .standards-list li { margin-bottom: 8px; }
-    
-    /* CSS làm nổi bật mục Kiểm tra định kỳ */
-    .standards-list li.highlight-item {
-      background-color: #f0fdf4;
-      border-left: 4px solid #16a34a;
-      padding: 10px 12px;
-      margin-top: 14px;
-      margin-left: -20px; /* Tràn ra bằng với lề trái */
-      list-style-type: none; /* Ẩn dấu chấm */
-      border-radius: 0 8px 8px 0;
-      color: #15803d;
-    }
-    .standards-list li.highlight-item strong {
-      color: #166534;
-      display: block;
-      margin-bottom: 2px;
-    }
-
-    .btn-confirm { width: 100%; background: #16a34a; color: white; border: none; padding: 12px; border-radius: 10px; cursor: pointer; font-weight: bold; font-size: 15px; }
   </style>
 </head>
 <body>
@@ -83,54 +88,32 @@
  
   <div class="card">
     <button id="gpsBtn" class="btn-gps" onclick="useCurrentLocationAsPickup()">📍 Đặt điểm đón tại vị trí của tôi</button>
-    <p style="margin: 4px 0;"><b>Quãng đường:</b> <span id="distance">0</span> km</p>
-    <p style="margin: 4px 0;"><b>Ước tính cước:</b> <span id="price" class="price">0</span> <small id="rate-label" style="font-size: 12px; color: #64748b; font-weight: normal;"></small></p>
+    
+    <div style="margin: 6px 0 4px 0; font-size: 14px; color: #334155;">
+      <b>Quãng đường:</b> <span id="distance" style="font-weight: bold; color: #0f172a;">0</span> km
+    </div>
+
+    <!-- KHUNG CƯỚC PHÍ NỔI BẬT -->
+    <div class="price-container">
+      <div>
+        <div style="font-size: 11px; color: #166534; font-weight: bold; text-transform: uppercase;">Ước Tính Cước Chuyến</div>
+        <small id="rate-label" style="font-size: 12px; color: #15803d; font-weight: 500;"></small>
+      </div>
+      <div id="price" class="price">0 VNĐ</div>
+    </div>
+
     <button id="resetBtn" class="btn-reset" onclick="resetRoute()">🔄 ĐẶT LẠI ĐIỂM ĐÓN / ĐẾN</button>
   </div>
 
   <div class="card">
-    <!-- TIÊU ĐỀ KÈM NÚT MỞ POPUP TIÊU CHUẨN TÀI XẾ -->
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-      <h4 style="margin: 0; color: #334155;">Tài Xế Được Chọn</h4>
-      <button class="driver-standards-btn" onclick="openModal()">🛡️ Tiêu chuẩn</button>
-    </div>
-
+    <h4 style="margin: 0 0 8px 0; color: #334155;">Tài Xế Được Chọn</h4>
     <div id="driver-info" style="color: #64748b;"><i>Chạm vào icon tài xế trên bản đồ...</i></div>
    
     <button id="zaloBtn" class="btn-zalo" style="display:none;" onclick="openZalo()">💬 Nhắn Zalo (Tự động Copy)</button>
     <a id="phoneBtn" href="#" class="btn-phone" style="display:none;" onclick="trackContact()">📞 Gọi Điện Trực Tiếp</a>
   </div>
 
-  <!-- HỘP THÔNG TIN (MODAL POPUP) TIÊU CHUẨN TÀI XẾ -->
-  <div id="driverModal" class="modal-backdrop" onclick="closeModal(event)">
-    <div class="modal-card">
-      <span class="close-icon" onclick="closeModal(true)">&times;</span>
-      <h3 class="modal-title">Tiêu Chuẩn Tài Xế</h3>
-      <ul class="standards-list">
-        <li><strong>Lý lịch minh bạch:</strong> Không có tiền án, tiền sự.</li>
-        <li><strong>Tuyệt đối:</strong> Không sử dụng ma túy và các chất kích thích.</li>
-        <li><strong>Sức khỏe đảm bảo:</strong> Không mắc các bệnh truyền nhiễm nguy hiểm, bệnh xã hội (AIDS...).</li>
-        <!-- Mục nhấn mạnh -->
-        <li class="highlight-item">
-          <strong>✅ Kiểm tra định kỳ:</strong> 
-          Công ty thực hiện định kỳ lấy máu xét nghiệm và Cấp phiếu Lý Lịch Tư Pháp 6 tháng/lần.
-        </li>
-      </ul>
-      <button class="btn-confirm" onclick="closeModal(true)">Đã hiểu</button>
-    </div>
-  </div>
-
   <script>
-    // SCRIPTS CHO POPUP TIÊU CHUẨN TÀI XẾ
-    function openModal() {
-      document.getElementById('driverModal').style.display = 'flex';
-    }
-    function closeModal(force) {
-      if (force || event.target.id === 'driverModal') {
-        document.getElementById('driverModal').style.display = 'none';
-      }
-    }
-
     const map = L.map('map').setView([18.7034, 105.6832], 13);
    
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -199,16 +182,15 @@
       markerStart = L.marker(latlng, { icon: pickupIcon, draggable: true }).addTo(map)
         .bindPopup(isAuto ? "<b style='color:#dc2626;'>📍 Điểm đón của bạn</b><br><small><i>(Nhấn giữ & kéo để đổi vị trí khác)</i></small>" : "<b style='color:#dc2626;'>📍 Điểm đón</b><br><small><i>(Nhấn giữ & kéo để đổi vị trí khác)</i></small>")
         .openPopup();
-       
+        
       markerStart.on('dragend', () => {
         calculateRoute();
-        renderDriverMarkers(); // Cập nhật lại danh sách tài xế trong 10km khi kéo điểm đón
+        renderDriverMarkers();
       });
-       
+        
       document.getElementById('resetBtn').style.display = 'block';
       if (markerEnd) calculateRoute();
 
-      // Cập nhật lại bản đồ tài xế theo điểm đón mới
       renderDriverMarkers();
     }
 
@@ -228,9 +210,9 @@
         markerEnd = L.marker(e.latlng, { icon: destinationIcon, draggable: true }).addTo(map)
           .bindPopup("<b style='color:#2563eb;'>🚩 Điểm đến</b><br><small><i>(Nhấn giữ & kéo để đổi vị trí khác)</i></small>")
           .openPopup();
-         
+          
         markerEnd.on('dragend', calculateRoute);
-       
+        
         calculateRoute();
       }
     });
@@ -249,7 +231,7 @@
 
         if (data.routes && data.routes.length > 0) {
           const coordinates = data.routes[0].geometry.coordinates.map(coord => [coord[1], coord[0]]);
-          routeLine = L.polyline(coordinates, { color: '#16a34a', weight: 5, opacity: 0.85 }).addTo(map);
+          routeLine = L.polyline(coordinates, { color: '#00b14f', weight: 5, opacity: 0.85 }).addTo(map);
           map.fitBounds(routeLine.getBounds(), { padding: [40, 40] });
 
           currentDistance = (data.routes[0].distance / 1000).toFixed(1);
@@ -265,15 +247,14 @@
     }
 
     function drawFallbackRoute(start, end) {
-      routeLine = L.polyline([start, end], { color: '#16a34a', weight: 4, dashArray: '8, 8' }).addTo(map);
+      routeLine = L.polyline([start, end], { color: '#00b14f', weight: 4, dashArray: '8, 8' }).addTo(map);
       map.fitBounds(routeLine.getBounds(), { padding: [40, 40] });
       const km = calculateDistance(start.lat, start.lng, end.lat, end.lng);
       currentDistance = km.toFixed(1);
     }
 
-    // Tính khoảng cách đường chim bay (Haversine Formula) để lọc bán kính 10km chuẩn xác
     function getHaversineDistance(lat1, lon1, lat2, lon2) {
-      const R = 6371; // Bán kính trái đất (km)
+      const R = 6371;
       const dLat = (lat2 - lat1) * Math.PI / 180;
       const dLon = (lon2 - lon1) * Math.PI / 180;
       const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
@@ -316,11 +297,10 @@
       currentDistance = 0;
       currentPrice = 0;
       document.getElementById('distance').innerText = '0';
-      document.getElementById('price').innerText = '0';
+      document.getElementById('price').innerText = '0 VNĐ';
       document.getElementById('rate-label').innerText = '';
       document.getElementById('resetBtn').style.display = 'none';
 
-      // Vẽ lại các tài xế quanh vị trí ban đầu
       renderDriverMarkers();
     }
 
@@ -333,7 +313,7 @@
     const icons = {
       'bike': L.divIcon({ html: '<div class="vehicle-icon">🛵</div>', className: 'custom-icon', iconSize: [30, 30], iconAnchor: [15, 15] }),
       'car': L.divIcon({ html: '<div class="vehicle-icon">🚕</div>', className: 'custom-icon', iconSize: [30, 30], iconAnchor: [15, 15] }),
-      'driver': L.divIcon({ html: '<div class="vehicle-icon"><svg viewBox="0 0 24 24" fill="#16a34a" width="30px" height="30px"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg></div>', className: 'custom-icon', iconSize: [30, 30], iconAnchor: [15, 15] }),
+      'driver': L.divIcon({ html: '<div class="vehicle-icon"><svg viewBox="0 0 24 24" fill="#00b14f" width="30px" height="30px"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg></div>', className: 'custom-icon', iconSize: [30, 30], iconAnchor: [15, 15] }),
       'truck': L.divIcon({ html: '<div class="vehicle-icon">🚚</div>', className: 'custom-icon', iconSize: [30, 30], iconAnchor: [15, 15] })
     };
 
@@ -383,7 +363,7 @@
         .select('*')
         .eq('is_online', true)
         .neq('is_active', false);
-       
+        
       rawDriversData = data || [];
       renderDriverMarkers();
     }
@@ -435,7 +415,7 @@
       selectedDriver.rating_sum = (selectedDriver.rating_sum || 25) + stars;
       selectedDriver.rating_count = (selectedDriver.rating_count || 5) + 1;
       const rating = calcRating(selectedDriver);
-     
+      
       document.getElementById('rating-display').innerText = `${rating.score} / 5.0 (${rating.count} lượt)`;
       alert(`🌟 Cảm ơn bạn đã đánh giá ${stars} sao cho tài xế ${selectedDriver.name}!`);
     }
@@ -446,15 +426,12 @@
         delete driverMarkers[id];
       });
 
-      // Xác định tâm để lọc bán kính 10km (Điểm đón > Vị trí GPS hiện tại của khách)
       const centerPoint = markerStart ? markerStart.getLatLng() : userLatLng;
 
       const filteredDrivers = rawDriversData.filter(driver => {
-        // 1. Lọc theo loại xe được chọn
         if (!activeFilters.has(driver.vehicle_type)) return false;
         if (!driver.lat || !driver.lng) return false;
 
-        // 2. Lọc chỉ lấy các tài xế nằm trong bán kính 10km quanh điểm đón
         if (centerPoint) {
           const distKm = getHaversineDistance(centerPoint.lat, centerPoint.lng, driver.lat, driver.lng);
           if (distKm > 10) return false;
@@ -475,7 +452,7 @@
 
           if (userLatLng) {
             const distKm = getHaversineDistance(userLatLng.lat, userLatLng.lng, driver.lat, driver.lng);
-            if (distKm <= 0.1) { // Trong khoảng 100m
+            if (distKm <= 0.1) {
               localStorage.setItem(`avyo_unlocked_rating_${driver.id}`, 'true');
             }
           }
@@ -499,13 +476,13 @@
               <img src="${avatarUrl}" class="driver-avatar-img" alt="${driver.name}" onerror="this.src='https://cdn-icons-png.flaticon.com/512/149/149071.png'">
               <div>
                 <div style="font-size: 15px; font-weight: bold; color: #0f172a;">${driver.name}</div>
-                <div style="font-size: 13px; color: #16a34a; font-weight: 600;">${typeBadge} • ${driver.vehicle || 'Xe chuẩn'}</div>
+                <div style="font-size: 13px; color: #00b14f; font-weight: 600;">${typeBadge} • ${driver.vehicle || 'Xe chuẩn'}</div>
                 <div style="font-size: 12px; color: #eab308; font-weight: bold; margin-top: 2px;">
                   ⭐ <span id="rating-display">${rating.score} / 5.0 (${rating.count} lượt)</span>
                 </div>
               </div>
             </div>
-           
+            
             <div style="margin-top: 8px; padding-top: 6px; border-top: 1px dashed #e2e8f0; text-align: center;">
               <span style="font-size: 11px; color: #64748b; display: block; margin-bottom: 2px;">Chạm chọn số sao để đánh giá dịch vụ:</span>
               <div style="font-size: 22px; user-select: none;" onmouseleave="highlightStars(0)">
