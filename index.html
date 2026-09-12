@@ -54,7 +54,7 @@
   <div class="card">
     <button id="gpsBtn" class="btn-gps" onclick="useCurrentLocationAsPickup()">📍 Đặt điểm đón tại vị trí của tôi</button>
     <p style="margin: 4px 0;"><b>Quãng đường:</b> <span id="distance">0</span> km</p>
-    <p style="margin: 4px 0;"><b>Ước tính cước:</b> <span id="price" class="price">0</span> <small id="rate-label" style="font-size: 12px; color: #64748b; font-weight: normal;"></small></p>
+    <p style="margin: 4px 0;"><b>Ưóc tính cước:</b> <span id="price" class="price">0</span> <small id="rate-label" style="font-size: 12px; color: #64748b; font-weight: normal;"></small></p>
     <button id="resetBtn" class="btn-reset" onclick="resetRoute()">🔄 ĐẶT LẠI ĐIỂM ĐÓN / ĐẾN</button>
   </div>
 
@@ -135,9 +135,9 @@
       markerStart = L.marker(latlng, { icon: pickupIcon, draggable: true }).addTo(map)
         .bindPopup(isAuto ? "<b style='color:#dc2626;'>📍 Điểm đón của bạn</b><br><small><i>(Nhấn giữ & kéo để đổi vị trí khác)</i></small>" : "<b style='color:#dc2626;'>📍 Điểm đón</b><br><small><i>(Nhấn giữ & kéo để đổi vị trí khác)</i></small>")
         .openPopup();
-       
+        
       markerStart.on('dragend', calculateRoute);
-       
+        
       document.getElementById('resetBtn').style.display = 'block';
       if (markerEnd) calculateRoute();
     }
@@ -158,9 +158,9 @@
         markerEnd = L.marker(e.latlng, { icon: destinationIcon, draggable: true }).addTo(map)
           .bindPopup("<b style='color:#2563eb;'>🚩 Điểm đến</b><br><small><i>(Nhấn giữ & kéo để đổi vị trí khác)</i></small>")
           .openPopup();
-         
+          
         markerEnd.on('dragend', calculateRoute);
-       
+        
         calculateRoute();
       }
     });
@@ -259,7 +259,6 @@
 
     const typeNames = { 'bike': '🛵 Xe máy', 'car': '🚕 Ô tô', 'driver': '👤 Lái xe hộ', 'truck': '🚚 Xe chở hàng' };
 
-    // MỞ KHÓA VÉ ĐÁNH GIÁ KHI BẤM GỌI / ZALO (ĐIỀU KIỆN: KHẢ NĂNG PHỤC VỤ KHU VỰC < 10KM)
     function trackContact() {
       if (!selectedDriver) return;
 
@@ -270,7 +269,6 @@
         }
       }
 
-      // Cấp vé đánh giá hợp lệ vào máy
       localStorage.setItem(`avyo_unlocked_rating_${selectedDriver.id}`, 'true');
     }
 
@@ -299,7 +297,12 @@
     }
 
     async function loadDrivers() {
-      const { data } = await supabaseClient.from('drivers').select('*').eq('is_online', true);
+      const { data } = await supabaseClient
+        .from('drivers')
+        .select('*')
+        .eq('is_online', true)
+        .neq('is_active', false);
+        
       rawDriversData = data || [];
       renderDriverMarkers();
     }
@@ -327,20 +330,17 @@
     async function submitRating(stars) {
       if (!selectedDriver) return;
 
-      // XÁC THỰC VÉ ĐÁNH GIÁ (Đã từng bấm Gọi/Zalo gần hoặc từng ở sát <100m)
       const isUnlocked = localStorage.getItem(`avyo_unlocked_rating_${selectedDriver.id}`);
       if (!isUnlocked) {
         return alert("⚠️ Bạn cần bấm '📞 Gọi Điện' hoặc '💬 Nhắn Zalo' liên hệ với tài xế để mở quyền đánh giá!");
       }
 
-      // KIỂM TRA ĐÁNH GIÁ TỐI ĐA 1 LẦN / NGÀY / MÁY
       const todayStr = new Date().toDateString();
       const ratedKey = `avyo_rated_date_${selectedDriver.id}`;
       if (localStorage.getItem(ratedKey) === todayStr) {
         return alert("⭐ Hôm nay bạn đã gửi đánh giá cho tài xế này rồi!");
       }
 
-      // GỬI ĐÁNH GIÁ LÊN DATABASE (KHỐNG CHẾ TRẦN 50 LƯỢT/NGÀY TỪ SERVER)
       const { data: isSuccess, error } = await supabaseClient.rpc('add_driver_rating', { 
         target_id: selectedDriver.id, 
         stars: stars 
@@ -379,15 +379,13 @@
         marker.on('click', async () => {
           selectedDriver = driver;
 
-          // TỰ ĐỘNG CẤP VÉ ĐÁNH GIÁ NẾU KHÁCH & TÀI XẾ TỰ NGHỊCH GẶP NHAU < 100M
           if (userLatLng) {
             const distKm = calculateDistance(userLatLng.lat, userLatLng.lng, driver.lat, driver.lng) / 1.28;
-            if (distKm <= 0.1) { // Dưới 100m
+            if (distKm <= 0.1) {
               localStorage.setItem(`avyo_unlocked_rating_${driver.id}`, 'true');
             }
           }
 
-          // GIỚI HẠN LƯỢT XEM HỒ SƠ 5 PHÚT / MÁY
           const VIEW_COOLDOWN = 5 * 60 * 1000;
           const lastViewKey = `avyo_last_view_${driver.id}`;
           const lastViewTime = localStorage.getItem(lastViewKey);

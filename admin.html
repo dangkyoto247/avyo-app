@@ -61,13 +61,15 @@
     .btn-add { background: #16a34a; color: white; }
     .btn-cancel { background: #64748b; color: white; display: none; }
     .btn-edit { background: #0284c7; color: white; padding: 6px 10px; font-size: 12px; }
-    .btn-del { background: #ef4444; color: white; padding: 6px 10px; font-size: 12px; }
+    .btn-toggle-off { background: #ef4444; color: white; padding: 6px 10px; font-size: 12px; }
+    .btn-toggle-on { background: #16a34a; color: white; padding: 6px 10px; font-size: 12px; }
 
     table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
     th, td { padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: left; }
     th { background: #f8fafc; color: #475569; font-weight: 600; white-space: nowrap; }
     .badge-online { background: #dcfce7; color: #15803d; padding: 3px 8px; border-radius: 12px; font-weight: bold; font-size: 11px; }
     .badge-offline { background: #f1f5f9; color: #64748b; padding: 3px 8px; border-radius: 12px; font-weight: bold; font-size: 11px; }
+    .badge-retired { background: #fee2e2; color: #dc2626; padding: 3px 8px; border-radius: 12px; font-weight: bold; font-size: 11px; }
     .small-text { font-size: 11px; color: #64748b; display: block; margin-top: 2px; }
 
     .admin-avatar { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; vertical-align: middle; border: 1px solid #cbd5e1; background: #e2e8f0; }
@@ -266,7 +268,7 @@
       }
 
       filteredDrivers.forEach(d => {
-        if (d.is_online) onlineCount++;
+        if (d.is_online && d.is_active !== false) onlineCount++;
 
         let joinDate = '--';
         if (d.created_at) {
@@ -279,6 +281,15 @@
         const rSum = d.rating_sum || 25;
         const rCount = d.rating_count || 5;
         const rScore = (rSum / rCount).toFixed(1);
+
+        let statusBadge = '';
+        if (d.is_active === false) {
+          statusBadge = '<span class="badge-retired">🔴 Đã nghỉ</span>';
+        } else if (d.is_online) {
+          statusBadge = '<span class="badge-online">🟢 BẬT GPS</span>';
+        } else {
+          statusBadge = '<span class="badge-offline">⚪ Tắt GPS</span>';
+        }
 
         const tr = document.createElement('tr');
         tr.innerHTML = `
@@ -306,16 +317,19 @@
             PIN: <b style="color:#eab308;">${d.pin || '1234'}</b>
           </td>
           <td>
-            ${d.is_online ? '<span class="badge-online">🟢 BẬT GPS</span>' : '<span class="badge-offline">⚪ Tắt</span>'}
+            ${statusBadge}
           </td>
           <td>
             <button class="btn-edit" onclick="editDriver('${d.id}', '${d.name}', '${d.phone}', '${d.pin || ''}', '${d.avatar_url || ''}', '${d.cccd || ''}', '${d.address || ''}', '${d.vehicle_type}', '${d.vehicle || ''}')">Sửa</button>
-            <button class="btn-del" onclick="deleteDriver('${d.id}', '${d.name}')">Xóa</button>
+            ${d.is_active === false
+              ? `<button class="btn-toggle-on" onclick="toggleDriverStatus('${d.id}', '${d.name}', false)">Kích hoạt lại</button>`
+              : `<button class="btn-toggle-off" onclick="toggleDriverStatus('${d.id}', '${d.name}', true)">Cho nghỉ</button>`
+            }
           </td>
         `;
         tbody.appendChild(tr);
 
-        if (d.is_online && d.lat && d.lng) {
+        if (d.is_active !== false && d.is_online && d.lat && d.lng) {
           const marker = L.marker([d.lat, d.lng], { icon: icons[d.vehicle_type] || icons['bike'] })
             .addTo(map)
             .bindPopup(`<b>${d.name}</b><br>${d.phone}`);
@@ -349,7 +363,8 @@
         cccd: cccd,
         address: address,
         vehicle_type: vehicle_type,
-        vehicle: vehicle
+        vehicle: vehicle,
+        is_active: true
       };
      
       let response;
@@ -403,10 +418,22 @@
       document.getElementById('cancelBtn').style.display = "none";
     }
 
-    async function deleteDriver(id, name) {
-      if (confirm(`Bạn có chắc muốn XÓA tài xế "${name}"?`)) {
-        await supabaseClient.from('drivers').delete().eq('id', id);
-        loadAllData();
+    async function toggleDriverStatus(id, name, isCurrentlyActive) {
+      const actionText = isCurrentlyActive ? "chuyển trạng thái ĐÃ NGHỈ cho" : "KÍCH HOẠT LẠI";
+      
+      if (confirm(`Bạn có chắc muốn ${actionText} tài xế "${name}"?`)) {
+        const payload = isCurrentlyActive 
+          ? { is_active: false, is_online: false } 
+          : { is_active: true };
+
+        const { error } = await supabaseClient.from('drivers').update(payload).eq('id', id);
+        
+        if (error) {
+          alert("❌ Lỗi: " + error.message);
+        } else {
+          alert(isCurrentlyActive ? `✅ Đã chuyển tài xế "${name}" sang trạng thái Đã nghỉ.` : `✅ Đã kích hoạt lại tài xế "${name}".`);
+          loadAllData();
+        }
       }
     }
 
