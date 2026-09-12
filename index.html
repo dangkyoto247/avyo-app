@@ -304,15 +304,24 @@
         marker.on('click', async () => {
           selectedDriver = driver;
 
-          // Gọi hàm RPC tăng lượt xem trên Supabase
-          const { error } = await supabaseClient.rpc('increment_driver_click', { target_id: driver.id });
-          if (error) {
-            // Dự phòng nếu chưa tạo hàm RPC
-            await supabaseClient.from('drivers')
-              .update({ click_count: (driver.click_count || 0) + 1 })
-              .eq('id', driver.id);
-          } else {
-            driver.click_count = (driver.click_count || 0) + 1;
+          // --- NÂNG CẤP: GIỚI HẠN LƯỢT XEM CÙNG 1 MÁY (5 PHÚT) ---
+          const VIEW_COOLDOWN = 5 * 60 * 1000; // 5 phút (300.000 ms)
+          const lastViewKey = `avyo_last_view_${driver.id}`;
+          const lastViewTime = localStorage.getItem(lastViewKey);
+          const now = Date.now();
+
+          // Chỉ tăng đếm nếu chưa từng xem hoặc đã qua 5 phút
+          if (!lastViewTime || (now - parseInt(lastViewTime)) > VIEW_COOLDOWN) {
+            localStorage.setItem(lastViewKey, now.toString());
+
+            const { error } = await supabaseClient.rpc('increment_driver_click', { target_id: driver.id });
+            if (error) {
+              await supabaseClient.from('drivers')
+                .update({ click_count: (driver.click_count || 0) + 1 })
+                .eq('id', driver.id);
+            } else {
+              driver.click_count = (driver.click_count || 0) + 1;
+            }
           }
 
           const avatarUrl = getOptimizedAvatar(driver.avatar_url);
