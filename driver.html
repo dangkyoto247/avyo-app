@@ -89,7 +89,12 @@
       font-size: 12px;
       color: #334155;
     }
-    .small-text { font-size: 11px; color: #64748b; display: block; margin-top: 2px; }
+    .small-text { 
+      font-size: 11px; 
+      color: #64748b; 
+      display: block; 
+      margin-top: 2px; 
+    }
     .logout-text {
       color: #64748b;
       font-size: 14px;
@@ -159,17 +164,21 @@
         </div>
       </div>
 
-      <!-- ĐÃ BỔ SUNG Ô ĐẾM SỐ KHÁCH GỌI -->
-      <div style="display: flex; gap: 6px; margin-top: 10px;">
-        <div style="flex: 1; background: #f8fafc; padding: 10px 4px; border-radius: 10px; border: 1px solid #e2e8f0; text-align: center;">
-          <span style="font-size: 11px; color: #64748b; display: block;">👁️ Lượt xem</span>
+      <!-- BẢNG ĐẾM LƯỢT CHUYÊN BIỆT CÂN ĐỐI 2x2 -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px;">
+        <div style="background: #f8fafc; padding: 8px; border-radius: 10px; border: 1px solid #e2e8f0; text-align: center;">
+          <span style="font-size: 11px; color: #64748b; display: block;">👁️ Xem hồ sơ</span>
           <b id="clickCountLabel" style="color: #16a34a; font-size: 14px;">0</b>
         </div>
-        <div style="flex: 1; background: #f0f9ff; padding: 10px 4px; border-radius: 10px; border: 1px solid #bae6fd; text-align: center;">
-          <span style="font-size: 11px; color: #0369a1; display: block;">📞 Khách gọi</span>
-          <b id="contactCountLabel" style="color: #0284c7; font-size: 14px;">0</b>
+        <div style="background: #f0fdf4; padding: 8px; border-radius: 10px; border: 1px solid #bbf7d0; text-align: center;">
+          <span style="font-size: 11px; color: #15803d; display: block;">💬 Nhắn Zalo</span>
+          <b id="zaloCountLabel" style="color: #16a34a; font-size: 14px;">0</b>
         </div>
-        <div style="flex: 1; background: #f8fafc; padding: 10px 4px; border-radius: 10px; border: 1px solid #e2e8f0; text-align: center;">
+        <div style="background: #f0f9ff; padding: 8px; border-radius: 10px; border: 1px solid #bae6fd; text-align: center;">
+          <span style="font-size: 11px; color: #0369a1; display: block;">📞 Cuộc gọi</span>
+          <b id="callCountLabel" style="color: #0284c7; font-size: 14px;">0</b>
+        </div>
+        <div style="background: #f8fafc; padding: 8px; border-radius: 10px; border: 1px solid #e2e8f0; text-align: center;">
           <span style="font-size: 11px; color: #64748b; display: block;">⭐ Đánh giá</span>
           <b id="ratingLabel" style="color: #eab308; font-size: 14px;">5.0 (0)</b>
         </div>
@@ -199,7 +208,7 @@
     let driverMap = null;
     let driverMarker = null;
 
-    const LOCK_TIME_MS = 60 * 60 * 1000; 
+    const LOCK_TIME_MS = 60 * 60 * 1000;
 
     const typeLabels = { 
       'bike': '🛵 Xe máy', 
@@ -338,9 +347,10 @@
         document.getElementById('vehicleDetailLabel').innerText = data.vehicle || 'Chưa cập nhật chi tiết xe';
         document.getElementById('phoneLabel').innerText = data.phone;
 
-        // Đổ dữ liệu Lượt xem, Khách Gọi và Đánh giá
+        // Đổ dữ liệu Xem, Zalo, Gọi điện và Đánh giá
         document.getElementById('clickCountLabel').innerText = data.click_count || 0;
-        document.getElementById('contactCountLabel').innerText = data.contact_count || 0;
+        document.getElementById('zaloCountLabel').innerText = data.zalo_count || 0;
+        document.getElementById('callCountLabel').innerText = data.call_count || 0;
         
         const sum = data.rating_sum || 25;
         const count = data.rating_count || 5;
@@ -365,7 +375,9 @@
 
     function logout(force = false) {
       if (force || confirm("Bạn có chắc chắn muốn đăng xuất không?")) {
-        if (isOnline) toggleOnline();
+        if (isOnline) {
+          toggleOnline();
+        }
         localStorage.removeItem('avyo_driver_id');
         localStorage.removeItem('avyo_driver_name');
         localStorage.removeItem('avyo_session_token');
@@ -398,12 +410,15 @@
         status.innerHTML = '🟢 ĐANG PHÁT GPS ĐỂ ĐÓN KHÁCH';
         status.style.color = '#16a34a';
 
-        setTimeout(() => { if (driverMap) driverMap.invalidateSize(); }, 200);
+        setTimeout(() => { 
+          if (driverMap) driverMap.invalidateSize(); 
+        }, 200);
 
         let lastUpdateTime = 0;
        
         watchId = navigator.geolocation.watchPosition(async (pos) => {
           if (!isOnline) return;
+         
           const lat = pos.coords.latitude;
           const lng = pos.coords.longitude;
           document.getElementById('coords').innerText = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
@@ -436,7 +451,6 @@
       }
     }
 
-    // LẮNG NGHE REALTIME ĐỂ CẬP NHẬT LƯỢT GỌI VÀ ĐẨY THIẾT BỊ KHÁC
     if (currentDriverId) {
       supabaseClient.channel('driver-self-update')
         .on('postgres_changes', { 
@@ -448,19 +462,23 @@
           if (payload.new) {
             if (payload.new.session_token && payload.new.session_token !== currentSessionToken) {
               alert("⚠️ Tài khoản của bạn vừa được đăng nhập ở một thiết bị khác!\nỨng dụng sẽ đăng xuất thiết bị này.");
-              logout(true); return;
+              logout(true); 
+              return;
             }
             if (payload.new.is_active === false) {
               alert("⛔ Tài khoản của bạn đã chuyển sang trạng thái Đã nghỉ!");
-              logout(true); return;
+              logout(true); 
+              return;
             }
             
-            // Cập nhật lượt xem, lượt gọi, lượt đánh giá
             if (payload.new.click_count !== undefined) {
               document.getElementById('clickCountLabel').innerText = payload.new.click_count;
             }
-            if (payload.new.contact_count !== undefined) {
-              document.getElementById('contactCountLabel').innerText = payload.new.contact_count;
+            if (payload.new.zalo_count !== undefined) {
+              document.getElementById('zaloCountLabel').innerText = payload.new.zalo_count;
+            }
+            if (payload.new.call_count !== undefined) {
+              document.getElementById('callCountLabel').innerText = payload.new.call_count;
             }
             if (payload.new.rating_sum !== undefined && payload.new.rating_count !== undefined) {
               const sum = payload.new.rating_sum || 25;

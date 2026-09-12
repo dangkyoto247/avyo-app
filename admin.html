@@ -325,7 +325,6 @@
 
       filteredDrivers.forEach(d => {
         const now = Date.now();
-        // Kiểm tra tài xế có đang bị khóa hay không
         const isLocked = d.locked_until && parseInt(d.locked_until) > now;
 
         if (!isLocked && d.is_online && d.is_active !== false) onlineCount++;
@@ -353,7 +352,6 @@
           statusBadge = '<span class="badge-offline">⚪ Tắt GPS</span>';
         }
 
-        // CHỈ TẠO NÚT MỞ KHÓA NẾU TÀI XẾ DƯỚI TRẠNG THÁI BỊ KHÓA
         const unlockButtonHtml = isLocked 
           ? `<button class="btn-unlock" onclick="unlockDriver('${d.id}', '${d.name}', '${d.pin || '1234'}')">🔓 Mở khóa & PIN</button>` 
           : '';
@@ -377,8 +375,8 @@
           </td>
           <td>
             ⭐ <b style="color:#eab308; font-size:14px;">${rScore}</b> <span class="small-text">(${rCount} lượt)</span><br>
-            👁️ <b style="color:#16a34a; font-size:13px;">${d.click_count || 0}</b> lượt xem<br>
-            📞 <b style="color:#0284c7; font-size:13px;">${d.contact_count || 0}</b> khách gọi
+            👁️ <b style="color:#16a34a; font-size:13px;">${d.click_count || 0}</b> xem | 💬 <b style="color:#16a34a; font-size:13px;">${d.zalo_count || 0}</b> Zalo<br>
+            📞 <b style="color:#0284c7; font-size:13px;">${d.call_count || 0}</b> cuộc gọi
           </td>
           <td>
             SĐT: <b>${d.phone}</b><br>
@@ -487,7 +485,6 @@
       document.getElementById('cancelBtn').style.display = "none";
     }
 
-    // MỞ KHÓA TÀI KHOẢN TRÊN SUPABASE (Set locked_until về null)
     async function unlockDriver(id, name, pin) {
       const confirmUnlock = confirm(`📞 Đã xác minh Video thành công với tài xế: "${name}"?\n\nMật khẩu PIN của tài xế là: [ ${pin} ]\n\nBấm OK để MỞ KHÓA tài khoản ngay lập tức.`);
       

@@ -28,7 +28,7 @@
     .price { font-size: 28px; font-weight: 800; color: #15803d; letter-spacing: -0.5px; line-height: 1.2; }
    
     .btn-zalo { background: #0068ff; color: white; padding: 12px; border-radius: 10px; text-decoration: none; display: block; text-align: center; font-weight: bold; margin-top: 8px; border: none; width: 100%; font-size: 16px; cursor: pointer; }
-    .btn-phone { background: #22c55e; color: white; padding: 12px; border-radius: 10px; text-decoration: none; display: block; text-align: center; font-weight: bold; margin-top: 8px; }
+    .btn-phone { background: #22c55e; color: white; padding: 12px; border-radius: 10px; text-decoration: none; display: block; text-align: center; font-weight: bold; margin-top: 8px; cursor: pointer; }
     .btn-reset { background: #f97316; color: white; padding: 10px; border-radius: 10px; border: none; font-weight: bold; width: 100%; margin-top: 8px; cursor: pointer; display: none; font-size: 14px; }
    
     .btn-gps { background: #00b14f; color: white; padding: 12px; border-radius: 12px; border: none; font-weight: bold; width: 100%; cursor: pointer; font-size: 14px; margin-bottom: 8px; box-shadow: 0 3px 10px rgba(0, 177, 79, 0.3); transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 6px; }
@@ -85,7 +85,7 @@
     <div id="driver-info" style="color: #64748b;"><i>Chạm vào icon tài xế trên bản đồ...</i></div>
    
     <button id="zaloBtn" class="btn-zalo" style="display:none;" onclick="openZalo()">💬 Nhắn Zalo (Tự động Copy)</button>
-    <a id="phoneBtn" href="#" class="btn-phone" style="display:none;" onclick="trackContact(event)">📞 Gọi Điện Trực Tiếp</a>
+    <a id="phoneBtn" href="#" class="btn-phone" style="display:none;" onclick="trackCall(event)">📞 Gọi Điện Trực Tiếp</a>
   </div>
 
   <script>
@@ -365,31 +365,44 @@
 
     const typeNames = { 'bike': '🛵 Xe máy', 'car': '🚕 Ô tô', 'driver': '👤 Lái xe hộ', 'truck': '🚚 Xe chở hàng' };
 
-    // HÀM TĂNG LƯỢT KHÁCH GỌI/LIÊN HỆ CHÍNH XÁC
-    function trackContact(event) {
-      if (!selectedDriver) {
-        if(event) event.preventDefault();
-        return;
-      }
+    // HÀM XỬ LÝ GỌI ĐIỆN: Chờ ghi nhận xong mới mở Dialer cuộc gọi
+    async function trackCall(event) {
+      if (event) event.preventDefault();
+      if (!selectedDriver) return;
 
       const centerPoint = markerStart ? markerStart.getLatLng() : userLatLng;
       if (centerPoint) {
         const distKm = getHaversineDistance(centerPoint.lat, centerPoint.lng, selectedDriver.lat, selectedDriver.lng);
         if (distKm > 10) {
-          if(event) event.preventDefault();
           return alert(`⚠️ Tài xế đang ở cách bạn ${distKm.toFixed(1)}km (ngoài bán kính 10km). Hãy chọn tài xế ở gần hơn!`);
         }
       }
 
       localStorage.setItem(`avyo_unlocked_rating_${selectedDriver.id}`, 'true');
-      
-      // Bắn lệnh tăng lượt khách liên hệ lên Supabase
-      supabaseClient.rpc('increment_driver_contact', { target_id: selectedDriver.id });
+
+      // Tăng đếm cuộc gọi thành công trên DB
+      await supabaseClient.rpc('increment_driver_call', { target_id: selectedDriver.id });
+
+      // Mở màn hình gọi điện
+      window.location.href = `tel:${selectedDriver.phone}`;
     }
 
-    function openZalo() {
+    // HÀM XỬ LÝ ZALO: Ghi nhận lượt bấm Zalo
+    async function openZalo() {
       if (!selectedDriver) return;
-      trackContact(); // Ghi nhận khách gọi Zalo
+
+      const centerPoint = markerStart ? markerStart.getLatLng() : userLatLng;
+      if (centerPoint) {
+        const distKm = getHaversineDistance(centerPoint.lat, centerPoint.lng, selectedDriver.lat, selectedDriver.lng);
+        if (distKm > 10) {
+          return alert(`⚠️ Tài xế đang ở cách bạn ${distKm.toFixed(1)}km (ngoài bán kính 10km). Hãy chọn tài xế ở gần hơn!`);
+        }
+      }
+
+      localStorage.setItem(`avyo_unlocked_rating_${selectedDriver.id}`, 'true');
+
+      // Tăng đếm Zalo trên DB
+      await supabaseClient.rpc('increment_driver_zalo', { target_id: selectedDriver.id });
 
       const typeName = typeNames[selectedDriver.vehicle_type] || 'Tài xế';
       let msg = `Chào ${typeName}, tôi muốn sử dụng dịch vụ Avyo:\n`;
