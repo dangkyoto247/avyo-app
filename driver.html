@@ -5,31 +5,33 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Avyo - App Tài Xế</title>
  
+  <!-- Thêm link khắc phục lỗi favicon 404 -->
+  <link rel="shortcut icon" href="#">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#16a34a">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
  
-  <!-- Thêm thư viện Leaflet CSS & JS -->
+  <!-- Leaflet CSS & JS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
  
   <style>
     body {
-      font-family: sans-serif;
-      padding: 15px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      padding: 12px;
       max-width: 420px;
       margin: auto;
       background: #f0fdf4;
     }
     .card {
       background: white;
-      padding: 20px;
+      padding: 16px;
       border-radius: 16px;
       box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-      text-align: center;
+      margin-bottom: 12px;
     }
     input, button {
       width: 100%;
@@ -49,24 +51,54 @@
     }
     .status {
       font-weight: bold;
-      margin: 15px 0 10px 0;
-      font-size: 16px;
+      margin: 12px 0;
+      font-size: 15px;
+      text-align: center;
     }
-    /* Style cho khung bản đồ mini */
     #driverMap {
-      height: 220px;
+      height: 200px;
       width: 100%;
       border-radius: 12px;
-      margin-top: 10px;
       border: 1px solid #cbd5e1;
-      box-shadow: inset 0 0 5px rgba(0,0,0,0.1);
     }
+    .profile-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding-bottom: 12px;
+      border-bottom: 1px dashed #e2e8f0;
+    }
+    .driver-avatar {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid #16a34a;
+      background: #e2e8f0;
+      flex-shrink: 0;
+    }
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .info-box {
+      background: #f8fafc;
+      padding: 10px;
+      border-radius: 10px;
+      border: 1px solid #e2e8f0;
+      font-size: 12px;
+      color: #334155;
+    }
+    .small-text { font-size: 11px; color: #64748b; display: block; margin-top: 2px; }
     .logout-text {
       color: #64748b;
       font-size: 14px;
       text-decoration: underline;
-      margin-top: 20px;
+      margin-top: 15px;
       display: block;
+      text-align: center;
       cursor: pointer;
     }
   </style>
@@ -74,7 +106,7 @@
 <body>
 
   <!-- MÀN HÌNH ĐĂNG NHẬP -->
-  <div id="loginScreen" class="card" style="display: none;">
+  <div id="loginScreen" class="card" style="display: none; text-align: center;">
     <h2 style="margin-top: 0; color: #16a34a;">🚕 Avyo Tài Xế</h2>
     <p style="color: #64748b; font-size: 14px; margin-bottom: 20px;">Đăng nhập để nhận cuốc xe</p>
    
@@ -84,35 +116,57 @@
     <button onclick="login()" style="margin-top: 20px;">ĐĂNG NHẬP</button>
   </div>
 
-  <!-- MÀN HÌNH ĐIỀU KHIỂN GPS CỦA TÀI XẾ -->
-  <div id="appScreen" class="card" style="display: none;">
+  <!-- MÀN HÌNH ĐIỀU KHIỂN CỦA TÀI XẾ -->
+  <div id="appScreen" style="display: none;">
    
-    <div style="background: #dcfce7; padding: 12px; border-radius: 10px; margin-bottom: 12px;">
-      <h3 id="driverNameLabel" style="margin: 0; color: #15803d;">--</h3>
-      <p id="vehicleLabel" style="margin: 5px 0 0 0; font-size: 14px; color: #166534;">--</p>
+    <!-- KHUNG THÔNG TIN CÁ NHÂN VÀ PHƯƠNG TIỆN -->
+    <div class="card">
+      <div class="profile-header">
+        <img id="driverAvatar" class="driver-avatar" src="https://cdn-icons-png.flaticon.com/512/149/149071.png" alt="Avatar">
+        <div>
+          <b id="driverNameLabel" style="font-size: 16px; color: #0f172a; display: block;">--</b>
+          <span id="cccdLabel" class="small-text">CCCD: --</span>
+          <span id="addressLabel" class="small-text">📍 --</span>
+          <span id="joinDateLabel" class="small-text">📅 Tham gia: --</span>
+        </div>
+      </div>
+
+      <div class="info-grid">
+        <div class="info-box">
+          <b>Loại xe:</b>
+          <div id="vehicleTypeLabel" style="font-weight: bold; color: #16a34a; margin-top: 2px;">--</div>
+          <span id="vehicleDetailLabel" class="small-text">--</span>
+        </div>
+        <div class="info-box">
+          <b>Đăng nhập:</b>
+          <div class="small-text" style="margin-top: 2px;">SĐT: <b id="phoneLabel" style="color:#0f172a;">--</b></div>
+          <div class="small-text">PIN: <b style="color:#eab308;">***</b></div>
+        </div>
+      </div>
+
+      <!-- KHUNG ĐÁNH GIÁ & LƯỢT XEM HỒ SƠ -->
+      <div style="display: flex; gap: 8px; margin-top: 10px;">
+        <div style="flex: 1; background: #f8fafc; padding: 10px; border-radius: 10px; border: 1px solid #e2e8f0; text-align: center;">
+          <span style="font-size: 11px; color: #64748b; display: block;">👁️ Lượt xem</span>
+          <b id="clickCountLabel" style="color: #16a34a; font-size: 15px;">0 lượt xem</b>
+        </div>
+        <div style="flex: 1; background: #f8fafc; padding: 10px; border-radius: 10px; border: 1px solid #e2e8f0; text-align: center;">
+          <span style="font-size: 11px; color: #64748b; display: block;">⭐ Đánh giá</span>
+          <b id="ratingLabel" style="color: #eab308; font-size: 15px;">5.0 (0 lượt)</b>
+        </div>
+      </div>
     </div>
 
-    <!-- KHUNG ĐÁNH GIÁ & LƯỢT XEM HỒ SƠ -->
-    <div style="display: flex; gap: 8px; margin-bottom: 15px;">
-      <div style="flex: 1; background: #f8fafc; padding: 10px; border-radius: 10px; border: 1px solid #cbd5e1;">
-        <span style="font-size: 12px; color: #64748b; display: block;">👁️ Lượt xem</span>
-        <b id="clickCountLabel" style="color: #16a34a; font-size: 16px;">0</b>
-      </div>
-      <div style="flex: 1; background: #f8fafc; padding: 10px; border-radius: 10px; border: 1px solid #cbd5e1;">
-        <span style="font-size: 12px; color: #64748b; display: block;">⭐ Đánh giá</span>
-        <b id="ratingLabel" style="color: #eab308; font-size: 16px;">5.0 / 5.0</b>
-      </div>
+    <!-- KHUNG BẢN ĐỒ & TRẠNG THÁI BẬT GPS -->
+    <div class="card">
+      <div id="status" class="status" style="color: #ef4444;">🔴 Đang tắt định vị (Nghỉ ngơi)</div>
+      <div id="driverMap"></div>
+      <p style="font-size: 12px; color: #64748b; text-align: center; margin-top: 8px;">Tọa độ GPS: <span id="coords">--</span></p>
+
+      <button id="toggleBtn" onclick="toggleOnline()">BẮT ĐẦU NHẬN KHÁCH (BẬT GPS)</button>
+      <a class="logout-text" onclick="logout()">Đăng xuất tài khoản</a>
     </div>
 
-    <div id="status" class="status" style="color: #ef4444;">🔴 Đang tắt định vị (Nghỉ ngơi)</div>
-    
-    <!-- KHUNG BẢN ĐỒ MINH HỌA VỊ TRÍ TÀI XẾ -->
-    <div id="driverMap"></div>
-    <p style="font-size: 12px; color: #64748b; margin-top: 8px;">Tọa độ GPS: <span id="coords">--</span></p>
-
-    <button id="toggleBtn" onclick="toggleOnline()">BẮT ĐẦU NHẬN KHÁCH (BẬT GPS)</button>
-
-    <a class="logout-text" onclick="logout()">Đăng xuất tài khoản</a>
   </div>
 
   <script>
@@ -125,9 +179,22 @@
     let watchId = null;
     let currentDriverId = localStorage.getItem('avyo_driver_id');
     
-    // Khởi tạo các biến quản lý bản đồ
     let driverMap = null;
     let driverMarker = null;
+
+    const typeLabels = { 
+      'bike': '🛵 Xe máy', 
+      'car': '🚕 Ô tô', 
+      'driver': '👤 Lái xe hộ', 
+      'truck': '🚚 Chở hàng' 
+    };
+
+    function getOptimizedAvatar(url) {
+      const defaultAvatar = 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+      if (!url) return defaultAvatar;
+      if (url.startsWith('data:image')) return url;
+      return `https://images.weserv.nl/?url=${encodeURIComponent(url)}&w=200&h=200&fit=cover&q=80&output=jpg`;
+    }
 
     if (currentDriverId) {
       document.getElementById('appScreen').style.display = 'block';
@@ -137,14 +204,9 @@
       document.getElementById('loginScreen').style.display = 'block';
     }
 
-    // Hàm khởi tạo bản đồ Leaflet Mini
     function initDriverMap() {
       if (driverMap) return;
-      
-      // Khởi tạo bản đồ mặc định
       driverMap = L.map('driverMap').setView([18.7034, 105.6832], 14);
-      
-      // Load gạch bản đồ OpenStreetMap (OSM)
       L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 18,
         attribution: '© OpenStreetMap'
@@ -160,25 +222,36 @@
           return;
         }
 
-        document.getElementById('driverNameLabel').innerText = "Tài xế: " + data.name;
-        document.getElementById('vehicleLabel').innerText = data.vehicle || 'Chưa cập nhật xe';
-        document.getElementById('clickCountLabel').innerText = data.click_count || 0;
+        // Cập nhật Thông tin cá nhân
+        document.getElementById('driverNameLabel').innerText = data.name;
+        document.getElementById('driverAvatar').src = getOptimizedAvatar(data.avatar_url);
+        document.getElementById('cccdLabel').innerText = "CCCD: " + (data.cccd || '---');
+        document.getElementById('addressLabel').innerText = "📍 " + (data.address || 'Chưa cập nhật địa chỉ');
         
+        if (data.created_at) {
+          const joinDate = new Date(data.created_at).toLocaleDateString('vi-VN');
+          document.getElementById('joinDateLabel').innerText = "📅 Tham gia: " + joinDate;
+        }
+
+        // Cập nhật Thông tin xe & Đăng nhập
+        document.getElementById('vehicleTypeLabel').innerText = typeLabels[data.vehicle_type] || 'Phương tiện';
+        document.getElementById('vehicleDetailLabel').innerText = data.vehicle || 'Chưa cập nhật chi tiết xe';
+        document.getElementById('phoneLabel').innerText = data.phone;
+
+        // Cập nhật Thống kê Lượt xem & Đánh giá
+        document.getElementById('clickCountLabel').innerText = (data.click_count || 0) + " lượt xem";
         const sum = data.rating_sum || 25;
         const count = data.rating_count || 5;
         document.getElementById('ratingLabel').innerText = `${(sum / count).toFixed(1)} (${count} lượt)`;
 
-        // Nếu tài xế có tọa độ lưu sẵn trên server, hiển thị lên bản đồ
         if (data.lat && data.lng) {
           updateMapMarker(data.lat, data.lng);
         }
       }
     }
 
-    // Hàm cập nhật Marker & Tâm bản đồ
     function updateMapMarker(lat, lng) {
       if (!driverMap) initDriverMap();
-
       const latLng = [lat, lng];
       if (!driverMarker) {
         driverMarker = L.marker(latLng).addTo(driverMap)
@@ -217,8 +290,6 @@
       } else {
         localStorage.setItem('avyo_driver_id', data.id);
         localStorage.setItem('avyo_driver_name', data.name);
-        localStorage.setItem('avyo_vehicle', data.vehicle || 'Chưa cập nhật xe');
-       
         alert("✅ Đăng nhập thành công!");
         window.location.reload();
       }
@@ -226,21 +297,15 @@
 
     function logout(force = false) {
       if (force || confirm("Bạn có chắc chắn muốn đăng xuất không?")) {
-        if (isOnline) {
-          toggleOnline();
-        }
-       
+        if (isOnline) toggleOnline();
         localStorage.removeItem('avyo_driver_id');
         localStorage.removeItem('avyo_driver_name');
-        localStorage.removeItem('avyo_vehicle');
-       
         window.location.reload();
       }
     }
 
     async function updateLocation(lat, lng) {
       if (!currentDriverId || !isOnline) return;
-     
       await supabaseClient.from('drivers').update({
         lat: lat,
         lng: lng,
@@ -266,10 +331,7 @@
         status.innerHTML = '🟢 ĐANG PHÁT GPS ĐỂ ĐÓN KHÁCH';
         status.style.color = '#16a34a';
 
-        // Load lại kích thước map nếu giao diện có thay đổi
-        setTimeout(() => {
-          if (driverMap) driverMap.invalidateSize();
-        }, 200);
+        setTimeout(() => { if (driverMap) driverMap.invalidateSize(); }, 200);
 
         let lastUpdateTime = 0;
        
@@ -279,8 +341,6 @@
           const lat = pos.coords.latitude;
           const lng = pos.coords.longitude;
           document.getElementById('coords').innerText = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-         
-          // Cập nhật vị trí trực tiếp lên bản đồ Leaflet mini
           updateMapMarker(lat, lng);
 
           const now = Date.now();
@@ -296,7 +356,6 @@
 
       } else {
         isOnline = false;
-        
         if (watchId) {
           navigator.geolocation.clearWatch(watchId);
           watchId = null;
@@ -309,7 +368,6 @@
        
         status.innerHTML = '🔴 ĐÃ TẮT ĐỊNH VỊ (Nghỉ ngơi)';
         status.style.color = '#ef4444';
-       
         btn.innerText = 'BẮT ĐẦU NHẬN KHÁCH (BẬT GPS)';
         btn.style.background = '#22c55e';
       }
@@ -325,7 +383,7 @@
               return;
             }
             if (payload.new.click_count !== undefined) {
-              document.getElementById('clickCountLabel').innerText = payload.new.click_count;
+              document.getElementById('clickCountLabel').innerText = payload.new.click_count + " lượt xem";
             }
             if (payload.new.rating_sum !== undefined && payload.new.rating_count !== undefined) {
               const sum = payload.new.rating_sum || 25;
