@@ -26,7 +26,15 @@
       touch-action: manipulation;
       -webkit-text-size-adjust: 100%;
     }
-    .container { max-width: 1050px; margin: auto; }
+    
+    /* Mở rộng tối đa 100% toàn màn hình máy tính */
+    .container { 
+      width: 100%; 
+      max-width: 100%; 
+      margin: 0 auto; 
+      box-sizing: border-box; 
+    }
+    
     .card {
       background: white;
       padding: 16px;
@@ -35,7 +43,7 @@
       margin-bottom: 14px;
     }
     
-    /* Tăng chiều cao bản đồ gấp 3 lần (từ 280px -> 840px) */
+    /* Chiều cao bản đồ lớn để dễ quan sát */
     #map { height: 840px; width: 100%; border-radius: 12px; margin-top: 10px; }
    
     .filter-bar { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; flex-wrap: wrap; }
@@ -127,10 +135,10 @@
       <button onclick="logout()" style="background:#cbd5e1; color:#334155; padding:6px 12px; font-size:12px;">Đăng xuất</button>
     </div>
 
-    <!-- Khối Bản Đồ (Đã phóng to 3 lần) -->
+    <!-- Khối Bản Đồ Giám Sát -->
     <div class="card">
       <h4 style="margin: 0; color: #334155; display: flex; flex-wrap: wrap; align-items: center; gap: 10px;">
-        📍 Bản Đồ Giám Sát Giám Sát Xe Đang Chạy: 
+        📍 Bản Đồ Giám Sát Xe Đang Chạy: 
         <span style="font-size:14px; color:#16a34a;">🟢 <b id="onlineCount">0</b> Tốt</span>
         <span style="font-size:14px; color:#d97706;">🟡 <b id="ghostCount">0</b> Mất tín hiệu</span>
         <span style="font-size:14px; color:#64748b;">⚪ <b id="offlineCount">0</b> Đang nghỉ</span>
@@ -165,12 +173,12 @@
       </div>
     </div>
 
-    <!-- Khối Danh Sách & Tìm Kiếm / Bộ Lọc Tích Hợp Ngang Hàng -->
+    <!-- Khối Danh Sách & Tìm Kiếm / Bộ Lọc Ngang Hàng -->
     <div class="card" style="overflow-x: auto;">
       <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 12px;">
         <h4 style="margin: 0; color: #334155; white-space: nowrap;">📋 Danh Sách Tất Cả Tài Xế</h4>
         
-        <!-- Khối Tìm kiếm & Bộ lọc trạng thái -->
+        <!-- Bộ lọc Tìm kiếm & Trạng thái -->
         <div style="display: flex; gap: 8px; flex-wrap: wrap; flex: 1; min-width: 280px; justify-content: flex-end;">
           <input type="text" id="searchInput" oninput="renderAdminData()" placeholder="🔎 Tìm Tên, SĐT, CCCD, Biển số..." style="flex: 2; min-width: 180px;">
           <select id="statusFilter" onchange="renderAdminData()" style="flex: 1; min-width: 140px;">
@@ -183,7 +191,7 @@
         </div>
       </div>
 
-      <!-- Thanh chọn Loại xe -->
+      <!-- Thanh lọc Loại xe -->
       <div class="filter-bar" style="margin-bottom: 12px; border-bottom: 1px dashed #cbd5e1; padding-bottom: 8px;">
         <div id="chip-all" class="filter-chip active" onclick="toggleAdminFilter('all', this)">🌐 Tất cả loại xe</div>
         <div class="filter-chip active" onclick="toggleAdminFilter('bike', this)">🛵 Xe máy</div>
