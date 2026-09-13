@@ -27,7 +27,6 @@
       -webkit-text-size-adjust: 100%;
     }
     
-    /* Mở rộng tối đa 100% toàn màn hình máy tính */
     .container { 
       width: 100%; 
       max-width: 100%; 
@@ -43,7 +42,6 @@
       margin-bottom: 14px;
     }
     
-    /* Chiều cao bản đồ lớn để dễ quan sát */
     #map { height: 840px; width: 100%; border-radius: 12px; margin-top: 10px; }
    
     .filter-bar { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; flex-wrap: wrap; }
@@ -113,6 +111,43 @@
       text-align: center; width: 280px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);
     }
     .vehicle-icon { font-size: 26px; text-align: center; line-height: 1; }
+
+    /* CSS cho phân trang */
+    .pagination-container {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 6px;
+      margin-top: 14px;
+      padding-top: 10px;
+      border-top: 1px solid #e2e8f0;
+      flex-wrap: wrap;
+    }
+    .pagination-btn {
+      padding: 6px 12px;
+      font-size: 12px;
+      border-radius: 6px;
+      border: 1px solid #cbd5e1;
+      background: white;
+      color: #334155;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+    .pagination-btn:hover:not(:disabled) {
+      background: #f1f5f9;
+      border-color: #94a3b8;
+    }
+    .pagination-btn.active {
+      background: #16a34a;
+      color: white;
+      border-color: #16a34a;
+      box-shadow: 0 2px 4px rgba(22,163,74,0.2);
+    }
+    .pagination-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
   </style>
 </head>
 <body>
@@ -180,8 +215,8 @@
         
         <!-- Bộ lọc Tìm kiếm & Trạng thái -->
         <div style="display: flex; gap: 8px; flex-wrap: wrap; flex: 1; min-width: 280px; justify-content: flex-end;">
-          <input type="text" id="searchInput" oninput="renderAdminData()" placeholder="🔎 Tìm Tên, SĐT, CCCD, Biển số..." style="flex: 2; min-width: 180px;">
-          <select id="statusFilter" onchange="renderAdminData()" style="flex: 1; min-width: 140px;">
+          <input type="text" id="searchInput" oninput="currentPage = 1; renderAdminData();" placeholder="🔎 Tìm Tên, SĐT, CCCD, Biển số..." style="flex: 2; min-width: 180px;">
+          <select id="statusFilter" onchange="currentPage = 1; renderAdminData();" style="flex: 1; min-width: 140px;">
             <option value="all">🌐 Tất cả trạng thái</option>
             <option value="online">🟢 Đang hoạt động (Tốt)</option>
             <option value="ghost">🟡 Mất kết nối GPS/4G</option>
@@ -215,6 +250,9 @@
           <tr><td colspan="6" style="text-align:center;">Đang tải dữ liệu...</td></tr>
         </tbody>
       </table>
+
+      <!-- Nút điều hướng phân trang ở góc dưới bên phải -->
+      <div id="paginationControls" class="pagination-container"></div>
     </div>
   </div>
 
@@ -224,6 +262,10 @@
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     const ADMIN_LOCK_TIME_MS = 60 * 60 * 1000;
+
+    // Biến toàn cục cho Phân trang
+    let currentPage = 1;
+    const ITEMS_PER_PAGE = 50;
 
     function checkDeviceLockState() {
       const lockUntil = localStorage.getItem('avyo_admin_lock_until');
@@ -378,6 +420,7 @@
     }
 
     function toggleAdminFilter(type, element) {
+      currentPage = 1;
       const allBtn = document.getElementById('chip-all');
      
       if (type === 'all') {
@@ -432,7 +475,7 @@
       let ghostCount = 0;
       let offlineCount = 0;
 
-      // 1. Thống kê theo loại xe đang chọn
+      // 1. Thống kê số lượng xe
       rawAdminDriversData.forEach(d => {
         if (!activeAdminFilters.has(d.vehicle_type)) return;
         
@@ -459,7 +502,7 @@
       document.getElementById('ghostCount').innerText = ghostCount;
       document.getElementById('offlineCount').innerText = offlineCount;
 
-      // 2. Lọc danh sách hiển thị
+      // 2. Lọc danh sách khớp điều kiện
       const filteredDrivers = rawAdminDriversData.filter(d => {
         if (!activeAdminFilters.has(d.vehicle_type)) return false;
 
@@ -497,12 +540,59 @@
         return true;
       });
 
+      // 3. Vẽ Marker toàn bộ xe online lên Bản đồ (Không bị cắt theo phân trang)
+      filteredDrivers.forEach(d => {
+        const now = Date.now();
+        const isLocked = d.locked_until && parseInt(d.locked_until) > now;
+
+        let isGhost = false;
+        let diffSeconds = 0;
+        if (d.is_online) {
+          if (d.updated_at) {
+            const lastUpdateStr = (d.updated_at.includes('Z') || d.updated_at.includes('+')) ? d.updated_at : d.updated_at.replace(' ', 'T') + 'Z';
+            diffSeconds = (now - new Date(lastUpdateStr).getTime()) / 1000;
+            isGhost = (diffSeconds > 90);
+          } else {
+            isGhost = true;
+            diffSeconds = 9999;
+          }
+        }
+
+        if (!isLocked && d.is_active !== false && d.is_online && d.lat && d.lng) {
+          const marker = L.marker([d.lat, d.lng], { 
+            icon: icons[d.vehicle_type] || icons['bike'],
+            opacity: isGhost ? 0.45 : 1.0
+          }).addTo(map);
+
+          let ghostNotice = '';
+          if (isGhost) {
+            let mins = Math.floor(diffSeconds / 60);
+            let timeText = mins > 60 ? Math.floor(mins/60) + 'h' : mins + 'p';
+            ghostNotice = `<br><b style="color:#d97706;">⚠️ Mất tín hiệu ${timeText} trước</b>`;
+          }
+
+          marker.bindPopup(`<b>${d.name}</b><br>${d.phone}${ghostNotice}`);
+          adminMarkers[d.id] = marker;
+        }
+      });
+
       if (!filteredDrivers || filteredDrivers.length === 0) {
         tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 15px; color: #64748b;">Không có tài xế nào khớp với tìm kiếm / bộ lọc hiện tại.</td></tr>';
+        renderPaginationUI(0, 0);
         return;
       }
 
-      filteredDrivers.forEach(d => {
+      // 4. Phân trang cho Bảng hiển thị (Mỗi trang 50 mục)
+      const totalDrivers = filteredDrivers.length;
+      const totalPages = Math.ceil(totalDrivers / ITEMS_PER_PAGE) || 1;
+      
+      if (currentPage > totalPages) currentPage = totalPages;
+      if (currentPage < 1) currentPage = 1;
+
+      const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+      const paginatedDrivers = filteredDrivers.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
+      paginatedDrivers.forEach(d => {
         const now = Date.now();
         const isLocked = d.locked_until && parseInt(d.locked_until) > now;
 
@@ -603,24 +693,45 @@
           </td>
         `;
         tbody.appendChild(tr);
-
-        if (!isLocked && d.is_active !== false && d.is_online && d.lat && d.lng) {
-          const marker = L.marker([d.lat, d.lng], { 
-            icon: icons[d.vehicle_type] || icons['bike'],
-            opacity: isGhost ? 0.45 : 1.0
-          }).addTo(map);
-
-          let ghostNotice = '';
-          if (isGhost) {
-            let mins = Math.floor(diffSeconds / 60);
-            let timeText = mins > 60 ? Math.floor(mins/60) + 'h' : mins + 'p';
-            ghostNotice = `<br><b style="color:#d97706;">⚠️ Mất tín hiệu ${timeText} trước</b>`;
-          }
-
-          marker.bindPopup(`<b>${d.name}</b><br>${d.phone}${ghostNotice}`);
-          adminMarkers[d.id] = marker;
-        }
       });
+
+      // Render bộ nút phân trang
+      renderPaginationUI(totalPages, totalDrivers);
+    }
+
+    // Hàm render giao diện thanh Phân trang ở góc dưới bên phải
+    function renderPaginationUI(totalPages, totalDrivers) {
+      const container = document.getElementById('paginationControls');
+      if (!container) return;
+
+      if (totalDrivers === 0) {
+        container.innerHTML = '';
+        return;
+      }
+
+      let html = `<span style="color: #64748b; font-size: 13px; margin-right: 10px;">Tổng: <b>${totalDrivers}</b> tài xế (Trang <b>${currentPage}</b>/<b>${totalPages}</b>)</span>`;
+      
+      // Nút Trước
+      html += `<button class="pagination-btn" onclick="changePage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>◀ Trước</button>`;
+
+      // Hiển thị các nút trang
+      for (let i = 1; i <= totalPages; i++) {
+        if (i === 1 || i === totalPages || (i >= currentPage - 1 && i <= currentPage + 1)) {
+          html += `<button class="pagination-btn ${i === currentPage ? 'active' : ''}" onclick="changePage(${i})">${i}</button>`;
+        } else if (i === currentPage - 2 || i === currentPage + 2) {
+          html += `<span style="color: #94a3b8; padding: 0 2px;">...</span>`;
+        }
+      }
+
+      // Nút Sau
+      html += `<button class="pagination-btn" onclick="changePage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>Sau ▶</button>`;
+
+      container.innerHTML = html;
+    }
+
+    function changePage(newPage) {
+      currentPage = newPage;
+      renderAdminData();
     }
 
     async function saveDriver() {
