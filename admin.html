@@ -257,38 +257,34 @@
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl2dWN5cWtnbGJneHZvenJ6bmlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkxMzA3ODAsImV4cCI6MjEwNDcwNjc4MH0.Zagl4i2LPmxW3w9ih0h4LRsrm-OOGtPcWgvEs2vHBqo';
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    const ADMIN_LOCK_TIME_MS = 60 * 60 * 1000;
-
     let currentPage = 1;
     const ITEMS_PER_PAGE = 50;
 
-    function checkDeviceLockState() {
-      const lockUntil = localStorage.getItem('avyo_admin_lock_until');
-      const now = Date.now();
+    // --- KIỂM TRA KHÓA TỪ DATABASE POSTGRES ---
+    async function checkDeviceLockState(email) {
+      if (!email) return false;
 
-      if (lockUntil && parseInt(lockUntil) > now) {
-        const remainingMinutes = Math.ceil((parseInt(lockUntil) - now) / 60000);
-        const loginBtn = document.getElementById('loginBtn');
+      const { data, error } = await supabaseClient.rpc('check_admin_lock', { p_email: email });
+      if (error || !data || data.length === 0) return false;
+
+      const result = data[0];
+      const loginBtn = document.getElementById('loginBtn');
+
+      if (result.is_locked) {
         loginBtn.disabled = true;
         loginBtn.style.background = '#94a3b8';
-        loginBtn.innerText = `⛔ KHÓA THIẾT BỊ (${remainingMinutes}p)`;
+        loginBtn.innerText = `⛔ TÀI KHOẢN BỊ KHÓA (${result.remaining_minutes}p)`;
+        alert(`⛔ Tài khoản [${email}] đang bị KHÓA đăng nhập trong ${result.remaining_minutes} phút do nhập sai 3 lần!`);
         return true;
-      } else if (lockUntil) {
-        localStorage.removeItem('avyo_admin_lock_until');
-        localStorage.removeItem('avyo_admin_fail_count');
-        const loginBtn = document.getElementById('loginBtn');
+      } else {
         loginBtn.disabled = false;
         loginBtn.style.background = '#16a34a';
         loginBtn.innerText = 'VÀO TRANG QUẢN TRỊ';
+        return false;
       }
-      return false;
     }
 
     document.addEventListener('DOMContentLoaded', async () => {
-      if (checkDeviceLockState()) {
-        alert("⛔ Thiết bị này đang bị KHÓA đăng nhập do nhập sai mật khẩu 3 lần!");
-      }
-
       const { data: { session } } = await supabaseClient.auth.getSession();
       if (session) {
         document.getElementById('login-modal').style.display = 'none';
@@ -298,12 +294,8 @@
       }
     });
 
+    // --- LOGIC ĐĂNG NHẬP MỚI VỚI SUPABASE RPC ---
     async function checkPass() {
-      if (checkDeviceLockState()) {
-        alert("⛔ Thiết bị này đang bị KHÓA đăng nhập!");
-        return;
-      }
-
       const email = document.getElementById('emailInput').value.trim();
       const password = document.getElementById('passInput').value;
       const loginBtn = document.getElementById('loginBtn');
@@ -313,29 +305,34 @@
         return;
       }
 
+      // 1. Kiểm tra tài khoản có đang bị khóa không (Check Server-side)
+      const isLocked = await checkDeviceLockState(email);
+      if (isLocked) return;
+
       loginBtn.innerText = "Đang kiểm tra...";
 
+      // 2. Thực hiện gọi Auth API để đăng nhập
       const { data, error } = await supabaseClient.auth.signInWithPassword({
         email: email,
         password: password
       });
 
       if (error) {
-        let failCount = parseInt(localStorage.getItem('avyo_admin_fail_count') || '0') + 1;
-        localStorage.setItem('avyo_admin_fail_count', failCount.toString());
-
-        if (failCount >= 3) {
-          const lockTimeMs = Date.now() + ADMIN_LOCK_TIME_MS;
-          localStorage.setItem('avyo_admin_lock_until', lockTimeMs.toString());
-          checkDeviceLockState();
-          alert("❌ BẠN ĐÃ NHẬP SAI MẬT KHẨU 3 LẦN!\nThiết bị này đã bị KHÓA đăng nhập trong 1 giờ.");
-        } else {
-          alert(`❌ Đăng nhập thất bại!\nSai Email hoặc Mật khẩu.\n\n⚠️ Cảnh báo: Còn ${3 - failCount} lần thử trước khi khóa thiết bị này.`);
-          loginBtn.innerText = "VÀO TRANG QUẢN TRỊ";
+        // 3. Nếu lỗi -> Báo cáo vào Postgres để cộng dồn Fail_Count
+        const { data: failData } = await supabaseClient.rpc('record_admin_login_failure', { p_email: email });
+        
+        if (failData && failData.length > 0) {
+          const res = failData[0];
+          if (res.is_locked) {
+            await checkDeviceLockState(email);
+          } else {
+            alert(`❌ Đăng nhập thất bại!\nSai Email hoặc Mật khẩu.\n\n⚠️ Cảnh báo: Còn ${res.remaining_fails} lần thử trước khi khóa tài khoản trong 1 giờ.`);
+            loginBtn.innerText = "VÀO TRANG QUẢN TRỊ";
+          }
         }
       } else {
-        localStorage.removeItem('avyo_admin_fail_count');
-        localStorage.removeItem('avyo_admin_lock_until');
+        // 4. Nếu đăng nhập thành công -> Reset số lần sai về 0
+        await supabaseClient.rpc('reset_admin_login_attempts', { p_email: email });
         
         document.getElementById('login-modal').style.display = 'none';
         initMap();
