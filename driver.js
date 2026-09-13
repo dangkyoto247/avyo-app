@@ -40,6 +40,15 @@ function toggleTheme() {
 
 initTheme();
 
+// TỰ ĐỘNG ĐIỀN SĐT ĐÃ LƯU TRƯỚC ĐÓ NẾU CÓ
+function initSavedPhone() {
+  const savedPhone = localStorage.getItem('avyo_last_phone');
+  if (savedPhone) {
+    const phoneInput = document.getElementById('phoneInput');
+    if (phoneInput) phoneInput.value = savedPhone;
+  }
+}
+
 function showNetworkAlert() {
   document.getElementById('networkAlertModal').style.display = 'block';
 }
@@ -78,6 +87,7 @@ if (currentDriverId) {
   initDriverMap();
 } else {
   document.getElementById('loginScreen').style.display = 'block';
+  initSavedPhone();
 }
 
 async function login() {
@@ -142,6 +152,9 @@ async function login() {
   localStorage.setItem('avyo_driver_id', driverInfo.id);
   localStorage.setItem('avyo_driver_name', driverInfo.name);
   localStorage.setItem('avyo_session_token', newToken);
+  
+  // LƯU LẠI SĐT KHI ĐĂNG NHẬP THÀNH CÔNG
+  localStorage.setItem('avyo_last_phone', phone);
 
   window.location.reload();
 }
@@ -234,7 +247,6 @@ function updateMapMarker(lat, lng) {
   driverMap.setView(latLng, 16);
 }
 
-// BẬT MODAL ĐĂNG XUẤT PHỦ MÀN HÌNH
 function logout(force = false) {
   if (force) {
     executeLogout();
@@ -258,6 +270,7 @@ function executeLogout() {
   if (isOnline) toggleOnline();
   releaseWakeLock();
   hideNetworkAlert();
+  // Giữ lại 'avyo_last_phone', chỉ xóa phiên đăng nhập hiện tại
   localStorage.removeItem('avyo_driver_id');
   localStorage.removeItem('avyo_driver_name');
   localStorage.removeItem('avyo_session_token');

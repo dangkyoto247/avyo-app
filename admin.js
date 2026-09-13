@@ -5,7 +5,6 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 let currentPage = 1;
 const ITEMS_PER_PAGE = 50;
 
-/* --- HÀM TẠO THÔNG BÁO / XÁC NHẬN SANG TRỌNG HOÀN TOÀN MỚI --- */
 function customAlert(title, text = '', icon = 'info') {
   return Swal.fire({
     title: title,
@@ -68,14 +67,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   initTheme();
   const { data: { session } } = await supabaseClient.auth.getSession();
   if (session) {
+    document.body.classList.remove('logged-out');
     document.getElementById('login-modal').style.display = 'none';
     initMap();
     loadAllData();
     resetInactivityTimer();
+  } else {
+    document.body.classList.add('logged-out');
   }
 });
 
-/* --- CHỨC NĂNG CHẾ ĐỘ SÁNG - TỐI HOẠT ĐỘNG CHUẨN ĐIỆN THOẠI --- */
 function initTheme() {
   const savedTheme = localStorage.getItem('adminTheme');
   if (savedTheme === 'dark') {
@@ -148,6 +149,7 @@ async function checkPass() {
   } else {
     await supabaseClient.rpc('reset_admin_login_attempts', { p_email: email });
     
+    document.body.classList.remove('logged-out');
     document.getElementById('login-modal').style.display = 'none';
     initMap();
     loadAllData();
@@ -158,6 +160,7 @@ async function checkPass() {
 
 async function logout() {
   await supabaseClient.auth.signOut();
+  document.body.classList.add('logged-out');
   document.getElementById('login-modal').style.display = 'flex';
   document.getElementById('passInput').value = '';
   clearTimeout(inactivityTimer);
