@@ -120,12 +120,12 @@ const typeLabels = { 'bike': '🛵 Xe máy', 'car': '🚕 Ô tô', 'driver': '�
 
 function initMap() {
   if (map) return;
-  // Đã sửa: Thêm attributionControl: false vào đây
+  // Đã sửa: Thêm attributionControl: false để xóa chữ OpenStreetMap
   map = L.map('map', { preferCanvas: true, attributionControl: false }).setView([18.7034, 105.6832], 12);
  
   L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
     maxZoom: 19,
-    subdomains: 'abcd' // Đã sửa: Xóa dòng attribution ở đây
+    subdomains: 'abcd'
   }).addTo(map);
 
   setTimeout(() => { if (map) map.invalidateSize(); }, 300);
@@ -571,4 +571,29 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').then(() => {
     console.log("Admin App đã sẵn sàng hoạt động!");
   });
+}
+
+// HÀM MỚI: ẨN / HIỆN BẢN ĐỒ 
+function toggleMap() {
+  const mapEl = document.getElementById('map');
+  const btn = document.getElementById('toggleMapBtn');
+  
+  if (mapEl.style.display === 'none') {
+    // Hiện bản đồ
+    mapEl.style.display = 'block';
+    btn.innerHTML = 'Ẩn bản đồ 🔼';
+    btn.style.background = '#f1f5f9';
+    btn.style.color = '#475569';
+    
+    // Yêu cầu Leaflet vẽ lại để tránh lỗi hiển thị xám khung
+    if (map) {
+      setTimeout(() => { map.invalidateSize(); }, 300);
+    }
+  } else {
+    // Ẩn bản đồ
+    mapEl.style.display = 'none';
+    btn.innerHTML = 'Hiện bản đồ 🔽';
+    btn.style.background = '#16a34a';
+    btn.style.color = 'white';
+  }
 }

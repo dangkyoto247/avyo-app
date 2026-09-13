@@ -39,15 +39,21 @@
       <button onclick="logout()" style="background:#cbd5e1; color:#334155; padding:6px 12px; font-size:12px;">Đăng xuất</button>
     </div>
 
+    <!-- KHU VỰC BẢN ĐỒ ĐÃ ĐƯỢC CHỈNH SỬA THÊM NÚT ẨN HIỆN -->
     <div class="card">
-      <h4 style="margin: 0; color: #334155; display: flex; flex-wrap: wrap; align-items: center; gap: 10px;">
-        📍 Bản Đồ Giám Sát Xe Đang Chạy: 
-        <span style="font-size:14px; color:#16a34a;">🟢 <b id="onlineCount">0</b> Tốt</span>
-        <span style="font-size:14px; color:#d97706;">🟡 <b id="ghostCount">0</b> Mất tín hiệu</span>
-        <span style="font-size:14px; color:#64748b;">⚪ <b id="offlineCount">0</b> Đang nghỉ</span>
-      </h4>
-      <div id="map"></div>
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 8px;">
+        <h4 style="margin: 0; color: #334155; display: flex; flex-wrap: wrap; align-items: center; gap: 10px;">
+          📍 Bản Đồ Giám Sát Xe Đang Chạy: 
+          <span style="font-size:14px; color:#16a34a;">🟢 <b id="onlineCount">0</b> Tốt</span>
+          <span style="font-size:14px; color:#d97706;">🟡 <b id="ghostCount">0</b> Mất tín hiệu</span>
+          <span style="font-size:14px; color:#64748b;">⚪ <b id="offlineCount">0</b> Đang nghỉ</span>
+        </h4>
+        <button id="toggleMapBtn" onclick="toggleMap()" style="background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; padding:4px 8px; border-radius:6px; font-size:12px; cursor:pointer; white-space:nowrap; transition:0.2s;">Ẩn bản đồ 🔼</button>
+      </div>
+      
+      <div id="map" style="display: block;"></div>
     </div>
+    <!-- KẾT THÚC KHU VỰC BẢN ĐỒ -->
 
     <div class="card">
       <h4 id="formTitle" style="margin: 0 0 8px 0; color: #334155;">➕ Thêm Tài Xế Mới</h4>
