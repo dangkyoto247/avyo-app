@@ -19,7 +19,6 @@ let lastSentLat = 0, lastSentLng = 0;
 const LOCK_TIME_MS = 60 * 60 * 1000;
 const typeLabels = { 'bike': '🛵 Xe máy', 'car': '🚕 Ô tô', 'driver': '👤 Lái xe hộ', 'truck': '🚚 Chở hàng' };
 
-// --- XỬ LÝ CHUYỂN ĐỔI GIAO DIỆN TỐI / SÁNG ---
 function initTheme() {
   const savedTheme = localStorage.getItem('avyo_theme') || 'dark';
   const btn = document.getElementById('themeToggleBtn');
@@ -34,13 +33,11 @@ function initTheme() {
 
 function toggleTheme() {
   const isLight = document.body.classList.toggle('light-mode');
-  const newTheme = isLight ? 'light' : 'dark';
-  localStorage.setItem('avyo_theme', newTheme);
+  localStorage.setItem('avyo_theme', isLight ? 'light' : 'dark');
   const btn = document.getElementById('themeToggleBtn');
   if (btn) btn.innerText = isLight ? '☀️' : '🌙';
 }
 
-// Khởi chạy chế độ giao diện ngay khi tải JS
 initTheme();
 
 function showNetworkAlert() {
@@ -215,24 +212,56 @@ async function loadDriverProfile() {
 function updateMapMarker(lat, lng) {
   if (!driverMap) initDriverMap();
   const latLng = [lat, lng];
+  
+  const ringHtml = isOnline ? '<div class="radar-ring"></div>' : '';
+
+  const radarIcon = L.divIcon({
+    className: 'custom-radar-icon',
+    html: `<div class="radar-container">
+             ${ringHtml}
+             <div class="radar-center"></div>
+           </div>`,
+    iconSize: [20, 20],
+    iconAnchor: [10, 10]
+  });
+
   if (!driverMarker) {
-    driverMarker = L.marker(latLng).addTo(driverMap).bindPopup("📍 <b>Vị trí của bạn</b>").openPopup();
+    driverMarker = L.marker(latLng, { icon: radarIcon }).addTo(driverMap).bindPopup("📍 <b>Vị trí của bạn</b>");
   } else {
     driverMarker.setLatLng(latLng);
+    driverMarker.setIcon(radarIcon);
   }
   driverMap.setView(latLng, 16);
 }
 
+// BẬT MODAL ĐĂNG XUẤT PHỦ MÀN HÌNH
 function logout(force = false) {
-  if (force || confirm("Bạn có chắc chắn muốn đăng xuất không?")) {
-    if (isOnline) toggleOnline();
-    releaseWakeLock();
-    hideNetworkAlert();
-    localStorage.removeItem('avyo_driver_id');
-    localStorage.removeItem('avyo_driver_name');
-    localStorage.removeItem('avyo_session_token');
-    window.location.reload();
+  if (force) {
+    executeLogout();
+  } else {
+    const modal = document.getElementById('logoutModal');
+    if (modal) modal.style.display = 'flex';
   }
+}
+
+function closeLogoutModal() {
+  const modal = document.getElementById('logoutModal');
+  if (modal) modal.style.display = 'none';
+}
+
+function confirmLogout() {
+  closeLogoutModal();
+  executeLogout();
+}
+
+function executeLogout() {
+  if (isOnline) toggleOnline();
+  releaseWakeLock();
+  hideNetworkAlert();
+  localStorage.removeItem('avyo_driver_id');
+  localStorage.removeItem('avyo_driver_name');
+  localStorage.removeItem('avyo_session_token');
+  window.location.reload();
 }
 
 async function updateLocation(lat, lng) {
@@ -262,6 +291,11 @@ async function toggleOnline() {
     hideNetworkAlert();
     await requestWakeLock();
 
+    if (driverMarker) {
+      const currentPos = driverMarker.getLatLng();
+      updateMapMarker(currentPos.lat, currentPos.lng);
+    }
+
     lastSentLat = 0;
     lastSentLng = 0;
     await supabaseClient.from('drivers').update({
@@ -271,7 +305,8 @@ async function toggleOnline() {
 
     btn.innerText = 'TẮT NHẬN KHÁCH (NGHỈ NGƠI)';
     btn.style.background = '#ef4444';
-    status.innerHTML = '🟢 ĐANG PHÁT GPS ĐỂ ĐÓN KHÁCH';
+    
+    status.innerHTML = '<span class="live-dot"></span> ĐANG PHÁT GPS ĐỂ ĐÓN KHÁCH';
     status.style.color = '#10b981';
 
     setTimeout(() => { if (driverMap) driverMap.invalidateSize(); }, 200);
@@ -334,6 +369,11 @@ async function toggleOnline() {
     releaseWakeLock();
     hideNetworkAlert();
 
+    if (driverMarker) {
+      const currentPos = driverMarker.getLatLng();
+      updateMapMarker(currentPos.lat, currentPos.lng);
+    }
+
     if (watchId) {
       navigator.geolocation.clearWatch(watchId);
       watchId = null;
@@ -361,7 +401,7 @@ window.addEventListener('online', async () => {
   hideNetworkAlert();
   const status = document.getElementById('status');
   if (isOnline) {
-    status.innerHTML = '🟢 ĐÃ KHÔI PHỤC INTERNET - ĐANG PHÁT GPS';
+    status.innerHTML = '<span class="live-dot"></span> ĐÃ KHÔI PHỤC INTERNET - ĐANG PHÁT GPS';
     status.style.color = '#10b981';
 
     lastSentLat = 0;

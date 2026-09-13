@@ -95,6 +95,10 @@ button:active {
   border-radius: 10px;
   background: #0f172a;
   border: 1px solid #26354a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 
 #driverMap {
@@ -107,6 +111,141 @@ button:active {
 
 .leaflet-control-attribution {
   display: none !important;
+}
+
+/* MODAL ĐĂNG XUẤT PHỦ KÍN TOÀN MÀN HÌNH MÀN CHẮN TỐI */
+.modal-overlay {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  background: rgba(0, 0, 0, 0.75) !important;
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 99999 !important;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+.modal-card {
+  background: #162235;
+  border: 1px solid #334155;
+  border-radius: 20px;
+  padding: 24px 20px;
+  width: 100%;
+  max-width: 320px;
+  text-align: center;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.7);
+  animation: modalPop 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes modalPop {
+  from { transform: scale(0.85); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.modal-icon {
+  font-size: 42px;
+  margin-bottom: 8px;
+}
+
+.modal-title {
+  margin: 0 0 6px 0;
+  font-size: 18px;
+  color: #f8fafc;
+}
+
+.modal-desc {
+  margin: 0 0 20px 0;
+  font-size: 13px;
+  color: #94a3b8;
+  line-height: 1.4;
+}
+
+.modal-actions {
+  display: flex !important;
+  flex-direction: row !important;
+  gap: 12px !important;
+  margin-top: 10px !important;
+}
+
+.modal-actions button {
+  flex: 1 !important;
+  width: auto !important;
+  margin-top: 0 !important;
+  padding: 12px 14px !important;
+  font-size: 14px !important;
+  border-radius: 10px !important;
+}
+
+.btn-cancel {
+  background: #334155 !important;
+  color: #cbd5e1 !important;
+  box-shadow: none !important;
+}
+
+.btn-confirm-logout {
+  background: linear-gradient(135deg, #ef4444, #b91c1c) !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.4) !important;
+}
+
+/* HIỆU ỨNG CHẤM LED ĐÈN XANH NHẤP NHÁY */
+@keyframes livePulse {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.8); }
+  70% { transform: scale(1.15); box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
+.live-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  background-color: #10b981;
+  border-radius: 50%;
+  animation: livePulse 1.8s infinite ease-in-out;
+}
+
+/* HIỆU ỨNG VÒNG RADAR TỎA SÓNG TRÊN BẢN ĐỒ */
+@keyframes radarWave {
+  0% { opacity: 0.9; transform: scale(0.3); }
+  100% { opacity: 0; transform: scale(2.2); }
+}
+
+.radar-container {
+  position: relative;
+  width: 20px;
+  height: 20px;
+}
+
+.radar-center {
+  width: 14px;
+  height: 14px;
+  background-color: #10b981;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  z-index: 2;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+}
+
+.radar-ring {
+  width: 34px;
+  height: 34px;
+  border: 2px solid #10b981;
+  background: rgba(16, 185, 129, 0.25);
+  border-radius: 50%;
+  position: absolute;
+  top: -7px;
+  left: -7px;
+  z-index: 1;
+  animation: radarWave 2s infinite ease-out;
 }
 
 .profile-header {
@@ -222,9 +361,7 @@ button:active {
   animation: blinkAlert 1s infinite ease-in-out;
 }
 
-/* =========================================================
-   GIAO DIỆN SÁNG (LIGHT MODE OVERRIDES)
-   ========================================================= */
+/* GIAO DIỆN SÁNG (LIGHT MODE) */
 body.light-mode {
   background: #f0fdf4;
   color: #0f172a;
@@ -272,4 +409,23 @@ body.light-mode #phoneLabel {
 
 body.light-mode #coords {
   color: #64748b !important;
+}
+
+body.light-mode .modal-card {
+  background: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2) !important;
+}
+
+body.light-mode .modal-title {
+  color: #0f172a !important;
+}
+
+body.light-mode .modal-desc {
+  color: #64748b !important;
+}
+
+body.light-mode .btn-cancel {
+  background: #e2e8f0 !important;
+  color: #334155 !important;
 }

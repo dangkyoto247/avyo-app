@@ -29,6 +29,7 @@ async function checkDeviceLockState(email) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
+  initTheme();
   const { data: { session } } = await supabaseClient.auth.getSession();
   if (session) {
     document.getElementById('login-modal').style.display = 'none';
@@ -37,6 +38,38 @@ document.addEventListener('DOMContentLoaded', async () => {
     resetInactivityTimer();
   }
 });
+
+/* --- CHỨC NĂNG CHỂ ĐỘ SÁNG - TỐI --- */
+function initTheme() {
+  const savedTheme = localStorage.getItem('adminTheme');
+  if (savedTheme === 'dark') {
+    document.body.classList.add('dark-mode');
+    updateThemeBtn(true);
+  } else {
+    document.body.classList.remove('dark-mode');
+    updateThemeBtn(false);
+  }
+}
+
+function toggleDarkMode() {
+  const isDark = document.body.classList.toggle('dark-mode');
+  localStorage.setItem('adminTheme', isDark ? 'dark' : 'light');
+  updateThemeBtn(isDark);
+}
+
+function updateThemeBtn(isDark) {
+  const btn = document.getElementById('themeToggleBtn');
+  if (!btn) return;
+  if (isDark) {
+    btn.innerHTML = '☀️ Sáng';
+    btn.style.background = '#e2e8f0';
+    btn.style.color = '#0f172a';
+  } else {
+    btn.innerHTML = '🌙 Tối';
+    btn.style.background = '#334155';
+    btn.style.color = '#f8fafc';
+  }
+}
 
 async function checkPass() {
   const email = document.getElementById('emailInput').value.trim();
@@ -379,7 +412,7 @@ function renderAdminData() {
 
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td style="text-align: center; font-weight: bold; color: #64748b;">${stt}</td>
+      <td style="text-align: center; font-weight: bold;">${stt}</td>
       <td>
         <b>${typeLabels[d.vehicle_type] || d.vehicle_type}</b><br>
         <span class="small-text">${d.vehicle || '--'}</span>
@@ -432,7 +465,7 @@ function renderPaginationUI(totalPages, totalDrivers) {
     return;
   }
 
-  let html = `<span style="color: #64748b; font-size: 13px; margin-right: 10px;">Tổng: <b>${totalDrivers}</b> tài xế (Trang <b>${currentPage}</b>/<b>${totalPages}</b>)</span>`;
+  let html = `<span class="small-text" style="font-size: 13px; margin-right: 10px;">Tổng: <b>${totalDrivers}</b> tài xế (Trang <b>${currentPage}</b>/<b>${totalPages}</b>)</span>`;
   
   html += `<button class="pagination-btn" onclick="changePage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>◀ Trước</button>`;
 
@@ -454,7 +487,6 @@ function changePage(newPage) {
   renderAdminData();
 }
 
-// HÀM LƯU TÀI XẾ: ĐÃ CẬP NHẬT KIỂM TRA BẮT BUỘC DẤU NGOẶC ĐƠN VÀ CHỮ IN HOA TRONG BIỂN SỐ XE
 async function saveDriver() {
   const id = document.getElementById('driverId').value;
   const name = document.getElementById('driverName').value.trim();
@@ -466,38 +498,38 @@ async function saveDriver() {
   const vehicle_type = document.getElementById('vehicleType').value;
   const vehicle = document.getElementById('vehicleDetail').value.trim();
 
-  // 1. Tên tài xế: Bắt buộc, >= 4 ký tự, chỉ gồm chữ và khoảng trắng
+  // 1. Tên tài xế
   const nameRegex = /^[a-zA-Z\sàáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệđìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵÀÁẢÃẠÂẦẤẨẪẬĂẰẮẲẴẶÈÉẺẼẸÊỀẾỂỄỆĐÌÍỈĨỊÒÓỎÕỌÔỒỐỔỖỘƠỜỚỞỠỢÙÚỦŨỤƯỪỨỬỮỰỲÝỶỸỴ]+$/;
   if (!name || name.length < 4 || !nameRegex.test(name)) {
-    return alert("⚠️ Tên tài xế không hợp lệ!\nVui lòng nhập từ 4 ký tự trở lên và CHỈ ĐƯỢC NHẬP CHỮ (không chứa số hoặc ký tự đặc biệt).");
+    return alert("⚠️ Tên tài xế không hợp lệ!\nVui lòng nhập từ 4 ký tự trở lên và CHỈ ĐƯỢC NHẬP CHỮ.");
   }
 
-  // 2. Số điện thoại: Bắt buộc, 10 số, bắt đầu bằng số 0
+  // 2. Số điện thoại
   const phoneRegex = /^0\d{9}$/;
   if (!phoneRegex.test(phone)) {
     return alert("⚠️ Số điện thoại không đúng định dạng!\nVui lòng nhập đúng 10 chữ số (bắt đầu bằng số 0, VD: 0912345678).");
   }
 
-  // 3. Mã PIN: Bắt buộc 6-15 ký tự, không dấu, không khoảng cách, gồm chữ, số và ký tự đặc biệt
+  // 3. Mã PIN
   const pinRegex = /^(?=.*[a-zA-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?])[a-zA-Z0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]{6,15}$/;
   if (!pinRegex.test(pin)) {
-    return alert("⚠️ Mã PIN không đúng định dạng!\nMã PIN phải từ 6 đến 15 ký tự, KHÔNG DẤU, KHÔNG KHOẢNG CÁCH, gồm cả chữ, số và ít nhất 1 ký tự đặc biệt (Ví dụ: Tuan123@).");
+    return alert("⚠️ Mã PIN không đúng định dạng!\nMã PIN phải từ 6 đến 15 ký tự, KHÔNG DẤU, KHÔNG KHOẢNG CÁCH, gồm chữ, số và ký tự đặc biệt.");
   }
 
-  // 4. Link ảnh đại diện: Bắt buộc, http:// hoặc https://
+  // 4. Link ảnh
   if (!avatar_url || !avatar_url.match(/^https?:\/\/.+/i)) {
-    return alert("⚠️ Vui lòng nhập Link ảnh đại diện hợp lệ!\nĐường dẫn bắt buộc phải bắt đầu bằng http:// hoặc https://");
+    return alert("⚠️ Vui lòng nhập Link ảnh đại diện hợp lệ!\nĐường dẫn phải bắt đầu bằng http:// hoặc https://");
   }
 
-  // 5. Số CCCD: Bắt buộc, đúng 12 chữ số
+  // 5. CCCD
   if (!cccd || !/^\d{12}$/.test(cccd)) {
     return alert("⚠️ Số CCCD không hợp lệ!\nVui lòng nhập đúng 12 chữ số.");
   }
 
-  // 6. Kiểm tra Loại xe & Biển số: Bắt buộc phần sau cùng bọc trong ngoặc () và chữ cái phải IN HOA
+  // 6. Biển số xe bọc () và IN HOA
   const vehicleRegex = /\(\d{2}[A-Z][A-Z0-9]?-(?:\d{4}|\d{3}\.\d{2})\)$/;
   if (!vehicle || !vehicleRegex.test(vehicle)) {
-    return alert("⚠️ Loại xe & Biển số không đúng định dạng!\nPhần biển số ở cuối bắt buộc phải bọc trong ngoặc đơn () và CHỮ IN HOA, đúng một trong các dạng:\n- (37K-1234) hoặc (37K-123.12)\n- (37K1-1234) hoặc (37K1-123.12)\n(Ví dụ: Wave (37B1-1234) hoặc Toyota (37K-123.12))");
+    return alert("⚠️ Loại xe & Biển số không đúng định dạng!\nBiển số bọc ngoặc () và IN HOA (VD: Wave (37B1-1234) hoặc Toyota (37K-123.12))");
   }
 
   const payload = {

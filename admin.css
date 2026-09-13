@@ -1,10 +1,12 @@
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   background: #f1f5f9;
+  color: #0f172a;
   margin: 0;
   padding: 12px;
   touch-action: manipulation;
   -webkit-text-size-adjust: 100%;
+  transition: background 0.3s, color 0.3s;
 }
 
 .container { 
@@ -20,6 +22,7 @@ body {
   border-radius: 14px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.06);
   margin-bottom: 14px;
+  transition: background 0.3s;
 }
 
 #map { height: 840px; width: 100%; border-radius: 12px; margin-top: 10px; }
@@ -40,6 +43,8 @@ input, select {
   border-radius: 8px;
   font-size: 14px;
   outline: none;
+  background: #ffffff;
+  color: #0f172a;
 }
 button {
   padding: 10px 16px;
@@ -126,4 +131,55 @@ th { background: #f8fafc; color: #475569; font-weight: 600; white-space: nowrap;
 .pagination-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+/* --- CẤU HÌNH GIAO DIỆN TỐI (DARK MODE) --- */
+body.dark-mode {
+  background: #0f172a;
+  color: #f8fafc;
+}
+body.dark-mode .card {
+  background: #1e293b;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+body.dark-mode h2, 
+body.dark-mode h3, 
+body.dark-mode h4 {
+  color: #f8fafc !important;
+}
+body.dark-mode input, 
+body.dark-mode select {
+  background: #334155;
+  color: #f8fafc;
+  border-color: #475569;
+}
+body.dark-mode table th {
+  background: #334155;
+  color: #cbd5e1;
+  border-bottom: 1px solid #475569;
+}
+body.dark-mode table td {
+  border-bottom: 1px solid #334155;
+  color: #f1f5f9;
+}
+body.dark-mode .filter-chip {
+  background: #334155;
+  color: #cbd5e1;
+  border-color: #475569;
+}
+body.dark-mode .filter-chip.active {
+  background: #16a34a;
+  color: white;
+}
+body.dark-mode .small-text {
+  color: #94a3b8;
+}
+body.dark-mode .pagination-btn {
+  background: #334155;
+  color: #f8fafc;
+  border-color: #475569;
+}
+body.dark-mode .badge-offline {
+  background: #334155;
+  color: #cbd5e1;
 }
