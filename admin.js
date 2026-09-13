@@ -5,6 +5,38 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 let currentPage = 1;
 const ITEMS_PER_PAGE = 50;
 
+/* --- HÀM TẠO NÚT THÔNG BÁO / HỎI XÁC NHẬN SANG TRỌNG --- */
+const isDark = () => document.body.classList.contains('dark-mode');
+
+function customAlert(title, text = '', icon = 'info') {
+  return Swal.fire({
+    title: title,
+    html: text.replace(/\n/g, '<br>'),
+    icon: icon,
+    background: isDark() ? '#1e293b' : '#ffffff',
+    color: isDark() ? '#f8fafc' : '#0f172a',
+    confirmButtonColor: '#16a34a',
+    confirmButtonText: 'Đồng ý',
+    borderRadius: '16px',
+  });
+}
+
+function customConfirm(title, text, confirmText = 'Xác nhận', cancelText = 'Hủy') {
+  return Swal.fire({
+    title: title,
+    html: text.replace(/\n/g, '<br>'),
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonColor: '#16a34a',
+    cancelButtonColor: '#64748b',
+    confirmButtonText: confirmText,
+    cancelButtonText: cancelText,
+    background: isDark() ? '#1e293b' : '#ffffff',
+    color: isDark() ? '#f8fafc' : '#0f172a',
+    borderRadius: '16px',
+  });
+}
+
 async function checkDeviceLockState(email) {
   if (!email) return false;
 
@@ -18,7 +50,7 @@ async function checkDeviceLockState(email) {
     loginBtn.disabled = true;
     loginBtn.style.background = '#94a3b8';
     loginBtn.innerText = `⛔ TÀI KHOẢN BỊ KHÓA (${result.remaining_minutes}p)`;
-    alert(`⛔ Tài khoản [${email}] đang bị KHÓA đăng nhập trong ${result.remaining_minutes} phút do nhập sai 3 lần!`);
+    customAlert('⛔ Tài khoản bị khóa', `Tài khoản [${email}] đang bị KHÓA đăng nhập trong ${result.remaining_minutes} phút do nhập sai 3 lần!`, 'error');
     return true;
   } else {
     loginBtn.disabled = false;
@@ -39,7 +71,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 });
 
-/* --- CHỨC NĂNG CHỂ ĐỘ SÁNG - TỐI --- */
 function initTheme() {
   const savedTheme = localStorage.getItem('adminTheme');
   if (savedTheme === 'dark') {
@@ -77,7 +108,7 @@ async function checkPass() {
   const loginBtn = document.getElementById('loginBtn');
 
   if (!email || !password) {
-    alert("⚠️ Vui lòng nhập đầy đủ Email và Mật khẩu!");
+    customAlert('⚠️ Thiếu thông tin', 'Vui lòng nhập đầy đủ Email và Mật khẩu!', 'warning');
     return;
   }
 
@@ -99,7 +130,7 @@ async function checkPass() {
       if (res.is_locked) {
         await checkDeviceLockState(email);
       } else {
-        alert(`❌ Đăng nhập thất bại!\nSai Email hoặc Mật khẩu.\n\n⚠️ Cảnh báo: Còn ${res.remaining_fails} lần thử trước khi khóa tài khoản trong 1 giờ.`);
+        customAlert('❌ Đăng nhập thất bại', `Sai Email hoặc Mật khẩu.\n\n⚠️ Cảnh báo: Còn ${res.remaining_fails} lần thử trước khi khóa tài khoản trong 1 giờ.`, 'error');
         loginBtn.innerText = "VÀO TRANG QUẢN TRỊ";
       }
     }
@@ -128,8 +159,7 @@ function resetInactivityTimer() {
   clearTimeout(inactivityTimer);
   if (document.getElementById('login-modal').style.display === 'none') {
     inactivityTimer = setTimeout(() => {
-      alert("⏱️ Bạn đã không thao tác trong 15 phút. Hệ thống tự động đăng xuất để bảo mật!");
-      logout();
+      customAlert('⏱️ Hết phiên hoạt động', 'Bạn đã không thao tác trong 15 phút. Hệ thống tự động đăng xuất để bảo mật!', 'info').then(() => logout());
     }, INACTIVITY_LIMIT);
   }
 }
@@ -173,7 +203,7 @@ function toggleAdminFilter(type, element) {
     document.querySelectorAll('.filter-chip').forEach(chip => chip.classList.add('active'));
   } else {
     if (activeAdminFilters.has(type)) {
-      if (activeAdminFilters.size === 1) return alert("Phải chọn ít nhất 1 loại xe!");
+      if (activeAdminFilters.size === 1) return customAlert('Thông báo', 'Phải chọn ít nhất 1 loại xe!', 'warning');
       activeAdminFilters.delete(type);
       element.classList.remove('active');
     } else {
@@ -501,35 +531,35 @@ async function saveDriver() {
   // 1. Tên tài xế
   const nameRegex = /^[a-zA-Z\sàáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệđìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵÀÁẢÃẠÂẦẤẨẪẬĂẰẮẲẴẶÈÉẺẼẸÊỀẾỂỄỆĐÌÍỈĨỊÒÓỎÕỌÔỒỐỔỖỘƠỜỚỞỠỢÙÚỦŨỤƯỪỨỬỮỰỲÝỶỸỴ]+$/;
   if (!name || name.length < 4 || !nameRegex.test(name)) {
-    return alert("⚠️ Tên tài xế không hợp lệ!\nVui lòng nhập từ 4 ký tự trở lên và CHỈ ĐƯỢC NHẬP CHỮ.");
+    return customAlert('⚠️ Tên không hợp lệ', 'Vui lòng nhập từ 4 ký tự trở lên và CHỈ ĐƯỢC NHẬP CHỮ.', 'warning');
   }
 
   // 2. Số điện thoại
   const phoneRegex = /^0\d{9}$/;
   if (!phoneRegex.test(phone)) {
-    return alert("⚠️ Số điện thoại không đúng định dạng!\nVui lòng nhập đúng 10 chữ số (bắt đầu bằng số 0, VD: 0912345678).");
+    return customAlert('⚠️ Số điện thoại không hợp lệ', 'Vui lòng nhập đúng 10 chữ số (bắt đầu bằng số 0, VD: 0912345678).', 'warning');
   }
 
   // 3. Mã PIN
   const pinRegex = /^(?=.*[a-zA-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?])[a-zA-Z0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]{6,15}$/;
   if (!pinRegex.test(pin)) {
-    return alert("⚠️ Mã PIN không đúng định dạng!\nMã PIN phải từ 6 đến 15 ký tự, KHÔNG DẤU, KHÔNG KHOẢNG CÁCH, gồm chữ, số và ký tự đặc biệt.");
+    return customAlert('⚠️ Mã PIN không hợp lệ', 'Mã PIN phải từ 6 đến 15 ký tự, KHÔNG DẤU, KHÔNG KHOẢNG CÁCH, gồm cả chữ, số và ít nhất 1 ký tự đặc biệt (Ví dụ: Tuan123@).', 'warning');
   }
 
   // 4. Link ảnh
   if (!avatar_url || !avatar_url.match(/^https?:\/\/.+/i)) {
-    return alert("⚠️ Vui lòng nhập Link ảnh đại diện hợp lệ!\nĐường dẫn phải bắt đầu bằng http:// hoặc https://");
+    return customAlert('⚠️ Đường dẫn ảnh không hợp lệ', 'Đường dẫn ảnh bắt buộc phải bắt đầu bằng http:// hoặc https://', 'warning');
   }
 
-  // 5. CCCD
+  // 5. Số CCCD
   if (!cccd || !/^\d{12}$/.test(cccd)) {
-    return alert("⚠️ Số CCCD không hợp lệ!\nVui lòng nhập đúng 12 chữ số.");
+    return customAlert('⚠️ Số CCCD không hợp lệ', 'Vui lòng nhập đúng 12 chữ số.', 'warning');
   }
 
   // 6. Biển số xe bọc () và IN HOA
   const vehicleRegex = /\(\d{2}[A-Z][A-Z0-9]?-(?:\d{4}|\d{3}\.\d{2})\)$/;
   if (!vehicle || !vehicleRegex.test(vehicle)) {
-    return alert("⚠️ Loại xe & Biển số không đúng định dạng!\nBiển số bọc ngoặc () và IN HOA (VD: Wave (37B1-1234) hoặc Toyota (37K-123.12))");
+    return customAlert('⚠️ Loại xe & Biển số không hợp lệ', 'Phần biển số ở cuối bắt buộc phải bọc trong ngoặc () và CHỮ IN HOA (Ví dụ: Wave (37B1-1234) hoặc Toyota (37K-123.12)).', 'warning');
   }
 
   const payload = {
@@ -556,9 +586,9 @@ async function saveDriver() {
   }
 
   if (response.error) {
-    alert("❌ Lỗi: " + response.error.message);
+    customAlert('❌ Thao tác thất bại', response.error.message, 'error');
   } else {
-    alert(id ? "✅ Cập nhật thành công!" : "✅ Thêm tài xế mới thành công!");
+    customAlert('✅ Thành công', id ? "Cập nhật thông tin thành công!" : "Thêm tài xế mới thành công!", 'success');
     resetForm();
     loadAllData();
   }
@@ -599,18 +629,23 @@ function resetForm() {
 }
 
 async function unlockDriver(id, name, pin) {
-  const confirmUnlock = confirm(`📞 Đã xác minh Video thành công với tài xế: "${name}"?\n\nMật khẩu PIN của tài xế là: [ ${pin} ]\n\nBấm OK để MỞ KHÓA tài khoản ngay lập tức.`);
-  
-  if (confirmUnlock) {
+  const result = await customConfirm(
+    '🔓 Mở khóa tài khoản',
+    `Đã xác minh Video thành công với tài xế: <b>"${name}"</b>?<br><br>Mật khẩu PIN: <b style="color:#eab308; font-size:16px;">[ ${pin} ]</b>`,
+    'Mở khóa ngay',
+    'Hủy'
+  );
+
+  if (result.isConfirmed) {
     const { error } = await supabaseClient
       .from('drivers')
       .update({ locked_until: null, updated_at: new Date().toISOString() })
       .eq('id', id);
 
     if (error) {
-      alert("❌ Lỗi: " + error.message);
+      customAlert('❌ Lỗi', error.message, 'error');
     } else {
-      alert(`✅ ĐÃ MỞ KHÓA THÀNH CÔNG!\n\nHãy đọc lại Mã PIN cho tài xế "${name}": ${pin}`);
+      customAlert('✅ Thành công', `ĐÃ MỞ KHÓA THÀNH CÔNG!\n\nHãy đọc lại Mã PIN cho tài xế "${name}": ${pin}`, 'success');
       loadAllData();
     }
   }
@@ -619,7 +654,14 @@ async function unlockDriver(id, name, pin) {
 async function toggleDriverStatus(id, name, isCurrentlyActive) {
   const actionText = isCurrentlyActive ? "chuyển trạng thái ĐÃ NGHỈ cho" : "KÍCH HOẠT LẠI";
   
-  if (confirm(`Bạn có chắc muốn ${actionText} tài xế "${name}"?`)) {
+  const result = await customConfirm(
+    '⚙️ Xác nhận thay đổi',
+    `Bạn có chắc muốn <b>${actionText}</b> tài xế <b>"${name}"</b>?`,
+    'Đồng ý',
+    'Hủy'
+  );
+
+  if (result.isConfirmed) {
     const payload = isCurrentlyActive 
       ? { is_active: false, is_online: false } 
       : { is_active: true };
@@ -627,9 +669,9 @@ async function toggleDriverStatus(id, name, isCurrentlyActive) {
     const { error } = await supabaseClient.from('drivers').update(payload).eq('id', id);
     
     if (error) {
-      alert("❌ Lỗi: " + error.message);
+      customAlert('❌ Lỗi', error.message, 'error');
     } else {
-      alert(isCurrentlyActive ? `✅ Đã chuyển tài xế "${name}" sang trạng thái Đã nghỉ.` : `✅ Đã kích hoạt lại tài xế "${name}".`);
+      customAlert('✅ Thành công', isCurrentlyActive ? `Đã chuyển tài xế "${name}" sang trạng thái Đã nghỉ.` : `Đã kích hoạt lại tài xế "${name}".`, 'success');
       loadAllData();
     }
   }
