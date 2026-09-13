@@ -16,7 +16,7 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <!-- Thêm thư viện Leaflet.MovingMarker -->
+  <!-- Thư viện Leaflet.MovingMarker -->
   <script src="https://cdn.jsdelivr.net/gh/ewoken/Leaflet.MovingMarker@master/MovingMarker.js"></script>
 
   <style>
@@ -118,7 +118,7 @@
 
   <div class="card" style="margin-bottom: 8px; padding: 10px 12px;">
     <div class="search-input-group">
-      <input type="text" id="pickupInput" placeholder="📍 Tìm điểm đón (VD: Sân bay Vinh)..." autocomplete="off" oninput="onSearchInput('pickup')">
+      <input type="text" id="pickupInput" placeholder="📍 Tìm điểm đón (VD: Sân bay Vinh)..." autocomplete="off" oninput="onSearchInput('pickup')" onfocus="showRecentPickups()">
       <div id="pickupSuggestions" class="suggestions-list"></div>
     </div>
     <div class="search-input-group" style="margin-bottom: 0;">
@@ -177,6 +177,8 @@
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl2dWN5cWtnbGJneHZvenJ6bmlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkxMzA3ODAsImV4cCI6MjEwNDcwNjc4MH0.Zagl4i2LPmxW3w9ih0h4LRsrm-OOGtPcWgvEs2vHBqo';
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+    const RECENT_PICKUPS_KEY = 'avyo_recent_pickups';
+
     let userLatLng = null;
     let markerStart = null, markerEnd = null;
     let routeLine = null;
@@ -184,6 +186,57 @@
     let selectedDriver = null;
     let rawDriversData = [];
     let searchTimer = null;
+
+    // --- QUẢN LÝ LỊCH SỬ 5 ĐIỂM ĐÓN GẦN ĐÂY ---
+    function getRecentPickups() {
+      try {
+        const data = localStorage.getItem(RECENT_PICKUPS_KEY);
+        return data ? JSON.parse(data) : [];
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function saveRecentPickup(label, lat, lng) {
+      if (!label || !lat || !lng) return;
+      let list = getRecentPickups();
+      // Loại bỏ trùng lặp theo tên hoặc vị trí
+      list = list.filter(item => item.label !== label && !(Math.abs(item.lat - lat) < 0.0001 && Math.abs(item.lng - lng) < 0.0001));
+      list.unshift({ label, lat, lng });
+      list = list.slice(0, 5); // Giữ tối đa 5 điểm đón mới nhất
+      localStorage.setItem(RECENT_PICKUPS_KEY, JSON.stringify(list));
+    }
+
+    function showRecentPickups() {
+      const inputVal = document.getElementById('pickupInput').value.trim();
+      if (inputVal.length >= 2) return; // Nếu đang gõ tìm kiếm thì nhường cho kết quả tìm kiếm
+
+      const listEl = document.getElementById('pickupSuggestions');
+      const recents = getRecentPickups();
+
+      if (!recents || recents.length === 0) {
+        listEl.style.display = 'none';
+        return;
+      }
+
+      listEl.innerHTML = '<div style="padding: 6px 12px; font-size: 11px; color: #16a34a; font-weight: bold; background: #f0fdf4; border-bottom: 1px solid #e2e8f0;">🕒 ĐIỂM ĐÓN GẦN ĐÂY</div>';
+      
+      recents.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'suggestion-item';
+        div.innerHTML = `🕒 <b>${item.label}</b>`;
+        div.onclick = () => {
+          document.getElementById('pickupInput').value = item.label;
+          listEl.style.display = 'none';
+          const latlng = L.latLng(item.lat, item.lng);
+          map.setView(latlng, 15);
+          setPickupLocation(latlng);
+          saveRecentPickup(item.label, item.lat, item.lng);
+        };
+        listEl.appendChild(div);
+      });
+      listEl.style.display = 'block';
+    }
 
     function updateGuide() {
       const guideBox = document.getElementById('guideBox');
@@ -300,8 +353,10 @@
     function useCurrentLocationAsPickup() {
       if (userLatLng) {
         setPickupLocation(userLatLng, true);
-        document.getElementById('pickupInput').value = "Vị trí hiện tại của bạn";
+        const labelText = "Vị trí hiện tại của bạn";
+        document.getElementById('pickupInput').value = labelText;
         map.setView(userLatLng, 15);
+        saveRecentPickup(labelText, userLatLng.lat, userLatLng.lng);
       } else {
         map.locate({ setView: true, maxZoom: 15 });
       }
@@ -321,7 +376,11 @@
       const listEl = document.getElementById(type + 'Suggestions');
      
       if (query.length < 2) {
-        listEl.style.display = 'none';
+        if (type === 'pickup') {
+          showRecentPickups();
+        } else {
+          listEl.style.display = 'none';
+        }
         return;
       }
 
@@ -344,8 +403,12 @@
               if (item.lat && item.lng) {
                 const latlng = L.latLng(item.lat, item.lng);
                 map.setView(latlng, 15);
-                if (type === 'pickup') setPickupLocation(latlng);
-                else setDestLocation(latlng);
+                if (type === 'pickup') {
+                  setPickupLocation(latlng);
+                  saveRecentPickup(item.label, item.lat, item.lng);
+                } else {
+                  setDestLocation(latlng);
+                }
 
                 if (!item.is_cached) {
                   try {
@@ -965,11 +1028,9 @@
     updateGuide();
     supabaseClient.channel('realtime-drivers').on('postgres_changes', { event: '*', schema: 'public', table: 'drivers' }, () => loadDrivers()).subscribe();
 
-    // === CHÈN ĐOẠN MÃ MỚI VÀO ĐÂY ===
     setInterval(() => {
       if (typeof renderDriverMarkers === 'function') renderDriverMarkers();
     }, 30000);
-    // =================================
     
     document.addEventListener('gesturestart', function (e) {
       e.preventDefault();
@@ -983,7 +1044,6 @@
       });
     }
   </script>
-
 
 </body>
 </html>
