@@ -35,11 +35,11 @@
       display: none !important;
     }
 
-    /* KHUNG HƯỚNG DẪN CỐ ĐỊNH KHI CUỘN MÀN HÌNH & THƯƠNG HIỆU AVYO */
+    /* KHUNG HƯỚNG DẪN CỐ ĐỊNH KHI CUỘN MÀN HÌNH (Z-INDEX 2000 ĐỂ KHÔNG BỊ ĐÈ) */
     .guide-box { 
       position: sticky; 
       top: 4px; 
-      z-index: 1000; 
+      z-index: 2000; 
       background: #eff6ff; 
       border: 1.5px solid #93c5fd; 
       color: #1e40af; 
@@ -84,7 +84,7 @@
     .search-input-group { position: relative; margin-bottom: 6px; }
     .search-input-group input { width: 100%; padding: 10px 12px; border: 1.5px solid #cbd5e1; border-radius: 10px; font-size: 14px; outline: none; box-sizing: border-box; transition: border 0.2s; }
     .search-input-group input:focus { border-color: #00b14f; box-shadow: 0 0 0 3px rgba(0, 177, 79, 0.15); }
-    .suggestions-list { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #cbd5e1; border-radius: 10px; max-height: 200px; overflow-y: auto; z-index: 1001; box-shadow: 0 6px 16px rgba(0,0,0,0.12); display: none; margin-top: 4px; }
+    .suggestions-list { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #cbd5e1; border-radius: 10px; max-height: 200px; overflow-y: auto; z-index: 2001; box-shadow: 0 6px 16px rgba(0,0,0,0.12); display: none; margin-top: 4px; }
     .suggestion-item { padding: 10px 12px; font-size: 13px; border-bottom: 1px solid #f1f5f9; cursor: pointer; color: #334155; }
     .suggestion-item:last-child { border-bottom: none; }
     .suggestion-item:hover { background: #f0fdf4; color: #16a34a; }
@@ -210,9 +210,13 @@
   <script>
     const map = L.map('map', { 
       preferCanvas: true,
-      attributionControl: false // TẮT HIỂN THỊ DÒNG BẢN QUYỀN LEAFLET & CARTO
+      attributionControl: false, // TẮT BẢN QUYỀN LEAFLET & CARTO
+      zoomControl: false         // TẮT NÚT ZOOM MẶC ĐỊNH Ở GÓC TRÊN BÊN TRÁI
     }).setView([18.7034, 105.6832], 13);
    
+    // CHUYỂN NÚT ZOOM (+ -) SANG GÓC TRÊN BÊN PHẢI BẢN ĐỒ
+    L.control.zoom({ position: 'topright' }).addTo(map);
+
     L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
       maxZoom: 19,
       subdomains: 'abcd'
