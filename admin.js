@@ -5,19 +5,20 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 let currentPage = 1;
 const ITEMS_PER_PAGE = 50;
 
-/* --- HÀM TẠO NÚT THÔNG BÁO / HỎI XÁC NHẬN SANG TRỌNG --- */
-const isDark = () => document.body.classList.contains('dark-mode');
-
+/* --- HÀM TẠO THÔNG BÁO / XÁC NHẬN SANG TRỌNG HOÀN TOÀN MỚI --- */
 function customAlert(title, text = '', icon = 'info') {
   return Swal.fire({
     title: title,
     html: text.replace(/\n/g, '<br>'),
     icon: icon,
-    background: isDark() ? '#1e293b' : '#ffffff',
-    color: isDark() ? '#f8fafc' : '#0f172a',
-    confirmButtonColor: '#16a34a',
-    confirmButtonText: 'Đồng ý',
-    borderRadius: '16px',
+    customClass: {
+      popup: 'custom-swal-popup',
+      title: 'custom-swal-title',
+      htmlContainer: 'custom-swal-html',
+      confirmButton: 'custom-swal-confirm-btn'
+    },
+    buttonsStyling: false,
+    confirmButtonText: 'Đồng ý'
   });
 }
 
@@ -27,13 +28,16 @@ function customConfirm(title, text, confirmText = 'Xác nhận', cancelText = 'H
     html: text.replace(/\n/g, '<br>'),
     icon: 'question',
     showCancelButton: true,
-    confirmButtonColor: '#16a34a',
-    cancelButtonColor: '#64748b',
+    customClass: {
+      popup: 'custom-swal-popup',
+      title: 'custom-swal-title',
+      htmlContainer: 'custom-swal-html',
+      confirmButton: 'custom-swal-confirm-btn',
+      cancelButton: 'custom-swal-cancel-btn'
+    },
+    buttonsStyling: false,
     confirmButtonText: confirmText,
-    cancelButtonText: cancelText,
-    background: isDark() ? '#1e293b' : '#ffffff',
-    color: isDark() ? '#f8fafc' : '#0f172a',
-    borderRadius: '16px',
+    cancelButtonText: cancelText
   });
 }
 
@@ -71,6 +75,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 });
 
+/* --- CHỨC NĂNG CHẾ ĐỘ SÁNG - TỐI HOẠT ĐỘNG CHUẨN ĐIỆN THOẠI --- */
 function initTheme() {
   const savedTheme = localStorage.getItem('adminTheme');
   if (savedTheme === 'dark') {
@@ -90,6 +95,12 @@ function toggleDarkMode() {
 
 function updateThemeBtn(isDark) {
   const btn = document.getElementById('themeToggleBtn');
+  const metaTheme = document.getElementById('theme-color-meta');
+  
+  if (metaTheme) {
+    metaTheme.setAttribute('content', isDark ? '#0b1120' : '#0f172a');
+  }
+
   if (!btn) return;
   if (isDark) {
     btn.innerHTML = '☀️ Sáng';

@@ -8,7 +8,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="admin.png">
   <link rel="apple-touch-icon" sizes="180x180" href="admin.png">
   <link rel="manifest" href="admin-manifest.json">
-  <meta name="theme-color" content="#0f172a">
+  <meta id="theme-color-meta" name="theme-color" content="#0f172a">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -17,17 +17,17 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   
-  <!-- TÍCH HỢP THƯ VIỆN ĐỔI GIAO DIỆN THÔNG BÁO SANG TRỌNG -->
+  <!-- TÍCH HỢP POPUP SWEETALERT2 SANG TRỌNG -->
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-  <link rel="stylesheet" href="admin.css">
+  <link rel="stylesheet" href="admin.css?v=8">
 </head>
 <body>
 
   <div id="login-modal">
     <div class="login-box">
-      <h3 style="margin-top:0; color:#0f172a;">🔒 Đăng Nhập Admin</h3>
-      <p style="font-size:12px; color:#64748b; margin-bottom:12px;">Nhập tài khoản để truy cập hệ thống</p>
+      <h3 style="margin-top:0;">🔒 Đăng Nhập Admin</h3>
+      <p style="font-size:12px; opacity: 0.7; margin-bottom:12px;">Nhập tài khoản để truy cập hệ thống</p>
       
       <input type="email" id="emailInput" placeholder="Email Admin..." style="width: 80%; text-align: center; margin-bottom: 8px;">
       <input type="password" id="passInput" placeholder="Mật khẩu..." style="width: 80%; text-align: center; margin-bottom: 12px;">
@@ -38,7 +38,7 @@
 
   <div class="container">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-      <h2 style="margin:0; color:#0f172a;" id="pageTitle">⚙️ Quản Lý Hệ Thống Avyo</h2>
+      <h2 style="margin:0;" id="pageTitle">⚙️ Quản Lý Hệ Thống Avyo</h2>
       <div style="display: flex; gap: 8px; align-items: center;">
         <button id="themeToggleBtn" onclick="toggleDarkMode()" style="background:#334155; color:#f8fafc; padding:6px 12px; font-size:12px; border-radius:6px; cursor:pointer; font-weight:bold; transition: 0.2s;">🌙 Tối</button>
         <button onclick="logout()" style="background:#cbd5e1; color:#334155; padding:6px 12px; font-size:12px;">Đăng xuất</button>
@@ -47,11 +47,11 @@
 
     <div class="card">
       <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 8px;">
-        <h4 style="margin: 0; color: #334155; display: flex; flex-wrap: wrap; align-items: center; gap: 10px;">
+        <h4 style="margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 10px;">
           📍 Bản Đồ Giám Sát Xe Đang Chạy: 
           <span style="font-size:14px; color:#16a34a;">🟢 <b id="onlineCount">0</b> Tốt</span>
           <span style="font-size:14px; color:#d97706;">🟡 <b id="ghostCount">0</b> Mất tín hiệu</span>
-          <span style="font-size:14px; color:#64748b;">⚪ <b id="offlineCount">0</b> Đang nghỉ</span>
+          <span style="font-size:14px; opacity:0.7;">⚪ <b id="offlineCount">0</b> Đang nghỉ</span>
         </h4>
         <button id="toggleMapBtn" onclick="toggleMap()" style="background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; padding:4px 8px; border-radius:6px; font-size:12px; cursor:pointer; white-space:nowrap; transition:0.2s;">Ẩn bản đồ 🔼</button>
       </div>
@@ -60,7 +60,7 @@
     </div>
 
     <div class="card">
-      <h4 id="formTitle" style="margin: 0 0 8px 0; color: #334155;">➕ Thêm Tài Xế Mới</h4>
+      <h4 id="formTitle" style="margin: 0 0 8px 0;">➕ Thêm Tài Xế Mới</h4>
       <input type="hidden" id="driverId">
      
       <div class="form-grid">
@@ -87,7 +87,7 @@
 
     <div class="card" style="overflow-x: auto;">
       <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 12px;">
-        <h4 style="margin: 0; color: #334155; white-space: nowrap;">📋 Danh Sách Tất Cả Tài Xế</h4>
+        <h4 style="margin: 0; white-space: nowrap;">📋 Danh Sách Tất Cả Tài Xế</h4>
         
         <div style="display: flex; gap: 8px; flex-wrap: wrap; flex: 1; min-width: 280px; justify-content: flex-end; align-items: center;">
           <input type="text" id="searchInput" oninput="currentPage = 1; renderAdminData();" placeholder="🔎 Tìm Tên, SĐT, CCCD, Biển số..." style="flex: 2; min-width: 180px;">
@@ -132,6 +132,6 @@
   </div>
 
   <script src="utils.js"></script>
-  <script src="admin.js?v=7"></script>
+  <script src="admin.js?v=8"></script>
 </body>
 </html>
