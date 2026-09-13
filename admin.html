@@ -39,7 +39,6 @@
       <button onclick="logout()" style="background:#cbd5e1; color:#334155; padding:6px 12px; font-size:12px;">Đăng xuất</button>
     </div>
 
-    <!-- KHU VỰC BẢN ĐỒ ĐÃ ĐƯỢC CHỈNH SỬA THÊM NÚT ẨN HIỆN -->
     <div class="card">
       <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 8px;">
         <h4 style="margin: 0; color: #334155; display: flex; flex-wrap: wrap; align-items: center; gap: 10px;">
@@ -53,7 +52,6 @@
       
       <div id="map" style="display: block;"></div>
     </div>
-    <!-- KẾT THÚC KHU VỰC BẢN ĐỒ -->
 
     <div class="card">
       <h4 id="formTitle" style="margin: 0 0 8px 0; color: #334155;">➕ Thêm Tài Xế Mới</h4>
@@ -85,7 +83,8 @@
       <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 12px;">
         <h4 style="margin: 0; color: #334155; white-space: nowrap;">📋 Danh Sách Tất Cả Tài Xế</h4>
         
-        <div style="display: flex; gap: 8px; flex-wrap: wrap; flex: 1; min-width: 280px; justify-content: flex-end;">
+        <!-- ĐÃ THÊM NÚT ĐẶT LẠI NGANG DÒNG VỚI Ô TÌM KIẾM VA BỘ LỌC -->
+        <div style="display: flex; gap: 8px; flex-wrap: wrap; flex: 1; min-width: 280px; justify-content: flex-end; align-items: center;">
           <input type="text" id="searchInput" oninput="currentPage = 1; renderAdminData();" placeholder="🔎 Tìm Tên, SĐT, CCCD, Biển số..." style="flex: 2; min-width: 180px;">
           <select id="statusFilter" onchange="currentPage = 1; renderAdminData();" style="flex: 1; min-width: 140px;">
             <option value="all">🌐 Tất cả trạng thái</option>
@@ -94,6 +93,7 @@
             <option value="offline">⚪ Đã tắt GPS (Nghỉ ngơi)</option>
             <option value="retired">🔴 Đã nghỉ / Bị khóa</option>
           </select>
+          <button onclick="resetSearchFilters()" style="background: #e2e8f0; color: #475569; border: 1px solid #cbd5e1; padding: 10px 14px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 13px; white-space: nowrap; transition: 0.2s;">🔄 Đặt lại</button>
         </div>
       </div>
 

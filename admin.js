@@ -120,7 +120,6 @@ const typeLabels = { 'bike': '🛵 Xe máy', 'car': '🚕 Ô tô', 'driver': '�
 
 function initMap() {
   if (map) return;
-  // Đã sửa: Thêm attributionControl: false để xóa chữ OpenStreetMap
   map = L.map('map', { preferCanvas: true, attributionControl: false }).setView([18.7034, 105.6832], 12);
  
   L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
@@ -155,6 +154,22 @@ function toggleAdminFilter(type, element) {
       allBtn.classList.remove('active');
     }
   }
+  renderAdminData();
+}
+
+// HÀM MỚI: ĐẶT LẠI TẤT CẢ BỘ LỌC TÌM KIẾM VỀ MẶC ĐỊNH
+function resetSearchFilters() {
+  const searchInput = document.getElementById('searchInput');
+  const statusFilter = document.getElementById('statusFilter');
+
+  if (searchInput) searchInput.value = '';
+  if (statusFilter) statusFilter.value = 'all';
+
+  activeAdminFilters.clear();
+  ['bike', 'car', 'driver', 'truck'].forEach(t => activeAdminFilters.add(t));
+  document.querySelectorAll('.filter-chip').forEach(chip => chip.classList.add('active'));
+
+  currentPage = 1;
   renderAdminData();
 }
 
@@ -573,24 +588,20 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-// HÀM MỚI: ẨN / HIỆN BẢN ĐỒ 
 function toggleMap() {
   const mapEl = document.getElementById('map');
   const btn = document.getElementById('toggleMapBtn');
   
   if (mapEl.style.display === 'none') {
-    // Hiện bản đồ
     mapEl.style.display = 'block';
     btn.innerHTML = 'Ẩn bản đồ 🔼';
     btn.style.background = '#f1f5f9';
     btn.style.color = '#475569';
     
-    // Yêu cầu Leaflet vẽ lại để tránh lỗi hiển thị xám khung
     if (map) {
       setTimeout(() => { map.invalidateSize(); }, 300);
     }
   } else {
-    // Ẩn bản đồ
     mapEl.style.display = 'none';
     btn.innerHTML = 'Hiện bản đồ 🔽';
     btn.style.background = '#16a34a';
