@@ -925,7 +925,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // ==========================================
-// LOGIC CHẾ ĐỘ TỐI (DARK MODE)
+// CHỨC NĂNG CHẾ ĐỘ TỐI (DARK MODE)
 // ==========================================
 
 window.toggleDarkMode = function() {
@@ -953,3 +953,60 @@ document.addEventListener('DOMContentLoaded', () => {
     themeToggleBtn.innerText = '☀️';
   }
 });
+
+// ==========================================
+// GHI ĐÈ HÀM ALERT BẰNG POPUP SANG TRỌNG (CUSTOM ALERT)
+// ==========================================
+
+window.alert = function(message) {
+  return new Promise((resolve) => {
+    let overlay = document.getElementById('customAlertOverlay');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'customAlertOverlay';
+      overlay.className = 'custom-alert-overlay';
+      overlay.innerHTML = `
+        <div class="custom-alert-box">
+          <div id="customAlertIcon" class="custom-alert-icon">💡</div>
+          <div id="customAlertTitle" class="custom-alert-title">Thông báo</div>
+          <div id="customAlertMsg" class="custom-alert-msg"></div>
+          <button id="customAlertBtn" class="custom-alert-btn">ĐÃ HIỂU</button>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+    }
+
+    const iconEl = overlay.querySelector('#customAlertIcon');
+    const titleEl = overlay.querySelector('#customAlertTitle');
+    const msgEl = overlay.querySelector('#customAlertMsg');
+    const btnEl = overlay.querySelector('#customAlertBtn');
+
+    let displayIcon = "💡";
+    let displayTitle = "Thông báo";
+    let displayMsg = String(message || '');
+
+    const emojiMatch = displayMsg.match(/^([\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|⚡|💡|⚠️|✅|⭐|🌟|📍|🎉)\s*/u);
+    if (emojiMatch) {
+      displayIcon = emojiMatch[1];
+      displayMsg = displayMsg.replace(emojiMatch[0], '');
+      
+      if (displayIcon === '⚠️') displayTitle = 'Lưu ý';
+      else if (displayIcon === '✅' || displayIcon === '🎉') displayTitle = 'Thành công';
+      else if (displayIcon === '⭐' || displayIcon === '🌟') displayTitle = 'Đánh giá';
+    }
+
+    iconEl.innerText = displayIcon;
+    titleEl.innerText = displayTitle;
+    msgEl.innerText = displayMsg;
+
+    overlay.classList.add('active');
+
+    const closeAlert = () => {
+      overlay.classList.remove('active');
+      btnEl.removeEventListener('click', closeAlert);
+      resolve();
+    };
+
+    btnEl.onclick = closeAlert;
+  });
+};

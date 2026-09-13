@@ -210,7 +210,7 @@ body.dark-mode {
   color: #e2e8f0;
 }
 
-/* ĐẢO MÀU BẢN ĐỒ LEAFLET TRANG SANG NỀN TỐI */
+/* ĐẢO MÀN BẢN ĐỒ LEAFLET TRANG SANG NỀN TỐI */
 .dark-mode .leaflet-tile-pane {
   filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
 }
@@ -231,3 +231,114 @@ body.dark-mode {
 .dark-mode [style*="background: #f0fdf4"] { background: #064e3b !important; border-bottom-color: #059669 !important; }
 .dark-mode [style*="background: #eff6ff"] { background: #1e3a8a !important; border-bottom-color: #1e40af !important; }
 .dark-mode [style*="background:#fef2f2"] { background: #450a0a !important; border-color: #7f1d1d !important; }
+
+/* =========================================
+   HỆ THỐNG THÔNG BÁO CAO CẤP (GLASSMORPHISM POPUP)
+========================================= */
+
+.custom-alert-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.custom-alert-overlay.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+.custom-alert-box {
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  border-radius: 24px;
+  padding: 24px 20px;
+  max-width: 340px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.18), 0 2px 6px rgba(0, 0, 0, 0.05);
+  transform: scale(0.88) translateY(12px);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.custom-alert-overlay.active .custom-alert-box {
+  transform: scale(1) translateY(0);
+}
+
+.custom-alert-icon {
+  font-size: 42px;
+  margin-bottom: 12px;
+  line-height: 1;
+  display: inline-block;
+  animation: alertIconBounce 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes alertIconBounce {
+  0% { transform: scale(0.3); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.custom-alert-title {
+  font-size: 17px;
+  font-weight: 800;
+  color: #0f172a;
+  margin-bottom: 8px;
+  letter-spacing: -0.3px;
+}
+
+.custom-alert-msg {
+  font-size: 13.5px;
+  color: #475569;
+  line-height: 1.55;
+  margin-bottom: 20px;
+  white-space: pre-line;
+  font-weight: 500;
+}
+
+.custom-alert-btn {
+  background: linear-gradient(135deg, #00b14f 0%, #009643 100%);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 14px;
+  font-weight: 700;
+  font-size: 14px;
+  width: 100%;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 177, 79, 0.35);
+  transition: all 0.2s ease;
+  letter-spacing: 0.3px;
+}
+
+.custom-alert-btn:active {
+  transform: scale(0.97);
+  box-shadow: 0 2px 6px rgba(0, 177, 79, 0.2);
+}
+
+/* CHẾ ĐỘ TỐI BẢNG THÔNG BÁO */
+.dark-mode .custom-alert-overlay {
+  background: rgba(0, 0, 0, 0.7);
+}
+
+.dark-mode .custom-alert-box {
+  background: rgba(30, 41, 59, 0.94);
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+}
+
+.dark-mode .custom-alert-title {
+  color: #f8fafc;
+}
+
+.dark-mode .custom-alert-msg {
+  color: #cbd5e1;
+}
