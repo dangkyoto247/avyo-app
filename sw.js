@@ -1,5 +1,5 @@
 const TILE_CACHE_NAME = 'carto-tiles-v1';
-const STATIC_CACHE_NAME = 'avyo-static-v6';
+const STATIC_CACHE_NAME = 'avyo-static-v7';
 
 const STATIC_ASSETS = [
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
@@ -15,26 +15,39 @@ const STATIC_ASSETS = [
   'offline.html'
 ];
 
-// 1. TẢI VÀ LƯU TRƯỚC (PRE-CACHE)
+// Hàm lọc sạch phản hồi, loại bỏ hoàn toàn cờ Chuyển hướng (Redirect) gây lỗi Safari
+async function cleanResponse(response) {
+  if (!response || (!response.ok && response.type !== 'opaque')) return response;
+  const blob = await response.blob();
+  const headers = new Headers(response.headers);
+  return new Response(blob, {
+    status: 200,
+    statusText: 'OK',
+    headers: headers
+  });
+}
+
+// 1. LƯU TRƯỚC VÀ LÀM SẠCH BỘ NHỚ CACHE
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(STATIC_CACHE_NAME).then((cache) => {
-      return cache.addAll([
-        'offline.html',
-        'utils.js',
-        'index.css',
-        'index.js',
-        'driver.css',
-        'driver.js',
-        'admin.css',
-        'admin.js'
-      ]).catch(err => console.log('Pre-cache error:', err));
+    caches.open(STATIC_CACHE_NAME).then(async (cache) => {
+      for (const asset of STATIC_ASSETS) {
+        try {
+          const res = await fetch(asset, { redirect: 'follow' });
+          if (res.ok || res.type === 'opaque') {
+            const cleaned = await cleanResponse(res);
+            await cache.put(asset, cleaned);
+          }
+        } catch (e) {
+          console.log('Cache failed for asset:', asset);
+        }
+      }
     })
   );
   self.skipWaiting();
 });
 
-// 2. TỰ ĐỘNG XÓA CACHE CỦ KHI NÂNG CẤP PHIÊN BẢN V6
+// 2. XÓA CACHE CỦ KHI NÂNG CẤP PHIÊN BẢN V7
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
@@ -57,16 +70,20 @@ self.addEventListener('fetch', (event) => {
   // 3. THƯ VIỆN & MÃ NGUỒN TĨNH
   if (STATIC_ASSETS.some(url => requestUrl.includes(url))) {
     event.respondWith(
-      caches.open(STATIC_CACHE_NAME).then((cache) => {
-        return cache.match(event.request).then((cachedResponse) => {
-          if (cachedResponse) return cachedResponse;
-          return fetch(event.request).then((networkResponse) => {
-            if (networkResponse && (networkResponse.status === 200 || networkResponse.type === 'opaque')) {
-              cache.put(event.request, networkResponse.clone());
-            }
-            return networkResponse;
-          });
-        });
+      caches.open(STATIC_CACHE_NAME).then(async (cache) => {
+        const cachedResponse = await cache.match(event.request);
+        if (cachedResponse) return cachedResponse;
+        try {
+          const networkResponse = await fetch(event.request, { redirect: 'follow' });
+          if (networkResponse && (networkResponse.status === 200 || networkResponse.type === 'opaque')) {
+            const cleaned = await cleanResponse(networkResponse);
+            cache.put(event.request, cleaned.clone());
+            return cleaned;
+          }
+          return networkResponse;
+        } catch (e) {
+          return null;
+        }
       })
     );
     return;
@@ -75,39 +92,37 @@ self.addEventListener('fetch', (event) => {
   // 4. MẢNH HÌNH ẢNH BẢN ĐỒ CARTODB
   if (requestUrl.includes('basemaps.cartocdn.com')) {
     event.respondWith(
-      caches.open(TILE_CACHE_NAME).then((cache) => {
-        return cache.match(event.request).then((cachedResponse) => {
-          if (cachedResponse) return cachedResponse;
-          return fetch(event.request).then((networkResponse) => {
-            if (networkResponse && (networkResponse.status === 200 || networkResponse.type === 'opaque')) {
-              cache.put(event.request, networkResponse.clone());
-            }
-            return networkResponse;
-          });
-        });
+      caches.open(TILE_CACHE_NAME).then(async (cache) => {
+        const cachedResponse = await cache.match(event.request);
+        if (cachedResponse) return cachedResponse;
+        try {
+          const networkResponse = await fetch(event.request);
+          if (networkResponse && (networkResponse.status === 200 || networkResponse.type === 'opaque')) {
+            cache.put(event.request, networkResponse.clone());
+          }
+          return networkResponse;
+        } catch (e) {
+          return null;
+        }
       })
     );
     return;
   }
 
-  // 5. TRUY CẬP TRANG HTML - KHẮC PHỤC LỖI REDIRECT TRÊN SAFARI (IOS)
+  // 5. TRUY CẬP TRANG GIAO DIỆN (HTML) - XỬ LÝ AN TOÀN CHO SAFARI
   if (event.request.mode === 'navigate' || (event.request.headers.get('accept') && event.request.headers.get('accept').includes('text/html'))) {
     event.respondWith(
       (async () => {
         try {
-          const response = await fetch(event.request);
-          
-          // Xử lý riêng cho Safari: Nếu response bị chuyển hướng, gọi fetch thẳng URL đích
-          if (response.redirected) {
-            return await fetch(response.url);
-          }
-          return response;
+          const response = await fetch(event.request, { redirect: 'follow' });
+          return await cleanResponse(response);
         } catch (err) {
-          const cachedOffline = await caches.match('offline.html');
+          const cache = await caches.open(STATIC_CACHE_NAME);
+          const cachedOffline = await cache.match('offline.html');
           if (cachedOffline) return cachedOffline;
           
           return new Response(
-            '<!DOCTYPE html><html lang="vi"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Avyo Offline</title><style>body{font-family:sans-serif;text-align:center;padding:40px 20px;background:#f8fafc;color:#334155}.card{background:white;padding:30px 20px;border-radius:16px;max-width:360px;margin:auto;box-shadow:0 4px 12px rgba(0,0,0,.08)}h2{color:#dc2626;margin-top:0}button{background:#00b14f;color:#fff;border:none;padding:12px 24px;border-radius:10px;font-weight:700;width:100%;margin-top:15px}</style></head><body><div class="card"><h2>📡 Mất kết nối Internet</h2><p>Không thể kết nối đến máy chủ Avyo. Vui lòng kiểm tra lại 4G/Wifi.</p><button onclick="window.location.reload()">🔄 THỬ LẠI</button></div></body></html>',
+            '<!DOCTYPE html><html lang="vi"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Avyo Offline</title><style>body{font-family:sans-serif;text-align:center;padding:40px 20px;background:#f8fafc;color:#334155}.card{background:white;padding:30px 20px;border-radius:16px;max-width:360px;margin:auto;box-shadow:0 4px 12px rgba(0,0,0,.08)}h2{color:#dc2626;margin-top:0}button{background:#00b14f;color:#fff;border:none;padding:12px 24px;border-radius:10px;font-weight:700;width:100%;margin-top:15px}</style></head><body><div class="card"><h2>📡 Mất kết nối Internet</h2><p>Không thể kết nối đến máy chủ Avyo. Vui lòng kiểm tra lại 4G/Wifi.</p><button onclick="window.location.href=\'./\'">🔄 THỬ LẠI KẾT NỐI</button></div></body></html>',
             { headers: { 'Content-Type': 'text/html; charset=utf-8' } }
           );
         }

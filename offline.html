@@ -39,8 +39,23 @@
 <body>
   <div class="offline-card">
     <h2>📡 Mất kết nối Internet</h2>
-    <p>Không thể truy cập hệ thống Avyo lúc này. Vui lòng kiểm tra lại kết nối 4G/5G hoặc Wifi trên thiết bị của bạn.</p>
-    <button onclick="window.location.reload()">🔄 THỬ LẠI KẾT NỐI</button>
+    <p>Không thể kết nối đến máy chủ Avyo. Vui lòng kiểm tra lại 4G/Wifi trên thiết bị của bạn.</p>
+    <button onclick="retryConnection()">🔄 THỬ LẠI KẾT NỐI</button>
   </div>
+
+  <script>
+    function retryConnection() {
+      if (navigator.onLine) {
+        window.location.href = './';
+      } else {
+        alert('⚠️ Thiết bị vẫn chưa có kết nối Internet. Vui lòng bật 4G/Wifi rồi bấm lại!');
+      }
+    }
+
+    // Tự động quay về ứng dụng ngay khi máy kết nối lại mạng thành công
+    window.addEventListener('online', () => {
+      window.location.href = './';
+    });
+  </script>
 </body>
 </html>
