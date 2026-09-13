@@ -1,6 +1,6 @@
 {
   "name": "Avyo - Gọi Xe Tinh Gọn 0Đ",
-  "short_name": "Avyo Khách",
+  "short_name": "Avyo",
   "description": "Ứng dụng kết nối gọi xe trực tiếp Avyo",
   "start_url": "./index.html",
   "scope": "./",
