@@ -19,7 +19,7 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
  
-  <link rel="stylesheet" href="driver.css?v=8">
+  <link rel="stylesheet" href="driver.css?v=9">
 </head>
 <body>
 
@@ -48,9 +48,11 @@
     <h2 style="margin-top: 0; color: #10b981;">🚕 Avyo Tài Xế</h2>
     <p style="color: #94a3b8; font-size: 14px; margin-bottom: 15px;">Đăng nhập để nhận cuốc xe</p>
    
-    <!-- Đã thêm inputmode="numeric" và pattern="[0-9]*" để luôn hiện bàn phím số -->
+    <!-- Ô SĐT giữ bàn phím số -->
     <input type="tel" id="phoneInput" placeholder="Số điện thoại của bạn" autocomplete="off" inputmode="numeric" pattern="[0-9]*">
-    <input type="password" id="pinInput" placeholder="Mã PIN (Mật khẩu)" autocomplete="off" inputmode="numeric" pattern="[0-9]*">
+    
+    <!-- Ô Mã PIN mở bàn phím chữ mặc định, cho phép đổi qua số & ký tự đặc biệt -->
+    <input type="password" id="pinInput" placeholder="Mã PIN (Mật khẩu)" autocomplete="off">
    
     <button onclick="login()" style="margin-top: 15px;">ĐĂNG NHẬP</button>
 
@@ -123,6 +125,6 @@
   </div>
 
   <script src="utils.js"></script>
-  <script src="driver.js?v=8"></script>
+  <script src="driver.js?v=9"></script>
 </body>
 </html>
