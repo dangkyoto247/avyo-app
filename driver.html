@@ -121,9 +121,43 @@
       font-size: 14px;
       box-shadow: 0 2px 6px rgba(2, 132, 199, 0.3);
     }
+
+    /* HỘP THÔNG BÁO MẤT MẠNG LỚN NHẤP NHÁY */
+    @keyframes blinkAlert {
+      0% { background: #dc2626; border-color: #fef08a; transform: translateX(-50%) scale(1); }
+      50% { background: #b91c1c; border-color: #ffffff; transform: translateX(-50%) scale(1.03); }
+      100% { background: #dc2626; border-color: #fef08a; transform: translateX(-50%) scale(1); }
+    }
+    .network-alert-box {
+      position: fixed;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 90%;
+      max-width: 380px;
+      background: #dc2626;
+      color: white;
+      padding: 16px;
+      border-radius: 16px;
+      text-align: center;
+      font-weight: bold;
+      font-size: 16px;
+      line-height: 1.4;
+      box-shadow: 0 10px 25px rgba(220, 38, 38, 0.6);
+      z-index: 10000;
+      border: 3px solid #fef08a;
+      display: none;
+      animation: blinkAlert 1s infinite ease-in-out;
+    }
   </style>
 </head>
 <body>
+
+  <!-- HỘP THÔNG BÁO NỔI MẤT KẾT NỐI -->
+  <div id="networkAlertModal" class="network-alert-box">
+    ⚠️ Mất kết nối 4G/5G/WIFI!<br>
+    <span style="font-size: 14px; font-weight: normal; margin-top: 4px; display: block;">Vui lòng kết nối lại Internet</span>
+  </div>
 
   <div id="loginScreen" class="card" style="display: none; text-align: center;">
     <h2 style="margin-top: 0; color: #16a34a;">🚕 Avyo Tài Xế</h2>
@@ -197,7 +231,7 @@
       <div id="driverMap"></div>
       <p style="font-size: 12px; color: #64748b; text-align: center; margin-top: 8px;">Tọa độ GPS: <span id="coords">--</span></p>
 
-      <button id="toggleBtn" onclick="toggleOnline()">BẮT ĐẦU NHẬN KHÁCH (BẬT GPS & 4G)</button>
+      <button id="toggleBtn" onclick="toggleOnline()">BẮT ĐẦU NHẬN KHÁCH (BẬT GPS)</button>
       <a class="logout-text" onclick="logout()">Đăng xuất tài khoản</a>
     </div>
   </div>
@@ -223,6 +257,14 @@
 
     const LOCK_TIME_MS = 60 * 60 * 1000;
     const typeLabels = { 'bike': '🛵 Xe máy', 'car': '🚕 Ô tô', 'driver': '👤 Lái xe hộ', 'truck': '🚚 Chở hàng' };
+
+    function showNetworkAlert() {
+      document.getElementById('networkAlertModal').style.display = 'block';
+    }
+
+    function hideNetworkAlert() {
+      document.getElementById('networkAlertModal').style.display = 'none';
+    }
 
     function getHaversineDistance(lat1, lon1, lat2, lon2) {
       const R = 6371;
@@ -425,6 +467,7 @@
       if (force || confirm("Bạn có chắc chắn muốn đăng xuất không?")) {
         if (isOnline) toggleOnline();
         releaseWakeLock();
+        hideNetworkAlert();
         localStorage.removeItem('avyo_driver_id');
         localStorage.removeItem('avyo_driver_name');
         localStorage.removeItem('avyo_session_token');
@@ -448,14 +491,15 @@
       const status = document.getElementById('status');
 
       if (!isOnline) {
-        // 1. Ktra thiết bị có kết nối 4G/Internet không
         if (!navigator.onLine) {
-          return alert('⚠️ Vui lòng BẬT 4G / Wi-Fi trước khi bấm nhận khách!');
+          showNetworkAlert();
+          return alert('Mất kết nối 4G/5G/WIFI! Vui lòng kết nối lại Internet');
         }
 
         if (!navigator.geolocation) return alert('Thiết bị không hỗ trợ GPS');
        
         isOnline = true;
+        hideNetworkAlert();
         await requestWakeLock();
 
         lastSentLat = 0;
@@ -482,7 +526,6 @@
         document.getElementById('timeMonthLabel').innerText = formatTime(driverData.online_minutes_month);
 
         let heartbeatTicks = 0;
-        // PING HEARTBEAT 30S / LẦN
         timeInterval = setInterval(async () => {
           if (!isOnline || !navigator.onLine) return;
          
@@ -529,6 +572,7 @@
       } else {
         isOnline = false;
         releaseWakeLock();
+        hideNetworkAlert();
 
         if (watchId) {
           navigator.geolocation.clearWatch(watchId);
@@ -548,18 +592,17 @@
        
         status.innerHTML = '🔴 ĐÃ TẮT ĐỊNH VỊ (Nghỉ ngơi)';
         status.style.color = '#ef4444';
-        btn.innerText = 'BẮT ĐẦU NHẬN KHÁCH (BẬT GPS & 4G)';
+        btn.innerText = 'BẮT ĐẦU NHẬN KHÁCH (BẬT GPS)';
         btn.style.background = '#22c55e';
       }
     }
 
-    // ----------------------------------------------------------------------
-    // TỰ ĐỘNG KHÔI PHỤC KHI BẬT LẠI 4G / MẤT KẾT NỐI MẠNG
-    // ----------------------------------------------------------------------
+    // TỰ ĐỘNG BẬT/TẮT HỘP THÔNG BÁO MẤT MẠNG LỚN NHẤP NHÁY
     window.addEventListener('online', async () => {
+      hideNetworkAlert();
       const status = document.getElementById('status');
       if (isOnline) {
-        status.innerHTML = '🟢 ĐÃ KHÔI PHỤC 4G - ĐANG PHÁT GPS';
+        status.innerHTML = '🟢 ĐÃ KHÔI PHỤC INTERNET - ĐANG PHÁT GPS';
         status.style.color = '#16a34a';
 
         lastSentLat = 0;
@@ -574,10 +617,11 @@
     });
 
     window.addEventListener('offline', () => {
-      const status = document.getElementById('status');
       if (isOnline) {
-        status.innerHTML = '⚠️ MẤT KẾT NỐI 4G! VUI LÒNG BẬT LẠI MẠNG...';
-        status.style.color = '#d97706';
+        showNetworkAlert();
+        const status = document.getElementById('status');
+        status.innerHTML = '⚠️ Mất kết nối 4G/5G/WIFI! Vui lòng kết nối lại Internet';
+        status.style.color = '#dc2626';
       }
     });
 
