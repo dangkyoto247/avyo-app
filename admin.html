@@ -34,7 +34,9 @@
       box-shadow: 0 2px 8px rgba(0,0,0,0.06);
       margin-bottom: 14px;
     }
-    #map { height: 280px; width: 100%; border-radius: 12px; margin-top: 10px; }
+    
+    /* Tăng chiều cao bản đồ gấp 3 lần (từ 280px -> 840px) */
+    #map { height: 840px; width: 100%; border-radius: 12px; margin-top: 10px; }
    
     .filter-bar { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; flex-wrap: wrap; }
     .filter-chip { background: #e2e8f0; color: #475569; padding: 7px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; user-select: none; transition: all 0.2s; border: 1px solid #cbd5e1; }
@@ -125,33 +127,18 @@
       <button onclick="logout()" style="background:#cbd5e1; color:#334155; padding:6px 12px; font-size:12px;">Đăng xuất</button>
     </div>
 
-    <div class="card" style="padding: 14px 16px;">
-      <div style="font-size: 13px; font-weight: bold; color: #475569; margin-bottom: 8px;">🔍 Tìm kiếm & Bộ lọc tài xế:</div>
-      
-      <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px;">
-        <input type="text" id="searchInput" oninput="renderAdminData()" placeholder="🔎 Tìm Tên, SĐT, CCCD, Biển số xe..." style="flex: 2; min-width: 200px;">
-        <select id="statusFilter" onchange="renderAdminData()" style="flex: 1; min-width: 150px;">
-          <option value="all">🌐 Tất cả trạng thái</option>
-          <option value="online">🟢 Đang BẬT GPS</option>
-          <option value="offline">⚪ Tắt GPS</option>
-          <option value="retired">🔴 Đã nghỉ</option>
-        </select>
-      </div>
-
-      <div class="filter-bar">
-        <div id="chip-all" class="filter-chip active" onclick="toggleAdminFilter('all', this)">🌐 Tất cả loại xe</div>
-        <div class="filter-chip active" onclick="toggleAdminFilter('bike', this)">🛵 Xe máy</div>
-        <div class="filter-chip active" onclick="toggleAdminFilter('car', this)">🚕 Ô tô</div>
-        <div class="filter-chip active" onclick="toggleAdminFilter('driver', this)">👤 Lái xe hộ</div>
-        <div class="filter-chip active" onclick="toggleAdminFilter('truck', this)">🚚 Xe chở hàng</div>
-      </div>
-    </div>
-
+    <!-- Khối Bản Đồ (Đã phóng to 3 lần) -->
     <div class="card">
-      <h4 style="margin: 0; color: #334155;">📍 Bản Đồ Giám Sát Xe Đang Chạy (<span id="onlineCount">0</span> xe)</h4>
+      <h4 style="margin: 0; color: #334155; display: flex; flex-wrap: wrap; align-items: center; gap: 10px;">
+        📍 Bản Đồ Giám Sát Giám Sát Xe Đang Chạy: 
+        <span style="font-size:14px; color:#16a34a;">🟢 <b id="onlineCount">0</b> Tốt</span>
+        <span style="font-size:14px; color:#d97706;">🟡 <b id="ghostCount">0</b> Mất tín hiệu</span>
+        <span style="font-size:14px; color:#64748b;">⚪ <b id="offlineCount">0</b> Đang nghỉ</span>
+      </h4>
       <div id="map"></div>
     </div>
 
+    <!-- Khối Thêm/Sửa Tài Xế -->
     <div class="card">
       <h4 id="formTitle" style="margin: 0 0 8px 0; color: #334155;">➕ Thêm Tài Xế Mới</h4>
       <input type="hidden" id="driverId">
@@ -178,8 +165,33 @@
       </div>
     </div>
 
+    <!-- Khối Danh Sách & Tìm Kiếm / Bộ Lọc Tích Hợp Ngang Hàng -->
     <div class="card" style="overflow-x: auto;">
-      <h4 style="margin: 0 0 8px 0; color: #334155;">📋 Danh Sách Tất Cả Tài Xế</h4>
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 12px;">
+        <h4 style="margin: 0; color: #334155; white-space: nowrap;">📋 Danh Sách Tất Cả Tài Xế</h4>
+        
+        <!-- Khối Tìm kiếm & Bộ lọc trạng thái -->
+        <div style="display: flex; gap: 8px; flex-wrap: wrap; flex: 1; min-width: 280px; justify-content: flex-end;">
+          <input type="text" id="searchInput" oninput="renderAdminData()" placeholder="🔎 Tìm Tên, SĐT, CCCD, Biển số..." style="flex: 2; min-width: 180px;">
+          <select id="statusFilter" onchange="renderAdminData()" style="flex: 1; min-width: 140px;">
+            <option value="all">🌐 Tất cả trạng thái</option>
+            <option value="online">🟢 Đang hoạt động (Tốt)</option>
+            <option value="ghost">🟡 Mất kết nối GPS/4G</option>
+            <option value="offline">⚪ Đã tắt GPS (Nghỉ ngơi)</option>
+            <option value="retired">🔴 Đã nghỉ / Bị khóa</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Thanh chọn Loại xe -->
+      <div class="filter-bar" style="margin-bottom: 12px; border-bottom: 1px dashed #cbd5e1; padding-bottom: 8px;">
+        <div id="chip-all" class="filter-chip active" onclick="toggleAdminFilter('all', this)">🌐 Tất cả loại xe</div>
+        <div class="filter-chip active" onclick="toggleAdminFilter('bike', this)">🛵 Xe máy</div>
+        <div class="filter-chip active" onclick="toggleAdminFilter('car', this)">🚕 Ô tô</div>
+        <div class="filter-chip active" onclick="toggleAdminFilter('driver', this)">👤 Lái xe hộ</div>
+        <div class="filter-chip active" onclick="toggleAdminFilter('truck', this)">🚚 Xe chở hàng</div>
+      </div>
+
       <table>
         <thead>
           <tr>
@@ -405,21 +417,63 @@
       Object.keys(adminMarkers).forEach(id => map.removeLayer(adminMarkers[id]));
       adminMarkers = {};
 
-      let onlineCount = 0;
-
       const searchQuery = (document.getElementById('searchInput')?.value || '').toLowerCase().trim();
       const statusFilter = document.getElementById('statusFilter')?.value || 'all';
 
+      let onlineCount = 0;
+      let ghostCount = 0;
+      let offlineCount = 0;
+
+      // 1. Thống kê theo loại xe đang chọn
+      rawAdminDriversData.forEach(d => {
+        if (!activeAdminFilters.has(d.vehicle_type)) return;
+        
+        const now = Date.now();
+        const isLocked = d.locked_until && parseInt(d.locked_until) > now;
+        if (d.is_active === false || isLocked) return;
+
+        let isGhost = false;
+        if (d.is_online) {
+          if (d.updated_at) {
+            const lastUpdateStr = (d.updated_at.includes('Z') || d.updated_at.includes('+')) ? d.updated_at : d.updated_at.replace(' ', 'T') + 'Z';
+            isGhost = ((now - new Date(lastUpdateStr).getTime()) / 1000 > 90);
+          } else {
+            isGhost = true;
+          }
+        }
+
+        if (d.is_online && !isGhost) onlineCount++;
+        else if (d.is_online && isGhost) ghostCount++;
+        else offlineCount++;
+      });
+
+      document.getElementById('onlineCount').innerText = onlineCount;
+      document.getElementById('ghostCount').innerText = ghostCount;
+      document.getElementById('offlineCount').innerText = offlineCount;
+
+      // 2. Lọc danh sách hiển thị
       const filteredDrivers = rawAdminDriversData.filter(d => {
         if (!activeAdminFilters.has(d.vehicle_type)) return false;
 
-        // Cơ chế phát hiện sập nguồn / tắt app ngang (Quá 90s không gửi heartbeat)
-        const isGhost = d.is_online && d.updated_at && ((Date.now() - new Date(d.updated_at).getTime()) / 1000 > 90);
-        const actualOnline = isGhost ? false : d.is_online;
+        const now = Date.now();
+        const isLocked = d.locked_until && parseInt(d.locked_until) > now;
 
-        if (statusFilter === 'online' && (d.is_active === false || !actualOnline)) return false;
-        if (statusFilter === 'offline' && (d.is_active === false || actualOnline)) return false;
-        if (statusFilter === 'retired' && d.is_active !== false) return false;
+        let isGhost = false;
+        if (d.is_online) {
+          if (d.updated_at) {
+            const lastUpdateStr = (d.updated_at.includes('Z') || d.updated_at.includes('+')) ? d.updated_at : d.updated_at.replace(' ', 'T') + 'Z';
+            isGhost = ((now - new Date(lastUpdateStr).getTime()) / 1000 > 90);
+          } else {
+            isGhost = true;
+          }
+        }
+        
+        const actualOnline = d.is_online && !isGhost;
+
+        if (statusFilter === 'online' && (d.is_active === false || isLocked || !actualOnline)) return false;
+        if (statusFilter === 'ghost' && (d.is_active === false || isLocked || !isGhost || !d.is_online)) return false;
+        if (statusFilter === 'offline' && (d.is_active === false || isLocked || d.is_online)) return false;
+        if (statusFilter === 'retired' && d.is_active !== false && !isLocked) return false;
 
         if (searchQuery) {
           const nameMatch = (d.name || '').toLowerCase().includes(searchQuery);
@@ -437,7 +491,6 @@
 
       if (!filteredDrivers || filteredDrivers.length === 0) {
         tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 15px; color: #64748b;">Không có tài xế nào khớp với tìm kiếm / bộ lọc hiện tại.</td></tr>';
-        document.getElementById('onlineCount').innerText = '0';
         return;
       }
 
@@ -445,10 +498,20 @@
         const now = Date.now();
         const isLocked = d.locked_until && parseInt(d.locked_until) > now;
 
-        const isGhost = d.is_online && d.updated_at && ((now - new Date(d.updated_at).getTime()) / 1000 > 90);
-        const actualOnline = isGhost ? false : d.is_online;
-
-        if (!isLocked && actualOnline && d.is_active !== false) onlineCount++;
+        let isGhost = false;
+        let diffSeconds = 0;
+        if (d.is_online) {
+          if (d.updated_at) {
+            const lastUpdateStr = (d.updated_at.includes('Z') || d.updated_at.includes('+')) ? d.updated_at : d.updated_at.replace(' ', 'T') + 'Z';
+            diffSeconds = (now - new Date(lastUpdateStr).getTime()) / 1000;
+            isGhost = (diffSeconds > 90);
+          } else {
+            isGhost = true;
+            diffSeconds = 9999;
+          }
+        }
+        
+        const actualOnline = d.is_online && !isGhost;
 
         let joinDate = '--';
         if (d.created_at) {
@@ -468,9 +531,13 @@
         } else if (isLocked) {
           statusBadge = '<span class="badge-locked">🔒 BỊ KHÓA TẠM THỜI</span>';
         } else if (actualOnline) {
-          statusBadge = '<span class="badge-online">🟢 BẬT GPS</span>';
+          statusBadge = '<span class="badge-online">🟢 TỐT (BẬT GPS)</span>';
+        } else if (isGhost) {
+          let mins = Math.floor(diffSeconds / 60);
+          let timeText = mins > 60 ? Math.floor(mins/60) + 'h' : mins + 'p';
+          statusBadge = `<span style="background: #fef08a; color: #b45309; border: 1px solid #fde047; padding: 3px 8px; border-radius: 12px; font-weight: bold; font-size: 11px;">🟡 MẤT GPS (${timeText})</span>`;
         } else {
-          statusBadge = '<span class="badge-offline">⚪ Tắt GPS</span>';
+          statusBadge = '<span class="badge-offline">⚪ Đã tắt GPS</span>';
         }
 
         let displayMinsToday = d.online_minutes_today || 0;
@@ -529,15 +596,23 @@
         `;
         tbody.appendChild(tr);
 
-        if (!isLocked && d.is_active !== false && actualOnline && d.lat && d.lng) {
-          const marker = L.marker([d.lat, d.lng], { icon: icons[d.vehicle_type] || icons['bike'] })
-            .addTo(map)
-            .bindPopup(`<b>${d.name}</b><br>${d.phone}`);
+        if (!isLocked && d.is_active !== false && d.is_online && d.lat && d.lng) {
+          const marker = L.marker([d.lat, d.lng], { 
+            icon: icons[d.vehicle_type] || icons['bike'],
+            opacity: isGhost ? 0.45 : 1.0
+          }).addTo(map);
+
+          let ghostNotice = '';
+          if (isGhost) {
+            let mins = Math.floor(diffSeconds / 60);
+            let timeText = mins > 60 ? Math.floor(mins/60) + 'h' : mins + 'p';
+            ghostNotice = `<br><b style="color:#d97706;">⚠️ Mất tín hiệu ${timeText} trước</b>`;
+          }
+
+          marker.bindPopup(`<b>${d.name}</b><br>${d.phone}${ghostNotice}`);
           adminMarkers[d.id] = marker;
         }
       });
-
-      document.getElementById('onlineCount').innerText = onlineCount;
     }
 
     async function saveDriver() {
@@ -659,11 +734,9 @@
       .on('postgres_changes', { event: '*', schema: 'public', table: 'drivers' }, () => loadAllData())
       .subscribe();
 
-// === CHÈN ĐOẠN MÃ MỚI VÀO ĐÂY ===
     setInterval(() => {
       if (typeof renderAdminData === 'function') renderAdminData();
     }, 30000);
-    // =================================
 
     document.addEventListener('gesturestart', function (e) {
       e.preventDefault();
