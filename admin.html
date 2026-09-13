@@ -112,7 +112,6 @@
     }
     .vehicle-icon { font-size: 26px; text-align: center; line-height: 1; }
 
-    /* CSS cho phân trang */
     .pagination-container {
       display: flex;
       justify-content: flex-end;
@@ -213,7 +212,6 @@
       <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 12px;">
         <h4 style="margin: 0; color: #334155; white-space: nowrap;">📋 Danh Sách Tất Cả Tài Xế</h4>
         
-        <!-- Bộ lọc Tìm kiếm & Trạng thái -->
         <div style="display: flex; gap: 8px; flex-wrap: wrap; flex: 1; min-width: 280px; justify-content: flex-end;">
           <input type="text" id="searchInput" oninput="currentPage = 1; renderAdminData();" placeholder="🔎 Tìm Tên, SĐT, CCCD, Biển số..." style="flex: 2; min-width: 180px;">
           <select id="statusFilter" onchange="currentPage = 1; renderAdminData();" style="flex: 1; min-width: 140px;">
@@ -226,7 +224,6 @@
         </div>
       </div>
 
-      <!-- Thanh lọc Loại xe -->
       <div class="filter-bar" style="margin-bottom: 12px; border-bottom: 1px dashed #cbd5e1; padding-bottom: 8px;">
         <div id="chip-all" class="filter-chip active" onclick="toggleAdminFilter('all', this)">🌐 Tất cả loại xe</div>
         <div class="filter-chip active" onclick="toggleAdminFilter('bike', this)">🛵 Xe máy</div>
@@ -251,7 +248,6 @@
         </tbody>
       </table>
 
-      <!-- Nút điều hướng phân trang ở góc dưới bên phải -->
       <div id="paginationControls" class="pagination-container"></div>
     </div>
   </div>
@@ -263,7 +259,6 @@
 
     const ADMIN_LOCK_TIME_MS = 60 * 60 * 1000;
 
-    // Biến toàn cục cho Phân trang
     let currentPage = 1;
     const ITEMS_PER_PAGE = 50;
 
@@ -475,7 +470,6 @@
       let ghostCount = 0;
       let offlineCount = 0;
 
-      // 1. Thống kê số lượng xe
       rawAdminDriversData.forEach(d => {
         if (!activeAdminFilters.has(d.vehicle_type)) return;
         
@@ -502,7 +496,6 @@
       document.getElementById('ghostCount').innerText = ghostCount;
       document.getElementById('offlineCount').innerText = offlineCount;
 
-      // 2. Lọc danh sách khớp điều kiện
       const filteredDrivers = rawAdminDriversData.filter(d => {
         if (!activeAdminFilters.has(d.vehicle_type)) return false;
 
@@ -540,7 +533,6 @@
         return true;
       });
 
-      // 3. Vẽ Marker toàn bộ xe online lên Bản đồ (Không bị cắt theo phân trang)
       filteredDrivers.forEach(d => {
         const now = Date.now();
         const isLocked = d.locked_until && parseInt(d.locked_until) > now;
@@ -582,7 +574,6 @@
         return;
       }
 
-      // 4. Phân trang cho Bảng hiển thị (Mỗi trang 50 mục)
       const totalDrivers = filteredDrivers.length;
       const totalPages = Math.ceil(totalDrivers / ITEMS_PER_PAGE) || 1;
       
@@ -695,11 +686,9 @@
         tbody.appendChild(tr);
       });
 
-      // Render bộ nút phân trang
       renderPaginationUI(totalPages, totalDrivers);
     }
 
-    // Hàm render giao diện thanh Phân trang ở góc dưới bên phải
     function renderPaginationUI(totalPages, totalDrivers) {
       const container = document.getElementById('paginationControls');
       if (!container) return;
@@ -711,10 +700,8 @@
 
       let html = `<span style="color: #64748b; font-size: 13px; margin-right: 10px;">Tổng: <b>${totalDrivers}</b> tài xế (Trang <b>${currentPage}</b>/<b>${totalPages}</b>)</span>`;
       
-      // Nút Trước
       html += `<button class="pagination-btn" onclick="changePage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>◀ Trước</button>`;
 
-      // Hiển thị các nút trang
       for (let i = 1; i <= totalPages; i++) {
         if (i === 1 || i === totalPages || (i >= currentPage - 1 && i <= currentPage + 1)) {
           html += `<button class="pagination-btn ${i === currentPage ? 'active' : ''}" onclick="changePage(${i})">${i}</button>`;
@@ -723,7 +710,6 @@
         }
       }
 
-      // Nút Sau
       html += `<button class="pagination-btn" onclick="changePage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>Sau ▶</button>`;
 
       container.innerHTML = html;
@@ -792,9 +778,13 @@
       document.getElementById('vehicleType').value = type;
       document.getElementById('vehicleDetail').value = vehicle;
 
-      document.getElementById('formTitle').innerText = "✏️ Cập Nhật Thông Tin Tài Xế";
+      const formTitleEl = document.getElementById('formTitle');
+      formTitleEl.innerText = "✏️ Cập Nhật Thông Tin Tài Xế";
       document.getElementById('saveBtn').innerText = "LƯU THAY ĐỔI";
       document.getElementById('cancelBtn').style.display = "inline-block";
+
+      // Tự động cuộn màn hình đến khung Cập nhật Thông tin Tài xế
+      formTitleEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 
     function resetForm() {
