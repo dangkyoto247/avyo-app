@@ -817,20 +817,21 @@
 
       const centerPoint = markerStart ? markerStart.getLatLng() : userLatLng;
 
-      // 1. Lọc xe đúng loại, có tọa độ & LỌC BỎ TÀI XẾ MẤT MẠNG/TẮT APP (Chuẩn hóa UTC tránh lệch múi giờ)
+      // 1. Lọc xe đúng loại, có tọa độ & BẮT BUỘC CÓ HEARTBEAT TRONG 120 GIÂY (Ẩn ngay tài xế mẫu/ảo)
       let baseFiltered = rawDriversData.filter(driver => {
         if (driver.vehicle_type !== activeFilter) return false;
         if (!driver.lat || !driver.lng) return false;
         
-        if (driver.updated_at) {
-          const lastUpdateStr = (driver.updated_at.includes('Z') || driver.updated_at.includes('+'))
-            ? driver.updated_at 
-            : driver.updated_at.replace(' ', 'T') + 'Z';
-          
-          const diffSeconds = (Date.now() - new Date(lastUpdateStr).getTime()) / 1000;
-          if (diffSeconds > 120) return false; // Quá 120s không phát tín hiệu -> Coi như nghỉ
-        }
+        // Bắt buộc phải có timestamp updated_at từ app tài xế
+        if (!driver.updated_at) return false;
         
+        const lastUpdateStr = (driver.updated_at.includes('Z') || driver.updated_at.includes('+'))
+          ? driver.updated_at 
+          : driver.updated_at.replace(' ', 'T') + 'Z';
+        
+        const diffSeconds = (Date.now() - new Date(lastUpdateStr).getTime()) / 1000;
+        if (diffSeconds > 120) return false; // Quá 120 giây không gửi heartbeat -> Ẩn tài xế
+
         return true;
       });
 
@@ -937,6 +938,12 @@
     updateGuide();
     supabaseClient.channel('realtime-drivers').on('postgres_changes', { event: '*', schema: 'public', table: 'drivers' }, () => loadDrivers()).subscribe();
 
+    // === CHÈN ĐOẠN MÃ MỚI VÀO ĐÂY ===
+    setInterval(() => {
+      if (typeof renderDriverMarkers === 'function') renderDriverMarkers();
+    }, 30000);
+    // =================================
+    
     document.addEventListener('gesturestart', function (e) {
       e.preventDefault();
     });
@@ -949,5 +956,7 @@
       });
     }
   </script>
+
+
 </body>
 </html>

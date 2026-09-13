@@ -659,6 +659,12 @@
       .on('postgres_changes', { event: '*', schema: 'public', table: 'drivers' }, () => loadAllData())
       .subscribe();
 
+// === CHÈN ĐOẠN MÃ MỚI VÀO ĐÂY ===
+    setInterval(() => {
+      if (typeof renderAdminData === 'function') renderAdminData();
+    }, 30000);
+    // =================================
+
     document.addEventListener('gesturestart', function (e) {
       e.preventDefault();
     });
