@@ -258,6 +258,17 @@
     const LOCK_TIME_MS = 60 * 60 * 1000;
     const typeLabels = { 'bike': '🛵 Xe máy', 'car': '🚕 Ô tô', 'driver': '👤 Lái xe hộ', 'truck': '🚚 Chở hàng' };
 
+    // Hàm phát hiệu ứng rung phản hồi lực (Haptic Feedback)
+    function triggerVibration(pattern) {
+      if ('vibrate' in navigator) {
+        try {
+          navigator.vibrate(pattern);
+        } catch (e) {
+          console.log("Vibration error:", e);
+        }
+      }
+    }
+
     function showNetworkAlert() {
       document.getElementById('networkAlertModal').style.display = 'block';
     }
@@ -497,6 +508,9 @@
         }
 
         if (!navigator.geolocation) return alert('Thiết bị không hỗ trợ GPS');
+
+        // Hiệu ứng rung khi BẬT GPS (2 nhịp nhấp nháy 100ms - 50ms nghỉ - 100ms)
+        triggerVibration([100, 50, 100]);
        
         isOnline = true;
         hideNetworkAlert();
@@ -570,6 +584,9 @@
         }, { enableHighAccuracy: true });
 
       } else {
+        // Hiệu ứng rung khi TẮT GPS (1 nhịp dài 250ms)
+        triggerVibration(250);
+
         isOnline = false;
         releaseWakeLock();
         hideNetworkAlert();
