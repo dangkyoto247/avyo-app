@@ -247,7 +247,7 @@
         deselectDriver();
       }
 
-      renderDriverMarkers();
+      loadDrivers();
     }
 
     map.locate({ setView: true, maxZoom: 15 });
@@ -266,13 +266,13 @@
        
       markerStart.on('dragend', () => {
         calculateRoute();
-        renderDriverMarkers();
+        loadDrivers();
       });
        
       document.getElementById('resetBtn').style.display = 'block';
       if (markerEnd) calculateRoute();
 
-      renderDriverMarkers();
+      loadDrivers();
       updateGuide();
     }
 
@@ -286,6 +286,7 @@
       markerEnd.on('dragend', calculateRoute);
       document.getElementById('resetBtn').style.display = 'block';
       calculateRoute();
+      loadDrivers();
       updateGuide();
     }
 
@@ -576,7 +577,7 @@
       document.getElementById('destInput').value = '';
 
       updatePrice();
-      renderDriverMarkers();
+      loadDrivers();
       updateGuide();
     }
 
@@ -651,51 +652,51 @@
       });
     }
 
-async function loadDrivers() {
-  const centerPoint = markerStart ? markerStart.getLatLng() : userLatLng;
+    async function loadDrivers() {
+      const centerPoint = markerStart ? markerStart.getLatLng() : userLatLng;
 
-  if (!centerPoint) {
-    const { data } = await supabaseClient
-      .from('public_drivers')
-      .select('*')
-      .eq('is_online', true)
-      .neq('is_active', false)
-      .eq('vehicle_type', activeFilter)
-      .limit(15);
-    
-    rawDriversData = data || [];
-  } else {
-    let { data: nearbyData } = await supabaseClient.rpc('get_nearby_drivers', {
-      user_lat: centerPoint.lat,
-      user_lng: centerPoint.lng,
-      radius_km: 5.0,
-      v_type: activeFilter
-    });
+      if (!centerPoint) {
+        const { data } = await supabaseClient
+          .from('public_drivers')
+          .select('*')
+          .eq('is_online', true)
+          .neq('is_active', false)
+          .eq('vehicle_type', activeFilter)
+          .limit(15);
+        
+        rawDriversData = data || [];
+      } else {
+        let { data: nearbyData } = await supabaseClient.rpc('get_nearby_drivers', {
+          user_lat: centerPoint.lat,
+          user_lng: centerPoint.lng,
+          radius_km: 5.0,
+          v_type: activeFilter
+        });
 
-    if (!nearbyData || nearbyData.length === 0) {
-      let { data: fallbackData } = await supabaseClient.rpc('get_nearby_drivers', {
-        user_lat: centerPoint.lat,
-        user_lng: centerPoint.lng,
-        radius_km: 15.0,
-        v_type: activeFilter
-      });
-      rawDriversData = fallbackData || [];
-    } else {
-      rawDriversData = nearbyData;
+        if (!nearbyData || nearbyData.length === 0) {
+          let { data: fallbackData } = await supabaseClient.rpc('get_nearby_drivers', {
+            user_lat: centerPoint.lat,
+            user_lng: centerPoint.lng,
+            radius_km: 15.0,
+            v_type: activeFilter
+          });
+          rawDriversData = fallbackData || [];
+        } else {
+          rawDriversData = nearbyData;
+        }
+      }
+
+      if (selectedDriver) {
+        const freshDriverData = rawDriversData.find(d => d.id === selectedDriver.id);
+        if (freshDriverData) {
+          selectedDriver = freshDriverData;
+        } else {
+          deselectDriver();
+        }
+      }
+
+      renderDriverMarkers();
     }
-  }
-
-  if (selectedDriver) {
-    const freshDriverData = rawDriversData.find(d => d.id === selectedDriver.id);
-    if (freshDriverData) {
-      selectedDriver = freshDriverData;
-    } else {
-      deselectDriver();
-    }
-  }
-
-  renderDriverMarkers();
-}
 
     function calcRating(driver) {
       const sum = driver.rating_sum || 25;
@@ -816,14 +817,18 @@ async function loadDrivers() {
 
       const centerPoint = markerStart ? markerStart.getLatLng() : userLatLng;
 
-      // 1. Lọc xe đúng loại, có tọa độ & LỌC BỎ TÀI XẾ SẬP NGUỒN/TẮT APPP NGHỈ (Quá 90s không phát tín hiệu)
+      // 1. Lọc xe đúng loại, có tọa độ & LỌC BỎ TÀI XẾ MẤT MẠNG/TẮT APP (Chuẩn hóa UTC tránh lệch múi giờ)
       let baseFiltered = rawDriversData.filter(driver => {
         if (driver.vehicle_type !== activeFilter) return false;
         if (!driver.lat || !driver.lng) return false;
         
         if (driver.updated_at) {
-          const diffSeconds = (Date.now() - new Date(driver.updated_at).getTime()) / 1000;
-          if (diffSeconds > 90) return false; // Quá 90s (gấp 3 lần chu kỳ 30s) -> Coi như đã nghỉ
+          const lastUpdateStr = (driver.updated_at.includes('Z') || driver.updated_at.includes('+'))
+            ? driver.updated_at 
+            : driver.updated_at.replace(' ', 'T') + 'Z';
+          
+          const diffSeconds = (Date.now() - new Date(lastUpdateStr).getTime()) / 1000;
+          if (diffSeconds > 120) return false; // Quá 120s không phát tín hiệu -> Coi như nghỉ
         }
         
         return true;
