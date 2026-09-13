@@ -4,12 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Avyo - Gọi Xe Tinh Gọn 0Đ</title>
- 
 
   <link rel="icon" type="image/png" sizes="192x192" href="index.png">
   <link rel="apple-touch-icon" sizes="180x180" href="index.png">
   <link rel="manifest" href="index-manifest.json">
-  <meta name="theme-color" content="#00b14f">
   <meta name="theme-color" content="#00b14f">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -23,6 +21,9 @@
   <link rel="stylesheet" href="index.css">
 </head>
 <body>
+
+  <!-- NÚT CHUYỂN ĐỔI CHẾ ĐỘ TỐI/SÁNG -->
+  <button id="themeToggle" class="btn-theme-toggle" onclick="toggleDarkMode()" title="Giao diện Tối/Sáng">🌙</button>
 
   <div id="guideBox" class="guide-box">
     <span class="brand-badge">AVYO</span>
@@ -81,7 +82,22 @@
     <a id="phoneBtn" href="#" class="btn-phone" style="display:none;" onclick="trackCall(event)">📞 Gọi Điện Trực Tiếp</a>
   </div>
 
-  <script src="utils.js"></script>
-  <script src="index.js"></script>
+  <!-- NẠP SCRIPT TỰ ĐỘNG ĐỔI VERSION TỐI ƯU CACHE -->
+  <script>
+    (function() {
+      const version = Date.now();
+      const loadScript = (src, callback) => {
+        const script = document.createElement('script');
+        script.src = src + '?v=' + version;
+        script.async = false;
+        if (callback) script.onload = callback;
+        document.body.appendChild(script);
+      };
+
+      loadScript('utils.js', function() {
+        loadScript('index.js');
+      });
+    })();
+  </script>
 </body>
 </html>

@@ -923,3 +923,34 @@ if ('serviceWorker' in navigator) {
     console.log("App đã sẵn sàng hoạt động!");
   });
 }
+
+// ==========================================
+// CHỨC NĂNG CHẾ ĐỘ TỐI (DARK MODE)
+// ==========================================
+
+function toggleDarkMode() {
+  const body = document.body;
+  const themeToggleBtn = document.getElementById('themeToggle');
+  body.classList.toggle('dark-mode');
+  
+  if (body.classList.contains('dark-mode')) {
+    localStorage.setItem('avyo_theme', 'dark');
+    themeToggleBtn.innerText = '☀️'; // Đổi icon sang Mặt Trời
+  } else {
+    localStorage.setItem('avyo_theme', 'light');
+    themeToggleBtn.innerText = '🌙'; // Đổi icon về Mặt Trăng
+  }
+}
+
+// Tự động kiểm tra và áp dụng theme đã lưu khi tải trang
+document.addEventListener('DOMContentLoaded', () => {
+  const savedTheme = localStorage.getItem('avyo_theme');
+  const themeToggleBtn = document.getElementById('themeToggle');
+  
+  if (savedTheme === 'dark') {
+    document.body.classList.add('dark-mode');
+    if (themeToggleBtn) {
+      themeToggleBtn.innerText = '☀️';
+    }
+  }
+});
