@@ -925,32 +925,31 @@ if ('serviceWorker' in navigator) {
 }
 
 // ==========================================
-// CHỨC NĂNG CHẾ ĐỘ TỐI (DARK MODE)
+// LOGIC CHẾ ĐỘ TỐI (DARK MODE)
 // ==========================================
 
-function toggleDarkMode() {
+window.toggleDarkMode = function() {
   const body = document.body;
   const themeToggleBtn = document.getElementById('themeToggle');
-  body.classList.toggle('dark-mode');
+  const isDark = body.classList.toggle('dark-mode');
   
-  if (body.classList.contains('dark-mode')) {
-    localStorage.setItem('avyo_theme', 'dark');
-    themeToggleBtn.innerText = '☀️'; // Đổi icon sang Mặt Trời
-  } else {
-    localStorage.setItem('avyo_theme', 'light');
-    themeToggleBtn.innerText = '🌙'; // Đổi icon về Mặt Trăng
+  localStorage.setItem('avyo_theme', isDark ? 'dark' : 'light');
+  if (themeToggleBtn) {
+    themeToggleBtn.innerText = isDark ? '☀️' : '🌙';
   }
-}
+};
 
-// Tự động kiểm tra và áp dụng theme đã lưu khi tải trang
+(function initTheme() {
+  const savedTheme = localStorage.getItem('avyo_theme');
+  if (savedTheme === 'dark') {
+    document.body.classList.add('dark-mode');
+  }
+})();
+
 document.addEventListener('DOMContentLoaded', () => {
   const savedTheme = localStorage.getItem('avyo_theme');
   const themeToggleBtn = document.getElementById('themeToggle');
-  
-  if (savedTheme === 'dark') {
-    document.body.classList.add('dark-mode');
-    if (themeToggleBtn) {
-      themeToggleBtn.innerText = '☀️';
-    }
+  if (savedTheme === 'dark' && themeToggleBtn) {
+    themeToggleBtn.innerText = '☀️';
   }
 });

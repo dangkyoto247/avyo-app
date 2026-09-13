@@ -118,31 +118,25 @@ body {
 .btn-select-driver.active { background: #00b14f; color: white; }
 .btn-select-driver.normal { background: #e2e8f0; color: #334155; }
 
-/* =========================================
-   GIAO DIỆN CHẾ ĐỘ TỐI (DARK MODE)
-========================================= */
-
-/* Nút bấm chuyển đổi nổi trên màn hình */
+/* NÚT TỐI/SÁNG LỒNG TRONG GUIDE-BOX */
 .btn-theme-toggle {
-  position: fixed;
-  bottom: 25px;
-  right: 15px;
-  z-index: 9999;
-  background: white;
-  border: 2px solid #cbd5e1;
-  border-radius: 50%;
-  width: 44px;
-  height: 44px;
-  font-size: 22px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #93c5fd;
+  border-radius: 8px;
+  width: 30px;
+  height: 30px;
+  font-size: 15px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-  transition: all 0.3s ease;
+  flex-shrink: 0;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  transition: all 0.2s ease;
+  padding: 0;
 }
 
-/* Các thành phần giao diện khi chế độ tối được bật */
+/* GIAO DIỆN TỐI (DARK MODE) */
 body.dark-mode {
   background: #121212;
   color: #e2e8f0;
@@ -211,17 +205,15 @@ body.dark-mode {
   color: #e2e8f0;
 }
 .dark-mode .btn-theme-toggle {
-  background: #1e293b;
+  background: #334155;
   border-color: #475569;
   color: #e2e8f0;
 }
 
-/* Đảo màu bản đồ Leaflet (Map tiles) để biến thành bản đồ nền tối */
+/* ĐẢO MÀU BẢN ĐỒ LEAFLET TRANG SANG NỀN TỐI */
 .dark-mode .leaflet-tile-pane {
   filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
 }
-
-/* Giao diện Popup của Leaflet trên bản đồ */
 .dark-mode .leaflet-popup-content-wrapper,
 .dark-mode .leaflet-popup-tip {
   background: #1e1e1e;
@@ -229,17 +221,13 @@ body.dark-mode {
   box-shadow: 0 3px 14px rgba(0,0,0,0.6);
 }
 
-/* Ghi đè các thẻ có màu inline từ JS */
 .dark-mode [style*="color: #0f172a"], 
 .dark-mode [style*="color:#0f172a"] { color: #f8fafc !important; }
-
 .dark-mode [style*="color: #334155"], 
 .dark-mode [style*="color:#334155"] { color: #cbd5e1 !important; }
-
 .dark-mode [style*="color: #64748b"], 
 .dark-mode [style*="color:#64748b"] { color: #94a3b8 !important; }
 
-/* Ghi đè nền của các header danh sách và cảnh báo */
 .dark-mode [style*="background: #f0fdf4"] { background: #064e3b !important; border-bottom-color: #059669 !important; }
 .dark-mode [style*="background: #eff6ff"] { background: #1e3a8a !important; border-bottom-color: #1e40af !important; }
 .dark-mode [style*="background:#fef2f2"] { background: #450a0a !important; border-color: #7f1d1d !important; }

@@ -18,16 +18,14 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/gh/ewoken/Leaflet.MovingMarker@master/MovingMarker.js"></script>
 
-  <link rel="stylesheet" href="index.css">
+  <link rel="stylesheet" href="index.css?v=8">
 </head>
 <body>
 
-  <!-- NÚT CHUYỂN ĐỔI CHẾ ĐỘ TỐI/SÁNG -->
-  <button id="themeToggle" class="btn-theme-toggle" onclick="toggleDarkMode()" title="Giao diện Tối/Sáng">🌙</button>
-
   <div id="guideBox" class="guide-box">
     <span class="brand-badge">AVYO</span>
-    💡 <span id="guideText">Đang tải hướng dẫn...</span>
+    💡 <span id="guideText" style="flex: 1;">Đang tải hướng dẫn...</span>
+    <button id="themeToggle" class="btn-theme-toggle" onclick="toggleDarkMode()" title="Giao diện Tối/Sáng">🌙</button>
   </div>
 
   <div class="filter-bar">
@@ -82,22 +80,7 @@
     <a id="phoneBtn" href="#" class="btn-phone" style="display:none;" onclick="trackCall(event)">📞 Gọi Điện Trực Tiếp</a>
   </div>
 
-  <!-- NẠP SCRIPT TỰ ĐỘNG ĐỔI VERSION TỐI ƯU CACHE -->
-  <script>
-    (function() {
-      const version = Date.now();
-      const loadScript = (src, callback) => {
-        const script = document.createElement('script');
-        script.src = src + '?v=' + version;
-        script.async = false;
-        if (callback) script.onload = callback;
-        document.body.appendChild(script);
-      };
-
-      loadScript('utils.js', function() {
-        loadScript('index.js');
-      });
-    })();
-  </script>
+  <script src="utils.js?v=8"></script>
+  <script src="index.js?v=8"></script>
 </body>
 </html>
