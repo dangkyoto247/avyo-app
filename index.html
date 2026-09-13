@@ -163,7 +163,7 @@
       <div id="pickupSuggestions" class="suggestions-list"></div>
     </div>
     <div class="search-input-group" style="margin-bottom: 0;">
-      <input type="text" id="destInput" placeholder="🚩 Tìm điểm đến (VD: Bến xe Vinh)..." autocomplete="off" oninput="onSearchInput('dest')">
+      <input type="text" id="destInput" placeholder="🚩 Tìm điểm đến (VD: Bến xe Vinh)..." autocomplete="off" oninput="onSearchInput('dest')" onfocus="showRecentDests()">
       <div id="destSuggestions" class="suggestions-list"></div>
     </div>
   </div>
@@ -219,6 +219,7 @@
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     const RECENT_PICKUPS_KEY = 'avyo_recent_pickups';
+    const RECENT_DESTS_KEY = 'avyo_recent_dests';
 
     let userLatLng = null;
     let markerStart = null, markerEnd = null;
@@ -228,6 +229,7 @@
     let rawDriversData = [];
     let searchTimer = null;
 
+    // --- QUẢN LÝ LỊCH SỬ 5 ĐIỂM ĐÓN GẦN ĐÂY ---
     function getRecentPickups() {
       try {
         const data = localStorage.getItem(RECENT_PICKUPS_KEY);
@@ -271,6 +273,56 @@
           map.setView(latlng, 15);
           setPickupLocation(latlng);
           saveRecentPickup(item.label, item.lat, item.lng);
+        };
+        listEl.appendChild(div);
+      });
+      listEl.style.display = 'block';
+    }
+
+    // --- QUẢN LÝ LỊCH SỬ 5 ĐIỂM ĐẾN GẦN ĐÂY ---
+    function getRecentDests() {
+      try {
+        const data = localStorage.getItem(RECENT_DESTS_KEY);
+        return data ? JSON.parse(data) : [];
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function saveRecentDest(label, lat, lng) {
+      if (!label || !lat || !lng) return;
+      let list = getRecentDests();
+      list = list.filter(item => item.label !== label && !(Math.abs(item.lat - lat) < 0.0001 && Math.abs(item.lng - lng) < 0.0001));
+      list.unshift({ label, lat, lng });
+      list = list.slice(0, 5);
+      localStorage.setItem(RECENT_DESTS_KEY, JSON.stringify(list));
+    }
+
+    function showRecentDests() {
+      const inputVal = document.getElementById('destInput').value.trim();
+      if (inputVal.length >= 2) return;
+
+      const listEl = document.getElementById('destSuggestions');
+      const recents = getRecentDests();
+
+      if (!recents || recents.length === 0) {
+        listEl.style.display = 'none';
+        return;
+      }
+
+      listEl.innerHTML = '<div style="padding: 6px 12px; font-size: 11px; color: #2563eb; font-weight: bold; background: #eff6ff; border-bottom: 1px solid #e2e8f0;">🕒 ĐIỂM ĐẾN GẦN ĐÂY</div>';
+
+      recents.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'suggestion-item';
+        div.innerHTML = `🕒 <b>${item.label}</b>`;
+        div.onclick = () => {
+          document.getElementById('destInput').value = item.label;
+          listEl.style.display = 'none';
+          const latlng = L.latLng(item.lat, item.lng);
+          map.setView(latlng, 15);
+          setDestLocation(latlng);
+          saveRecentDest(item.label, item.lat, item.lng);
         };
         listEl.appendChild(div);
       });
@@ -417,6 +469,8 @@
       if (query.length < 2) {
         if (type === 'pickup') {
           showRecentPickups();
+        } else if (type === 'dest') {
+          showRecentDests();
         } else {
           listEl.style.display = 'none';
         }
@@ -447,6 +501,7 @@
                   saveRecentPickup(item.label, item.lat, item.lng);
                 } else {
                   setDestLocation(latlng);
+                  saveRecentDest(item.label, item.lat, item.lng);
                 }
 
                 if (!item.is_cached) {
@@ -916,6 +971,12 @@
       document.getElementById('phoneBtn').style.display = 'block';
 
       renderDriverMarkers();
+
+      // TỰ ĐỘNG DI CHUYỂN BẢN ĐỒ VÀ MỞ POPUP MARKER CỦA TÀI XẾ ĐƯỢC CHỌN
+      if (driverMarkers[driver.id]) {
+        map.panTo([driver.lat, driver.lng]);
+        driverMarkers[driver.id].openPopup();
+      }
     }
 
     function renderDriverMarkers() {
