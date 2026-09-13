@@ -157,7 +157,6 @@ function toggleAdminFilter(type, element) {
   renderAdminData();
 }
 
-// HÀM MỚI: ĐẶT LẠI TẤT CẢ BỘ LỌC TÌM KIẾM VỀ MẶC ĐỊNH
 function resetSearchFilters() {
   const searchInput = document.getElementById('searchInput');
   const statusFilter = document.getElementById('statusFilter');
@@ -301,7 +300,7 @@ function renderAdminData() {
   });
 
   if (!filteredDrivers || filteredDrivers.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 15px; color: #64748b;">Không có tài xế nào khớp với tìm kiếm / bộ lọc hiện tại.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 15px; color: #64748b;">Không có tài xế nào khớp với tìm kiếm / bộ lọc hiện tại.</td></tr>';
     renderPaginationUI(0, 0);
     return;
   }
@@ -315,7 +314,10 @@ function renderAdminData() {
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const paginatedDrivers = filteredDrivers.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
-  paginatedDrivers.forEach(d => {
+  paginatedDrivers.forEach((d, index) => {
+    // ĐÃ THÊM: Tính toán số thứ tự theo phân trang
+    const stt = startIndex + index + 1;
+
     const now = Date.now();
     const isLocked = d.locked_until && parseInt(d.locked_until) > now;
 
@@ -378,6 +380,7 @@ function renderAdminData() {
 
     const tr = document.createElement('tr');
     tr.innerHTML = `
+      <td style="text-align: center; font-weight: bold; color: #64748b;">${stt}</td>
       <td>
         <b>${typeLabels[d.vehicle_type] || d.vehicle_type}</b><br>
         <span class="small-text">${d.vehicle || '--'}</span>

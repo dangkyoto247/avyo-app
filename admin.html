@@ -83,7 +83,6 @@
       <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 12px;">
         <h4 style="margin: 0; color: #334155; white-space: nowrap;">📋 Danh Sách Tất Cả Tài Xế</h4>
         
-        <!-- ĐÃ THÊM NÚT ĐẶT LẠI NGANG DÒNG VỚI Ô TÌM KIẾM VA BỘ LỌC -->
         <div style="display: flex; gap: 8px; flex-wrap: wrap; flex: 1; min-width: 280px; justify-content: flex-end; align-items: center;">
           <input type="text" id="searchInput" oninput="currentPage = 1; renderAdminData();" placeholder="🔎 Tìm Tên, SĐT, CCCD, Biển số..." style="flex: 2; min-width: 180px;">
           <select id="statusFilter" onchange="currentPage = 1; renderAdminData();" style="flex: 1; min-width: 140px;">
@@ -108,6 +107,7 @@
       <table>
         <thead>
           <tr>
+            <th style="width: 50px; text-align: center;">STT</th>
             <th>Loại xe</th>
             <th>Thông tin Tài xế</th>
             <th>Đánh giá & Tương tác</th>
@@ -117,7 +117,7 @@
           </tr>
         </thead>
         <tbody id="driverTableBody">
-          <tr><td colspan="6" style="text-align:center;">Đang tải dữ liệu...</td></tr>
+          <tr><td colspan="7" style="text-align:center;">Đang tải dữ liệu...</td></tr>
         </tbody>
       </table>
 
