@@ -16,6 +16,8 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Thêm thư viện Leaflet.MovingMarker -->
+  <script src="https://cdn.jsdelivr.net/gh/ewoken/Leaflet.MovingMarker@master/MovingMarker.js"></script>
 
   <style>
     body { 
@@ -92,6 +94,11 @@
     }
     .btn-select-driver.active { background: #00b14f; color: white; }
     .btn-select-driver.normal { background: #e2e8f0; color: #334155; }
+    
+    /* Hiệu ứng trượt mượt cho marker icon khi thay đổi tọa độ transform */
+    .leaflet-marker-icon {
+      transition: transform 1s linear, opacity 0.3s ease;
+    }
   </style>
 </head>
 <body>
@@ -810,19 +817,12 @@
     }
 
     function renderDriverMarkers() {
-      Object.keys(driverMarkers).forEach(id => {
-        map.removeLayer(driverMarkers[id]);
-        delete driverMarkers[id];
-      });
-
       const centerPoint = markerStart ? markerStart.getLatLng() : userLatLng;
 
-      // 1. Lọc xe đúng loại, có tọa độ & BẮT BUỘC CÓ HEARTBEAT TRONG 120 GIÂY (Ẩn ngay tài xế mẫu/ảo)
+      // 1. Lọc xe đúng loại, có tọa độ & có heartbeat trong vòng 120s
       let baseFiltered = rawDriversData.filter(driver => {
         if (driver.vehicle_type !== activeFilter) return false;
         if (!driver.lat || !driver.lng) return false;
-        
-        // Bắt buộc phải có timestamp updated_at từ app tài xế
         if (!driver.updated_at) return false;
         
         const lastUpdateStr = (driver.updated_at.includes('Z') || driver.updated_at.includes('+'))
@@ -830,7 +830,7 @@
           : driver.updated_at.replace(' ', 'T') + 'Z';
         
         const diffSeconds = (Date.now() - new Date(lastUpdateStr).getTime()) / 1000;
-        if (diffSeconds > 120) return false; // Quá 120 giây không gửi heartbeat -> Ẩn tài xế
+        if (diffSeconds > 120) return false;
 
         return true;
       });
@@ -914,23 +914,50 @@
         }
       }
 
+      // 2. CẬP NHẬT MARKER MƯỢT MÀ TỚI VỊ TRÍ MỚI (KHÔNG XÓA DOCK MARKER)
+      const currentValidIds = new Set();
+
       filteredDrivers.slice(0, 15).forEach(driver => {
+        currentValidIds.add(driver.id);
         const icon = icons[driver.vehicle_type] || icons['bike'];
         const typeBadge = typeNames[driver.vehicle_type] || 'Tài xế';
         const rating = calcRating(driver);
 
-        const marker = L.marker([driver.lat, driver.lng], { icon: icon }).addTo(map);
-       
-        marker.bindPopup(`
-          <div style="text-align:center;">
-            <b>${typeBadge}: ${driver.name}</b><br>
-            <span style="color:#eab308; font-weight:bold;">⭐ ${rating.score} / 5.0</span> 
-            <small style="color:#64748b;">(${rating.count} lượt)</small>
-          </div>
-        `);
-       
-        marker.on('click', () => selectDriver(driver));
-        driverMarkers[driver.id] = marker;
+        if (driverMarkers[driver.id]) {
+          // Nếu tài xế đã có Marker -> Cập nhật vị trí mượt mà
+          const existingMarker = driverMarkers[driver.id];
+          existingMarker.setLatLng([driver.lat, driver.lng]);
+          existingMarker.setIcon(icon);
+          existingMarker.setPopupContent(`
+            <div style="text-align:center;">
+              <b>${typeBadge}: ${driver.name}</b><br>
+              <span style="color:#eab308; font-weight:bold;">⭐ ${rating.score} / 5.0</span> 
+              <small style="color:#64748b;">(${rating.count} lượt)</small>
+            </div>
+          `);
+        } else {
+          // Tạo Marker mới nếu là tài xế xuất hiện lần đầu
+          const marker = L.marker([driver.lat, driver.lng], { icon: icon }).addTo(map);
+          
+          marker.bindPopup(`
+            <div style="text-align:center;">
+              <b>${typeBadge}: ${driver.name}</b><br>
+              <span style="color:#eab308; font-weight:bold;">⭐ ${rating.score} / 5.0</span> 
+              <small style="color:#64748b;">(${rating.count} lượt)</small>
+            </div>
+          `);
+         
+          marker.on('click', () => selectDriver(driver));
+          driverMarkers[driver.id] = marker;
+        }
+      });
+
+      // 3. Xóa các Marker tài xế ngắt kết nối/offline khỏi bản đồ
+      Object.keys(driverMarkers).forEach(id => {
+        if (!currentValidIds.has(id)) {
+          map.removeLayer(driverMarkers[id]);
+          delete driverMarkers[id];
+        }
       });
     }
 
