@@ -141,7 +141,7 @@
     .btn-select-driver.active { background: #00b14f; color: white; }
     .btn-select-driver.normal { background: #e2e8f0; color: #334155; }
     
-    /* HIỆU ỨNG TRƯỢT MƯỢT TÀI XẾ REAL-TIME (Chỉ áp dụng cho xe tài xế, bỏ cho icon pin đón/đến) */
+    /* HIỆU ỨNG TRƯỢT MƯỢT TÀI XẾ REAL-TIME */
     .leaflet-marker-icon.custom-icon {
       transition: transform 1s linear, opacity 0.3s ease;
     }
@@ -210,11 +210,10 @@
   <script>
     const map = L.map('map', { 
       preferCanvas: true,
-      attributionControl: false, // TẮT BẢN QUYỀN LEAFLET & CARTO
-      zoomControl: false         // TẮT NÚT ZOOM MẶC ĐỊNH Ở GÓC TRÊN BÊN TRÁI
+      attributionControl: false,
+      zoomControl: false
     }).setView([18.7034, 105.6832], 13);
    
-    // CHUYỂN NÚT ZOOM (+ -) SANG GÓC TRÊN BÊN PHẢI BẢN ĐỒ
     L.control.zoom({ position: 'topright' }).addTo(map);
 
     L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
@@ -240,7 +239,6 @@
     let rawDriversData = [];
     let searchTimer = null;
 
-    // --- QUẢN LÝ LỊCH SỬ 5 ĐIỂM ĐÓN GẦN ĐÂY ---
     function getRecentPickups() {
       try {
         const data = localStorage.getItem(RECENT_PICKUPS_KEY);
@@ -290,7 +288,6 @@
       listEl.style.display = 'block';
     }
 
-    // --- QUẢN LÝ LỊCH SỬ 5 ĐIỂM ĐẾN GẦN ĐÂY ---
     function getRecentDests() {
       try {
         const data = localStorage.getItem(RECENT_DESTS_KEY);
@@ -983,7 +980,6 @@
 
       renderDriverMarkers();
 
-      // TỰ ĐỘNG DI CHUYỂN BẢN ĐỒ VÀ MỞ POPUP MARKER CỦA TÀI XẾ ĐƯỢC CHỌN
       if (driverMarkers[driver.id]) {
         map.panTo([driver.lat, driver.lng]);
         driverMarkers[driver.id].openPopup();
@@ -993,7 +989,6 @@
     function renderDriverMarkers() {
       const centerPoint = markerStart ? markerStart.getLatLng() : userLatLng;
 
-      // 1. Lọc xe đúng loại, có tọa độ & có heartbeat trong vòng 120s
       let baseFiltered = rawDriversData.filter(driver => {
         if (driver.vehicle_type !== activeFilter) return false;
         if (!driver.lat || !driver.lng) return false;
@@ -1088,7 +1083,6 @@
         }
       }
 
-      // 2. CẬP NHẬT MARKER MƯỢT MÀ TỚI VỊ TRÍ MỚI (KHÔNG XÓA DOCK MARKER)
       const currentValidIds = new Set();
 
       filteredDrivers.slice(0, 15).forEach(driver => {
@@ -1124,7 +1118,6 @@
         }
       });
 
-      // 3. Xóa các Marker tài xế ngắt kết nối/offline khỏi bản đồ
       Object.keys(driverMarkers).forEach(id => {
         if (!currentValidIds.has(id)) {
           map.removeLayer(driverMarkers[id]);
@@ -1133,14 +1126,17 @@
       });
     }
 
+    // TẢI DỮ LIỆU LẦN ĐẦU KHI TRANG KHỞI CHẠY
     loadDrivers();
     updateGuide();
-    supabaseClient.channel('realtime-drivers').on('postgres_changes', { event: '*', schema: 'public', table: 'drivers' }, () => loadDrivers()).subscribe();
 
+    // TỐI ƯU HỆ THỐNG: Bỏ Realtime Listen, thay bằng Polling gọi RPC get_nearby_drivers tự động 12 giây/lần
     setInterval(() => {
-      if (typeof renderDriverMarkers === 'function') renderDriverMarkers();
-    }, 30000);
-    
+      if (typeof loadDrivers === 'function') {
+        loadDrivers();
+      }
+    }, 12000);
+
     document.addEventListener('gesturestart', function (e) {
       e.preventDefault();
     });
