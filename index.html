@@ -16,15 +16,12 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <!-- Thư viện Leaflet.MovingMarker -->
   <script src="https://cdn.jsdelivr.net/gh/ewoken/Leaflet.MovingMarker@master/MovingMarker.js"></script>
 
-  <!-- Đã thay toàn bộ style bằng file css riêng -->
   <link rel="stylesheet" href="index.css">
 </head>
 <body>
 
-  <!-- KHUNG HƯỚNG DẪN CỐ ĐỊNH -->
   <div id="guideBox" class="guide-box">
     <span class="brand-badge">AVYO</span>
     💡 <span id="guideText">Đang tải hướng dẫn...</span>
@@ -82,7 +79,7 @@
     <a id="phoneBtn" href="#" class="btn-phone" style="display:none;" onclick="trackCall(event)">📞 Gọi Điện Trực Tiếp</a>
   </div>
 
-  <!-- Đã thay toàn bộ JS bằng file script riêng nằm cuối body -->
+  <script src="utils.js"></script>
   <script src="index.js"></script>
 </body>
 </html>

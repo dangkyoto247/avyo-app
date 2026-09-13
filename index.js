@@ -156,13 +156,6 @@ function updateGuide() {
   }
 }
 
-function getOptimizedAvatar(url) {
-  const defaultAvatar = 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
-  if (!url) return defaultAvatar;
-  if (url.startsWith('data:image')) return url;
-  return `https://images.weserv.nl/?url=${encodeURIComponent(url)}&w=200&h=200&fit=cover&q=80&output=jpg`;
-}
-
 const pickupIcon = L.divIcon({
   html: `<svg width="34" height="34" viewBox="0 0 24 24" fill="#dc2626" stroke="#ffffff" stroke-width="1.5" style="filter: drop-shadow(0 3px 6px rgba(0,0,0,0.4));">
            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
@@ -457,16 +450,6 @@ function drawFallbackRoute(start, end) {
   map.fitBounds(routeLine.getBounds(), { padding: [40, 40] });
   const km = calculateDistance(start.lat, start.lng, end.lat, end.lng);
   currentDistance = km.toFixed(1);
-}
-
-function getHaversineDistance(lat1, lon1, lat2, lon2) {
-  const R = 6371;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-            Math.sin(dLon/2) * Math.sin(dLon/2);
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
 
 function calculateDistance(lat1, lon1, lat2, lon2) {
@@ -886,9 +869,8 @@ function renderDriverMarkers() {
       const existingMarker = driverMarkers[driver.id];
       const currPos = existingMarker.getLatLng();
 
-      // Chỉ cho trượt mượt nếu vị trí thực sự thay đổi
       if (Math.abs(currPos.lat - driver.lat) > 0.00001 || Math.abs(currPos.lng - driver.lng) > 0.00001) {
-        existingMarker.moveTo(targetLatLng, 2500); // Trượt mượt trong 2.5s
+        existingMarker.moveTo(targetLatLng, 2500);
       }
 
       existingMarker.setIcon(icon);
@@ -900,7 +882,6 @@ function renderDriverMarkers() {
         </div>
       `);
     } else {
-      // Khởi tạo MovingMarker cho tài xế mới xuất hiện
       const marker = L.Marker.movingMarker([targetLatLng, targetLatLng], [1000], { icon: icon }).addTo(map);
       
       marker.bindPopup(`
@@ -916,7 +897,6 @@ function renderDriverMarkers() {
     }
   });
 
-  // Xóa các marker không còn hoạt động
   Object.keys(driverMarkers).forEach(id => {
     if (!currentValidIds.has(id)) {
       map.removeLayer(driverMarkers[id]);

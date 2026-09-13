@@ -110,25 +110,6 @@ let adminMarkers = {};
 let rawAdminDriversData = [];
 const activeAdminFilters = new Set(['bike', 'car', 'driver', 'truck']);
 
-function getOptimizedAvatar(url) {
-  const defaultAvatar = 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
-  if (!url) return defaultAvatar;
-  if (url.startsWith('data:image')) return url;
-  return `https://images.weserv.nl/?url=${encodeURIComponent(url)}&w=200&h=200&fit=cover&q=80&output=jpg`;
-}
-
-function getLocalDateStr() {
-  const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-function getLocalMonthStr() {
-  const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-}
-function formatTime(minutes) {
-  if (!minutes) return '0p';
-  const h = Math.floor(minutes / 60); const m = minutes % 60;
-  return h > 0 ? `${h}h ${m}p` : `${m}p`;
-}
-
 const icons = {
   'bike': L.divIcon({ html: '<div class="vehicle-icon">🛵</div>', className: 'custom-icon', iconSize: [26, 26] }),
   'car': L.divIcon({ html: '<div class="vehicle-icon">🚕</div>', className: 'custom-icon', iconSize: [26, 26] }),
