@@ -1,5 +1,5 @@
 const TILE_CACHE_NAME = 'carto-tiles-v1';
-const STATIC_CACHE_NAME = 'avyo-static-v7';
+const STATIC_CACHE_NAME = 'avyo-static-v8';
 
 const STATIC_ASSETS = [
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
@@ -47,7 +47,7 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
-// 2. XÓA CACHE CỦ KHI NÂNG CẤP PHIÊN BẢN V7
+// 2. XÓA CACHE CŨ KHI NÂNG CẤP PHIÊN BẢN V8
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
