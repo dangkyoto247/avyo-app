@@ -131,12 +131,13 @@ async function login() {
 
 function initDriverMap() {
   if (driverMap) return;
-  driverMap = L.map('driverMap', { preferCanvas: true }).setView([18.7034, 105.6832], 14);
+  // Đã thêm attributionControl: false vào object tùy chọn
+  driverMap = L.map('driverMap', { preferCanvas: true, attributionControl: false }).setView([18.7034, 105.6832], 14);
 
+  // Đã xóa dòng attribution ở tileLayer
   L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
     maxZoom: 19,
-    subdomains: 'abcd',
-    attribution: '&copy; OpenStreetMap &copy; CARTO'
+    subdomains: 'abcd'
   }).addTo(driverMap);
 
   setTimeout(() => { if (driverMap) driverMap.invalidateSize(); }, 300);

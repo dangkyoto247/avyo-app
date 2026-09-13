@@ -120,12 +120,12 @@ const typeLabels = { 'bike': '🛵 Xe máy', 'car': '🚕 Ô tô', 'driver': '�
 
 function initMap() {
   if (map) return;
-  map = L.map('map', { preferCanvas: true }).setView([18.7034, 105.6832], 12);
+  // Đã sửa: Thêm attributionControl: false vào đây
+  map = L.map('map', { preferCanvas: true, attributionControl: false }).setView([18.7034, 105.6832], 12);
  
   L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
     maxZoom: 19,
-    subdomains: 'abcd',
-    attribution: '&copy; OpenStreetMap &copy; CARTO'
+    subdomains: 'abcd' // Đã sửa: Xóa dòng attribution ở đây
   }).addTo(map);
 
   setTimeout(() => { if (map) map.invalidateSize(); }, 300);
