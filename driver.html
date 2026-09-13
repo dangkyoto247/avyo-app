@@ -453,7 +453,7 @@
         isOnline = true;
         await requestWakeLock();
 
-        // Cập nhật ngay is_online: true lên cơ sở dữ liệu và reset bộ đếm tọa độ
+        // Đặt lại biến theo dõi vị trí và phát tín hiệu online ngay lập tức
         lastSentLat = 0;
         lastSentLng = 0;
         await supabaseClient.from('drivers').update({
@@ -477,22 +477,30 @@
         document.getElementById('timeTodayLabel').innerText = formatTime(driverData.online_minutes_today);
         document.getElementById('timeMonthLabel').innerText = formatTime(driverData.online_minutes_month);
 
+        let heartbeatTicks = 0;
+        // GỬI HEARTBEAT 30 GIÂY / LẦN BÁO DANH "CÒN SỐNG"
         timeInterval = setInterval(async () => {
           if (!isOnline) return;
          
-          driverData.online_minutes_today = (driverData.online_minutes_today || 0) + 1;
-          driverData.online_minutes_month = (driverData.online_minutes_month || 0) + 1;
+          heartbeatTicks++;
+          let updateObj = { updated_at: new Date().toISOString() };
 
-          document.getElementById('timeTodayLabel').innerText = formatTime(driverData.online_minutes_today);
-          document.getElementById('timeMonthLabel').innerText = formatTime(driverData.online_minutes_month);
+          // Cứ 2 lần 30s (đủ 60s) thì tăng 1 phút hoạt động
+          if (heartbeatTicks % 2 === 0) {
+            driverData.online_minutes_today = (driverData.online_minutes_today || 0) + 1;
+            driverData.online_minutes_month = (driverData.online_minutes_month || 0) + 1;
 
-          await supabaseClient.from('drivers').update({
-            online_minutes_today: driverData.online_minutes_today,
-            online_minutes_month: driverData.online_minutes_month,
-            last_online_date: todayStr,
-            last_online_month: monthStr
-          }).eq('id', currentDriverId);
-        }, 60000);
+            document.getElementById('timeTodayLabel').innerText = formatTime(driverData.online_minutes_today);
+            document.getElementById('timeMonthLabel').innerText = formatTime(driverData.online_minutes_month);
+
+            updateObj.online_minutes_today = driverData.online_minutes_today;
+            updateObj.online_minutes_month = driverData.online_minutes_month;
+            updateObj.last_online_date = todayStr;
+            updateObj.last_online_month = monthStr;
+          }
+
+          await supabaseClient.from('drivers').update(updateObj).eq('id', currentDriverId);
+        }, 30000); // 30,000ms = 30 giây
 
         let lastUpdateTime = 0;
         watchId = navigator.geolocation.watchPosition(async (pos) => {
@@ -577,6 +585,22 @@
         })
         .subscribe();
     }
+
+    // BÁO TẮT GPS KHI TÀI XẾ VUỐT TẮT NGANNG APP TRÊN ĐIỆN THOẠI
+    window.addEventListener('beforeunload', () => {
+      if (isOnline && currentDriverId) {
+        fetch(`${SUPABASE_URL}/rest/v1/drivers?id=eq.${currentDriverId}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': SUPABASE_KEY,
+            'Authorization': `Bearer ${SUPABASE_KEY}`
+          },
+          body: JSON.stringify({ is_online: false, updated_at: new Date().toISOString() }),
+          keepalive: true
+        });
+      }
+    });
 
     document.addEventListener('gesturestart', function (e) {
       e.preventDefault();

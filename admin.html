@@ -107,7 +107,6 @@
 </head>
 <body>
 
-  <!-- KHUNG ĐĂNG NHẬP -->
   <div id="login-modal">
     <div class="login-box">
       <h3 style="margin-top:0; color:#0f172a;">🔒 Đăng Nhập Admin</h3>
@@ -126,7 +125,6 @@
       <button onclick="logout()" style="background:#cbd5e1; color:#334155; padding:6px 12px; font-size:12px;">Đăng xuất</button>
     </div>
 
-    <!-- BỘ LỌC TÌM KIẾM -->
     <div class="card" style="padding: 14px 16px;">
       <div style="font-size: 13px; font-weight: bold; color: #475569; margin-bottom: 8px;">🔍 Tìm kiếm & Bộ lọc tài xế:</div>
       
@@ -149,13 +147,11 @@
       </div>
     </div>
 
-    <!-- BẢN ĐỒ -->
     <div class="card">
       <h4 style="margin: 0; color: #334155;">📍 Bản Đồ Giám Sát Xe Đang Chạy (<span id="onlineCount">0</span> xe)</h4>
       <div id="map"></div>
     </div>
 
-    <!-- FORM THÊM/SỬA TÀI XẾ -->
     <div class="card">
       <h4 id="formTitle" style="margin: 0 0 8px 0; color: #334155;">➕ Thêm Tài Xế Mới</h4>
       <input type="hidden" id="driverId">
@@ -182,7 +178,6 @@
       </div>
     </div>
 
-    <!-- BẢNG DỮ LIỆU -->
     <div class="card" style="overflow-x: auto;">
       <h4 style="margin: 0 0 8px 0; color: #334155;">📋 Danh Sách Tất Cả Tài Xế</h4>
       <table>
@@ -204,21 +199,12 @@
   </div>
 
   <script>
-    // ----------------------------------------------------------------------
-    // 1. CẤU HÌNH SUPABASE
-    // ----------------------------------------------------------------------
     const SUPABASE_URL = 'https://yvucyqkglbgxvozrznir.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl2dWN5cWtnbGJneHZvenJ6bmlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkxMzA3ODAsImV4cCI6MjEwNDcwNjc4MH0.Zagl4i2LPmxW3w9ih0h4LRsrm-OOGtPcWgvEs2vHBqo';
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    // Thời gian khóa thiết bị khi sai 3 lần (1 giờ)
     const ADMIN_LOCK_TIME_MS = 60 * 60 * 1000;
 
-    // ----------------------------------------------------------------------
-    // 2. XÁC THỰC VÀ BẢO MẬT (LOGIN / LOGOUT / LOCK DEVICE / INACTIVITY)
-    // ----------------------------------------------------------------------
-    
-    // Kiểm tra xem thiết bị có đang bị khóa không
     function checkDeviceLockState() {
       const lockUntil = localStorage.getItem('avyo_admin_lock_until');
       const now = Date.now();
@@ -231,7 +217,6 @@
         loginBtn.innerText = `⛔ KHÓA THIẾT BỊ (${remainingMinutes}p)`;
         return true;
       } else if (lockUntil) {
-        // Hết thời gian khóa -> Reset lại
         localStorage.removeItem('avyo_admin_lock_until');
         localStorage.removeItem('avyo_admin_fail_count');
         const loginBtn = document.getElementById('loginBtn');
@@ -242,7 +227,6 @@
       return false;
     }
 
-    // KHI TẢI TRANG
     document.addEventListener('DOMContentLoaded', async () => {
       if (checkDeviceLockState()) {
         alert("⛔ Thiết bị này đang bị KHÓA đăng nhập do nhập sai mật khẩu 3 lần!");
@@ -257,7 +241,6 @@
       }
     });
 
-    // Hàm đăng nhập
     async function checkPass() {
       if (checkDeviceLockState()) {
         alert("⛔ Thiết bị này đang bị KHÓA đăng nhập!");
@@ -281,7 +264,6 @@
       });
 
       if (error) {
-        // Xử lý đếm số lần sai
         let failCount = parseInt(localStorage.getItem('avyo_admin_fail_count') || '0') + 1;
         localStorage.setItem('avyo_admin_fail_count', failCount.toString());
 
@@ -295,7 +277,6 @@
           loginBtn.innerText = "VÀO TRANG QUẢN TRỊ";
         }
       } else {
-        // Đăng nhập thành công -> Xóa đếm sai
         localStorage.removeItem('avyo_admin_fail_count');
         localStorage.removeItem('avyo_admin_lock_until');
         
@@ -307,7 +288,6 @@
       }
     }
 
-    // Đăng xuất
     async function logout() {
       await supabaseClient.auth.signOut();
       document.getElementById('login-modal').style.display = 'flex';
@@ -315,7 +295,6 @@
       clearTimeout(inactivityTimer);
     }
 
-    // Tự động đăng xuất sau 15 phút không thao tác
     const INACTIVITY_LIMIT = 15 * 60 * 1000;
     let inactivityTimer;
 
@@ -333,9 +312,6 @@
       document.addEventListener(eventType, resetInactivityTimer, true);
     });
 
-    // ----------------------------------------------------------------------
-    // 3. LOGIC HIỂN THỊ VÀ QUẢN LÝ TÀI XẾ
-    // ----------------------------------------------------------------------
     let map = null;
     let adminMarkers = {};
     let rawAdminDriversData = [];
@@ -414,7 +390,7 @@
         .order('created_at', { ascending: false });
      
       if (error) {
-        console.error("Lỗi tải dữ liệu (có thể do chưa đăng nhập hoặc lỗi quyền):", error);
+        console.error("Lỗi tải dữ liệu:", error);
         return;
       }
 
@@ -437,8 +413,12 @@
       const filteredDrivers = rawAdminDriversData.filter(d => {
         if (!activeAdminFilters.has(d.vehicle_type)) return false;
 
-        if (statusFilter === 'online' && (d.is_active === false || !d.is_online)) return false;
-        if (statusFilter === 'offline' && (d.is_active === false || d.is_online)) return false;
+        // Cơ chế phát hiện sập nguồn / tắt app ngang (Quá 90s không gửi heartbeat)
+        const isGhost = d.is_online && d.updated_at && ((Date.now() - new Date(d.updated_at).getTime()) / 1000 > 90);
+        const actualOnline = isGhost ? false : d.is_online;
+
+        if (statusFilter === 'online' && (d.is_active === false || !actualOnline)) return false;
+        if (statusFilter === 'offline' && (d.is_active === false || actualOnline)) return false;
         if (statusFilter === 'retired' && d.is_active !== false) return false;
 
         if (searchQuery) {
@@ -465,7 +445,10 @@
         const now = Date.now();
         const isLocked = d.locked_until && parseInt(d.locked_until) > now;
 
-        if (!isLocked && d.is_online && d.is_active !== false) onlineCount++;
+        const isGhost = d.is_online && d.updated_at && ((now - new Date(d.updated_at).getTime()) / 1000 > 90);
+        const actualOnline = isGhost ? false : d.is_online;
+
+        if (!isLocked && actualOnline && d.is_active !== false) onlineCount++;
 
         let joinDate = '--';
         if (d.created_at) {
@@ -484,7 +467,7 @@
           statusBadge = '<span class="badge-retired">🔴 Đã nghỉ</span>';
         } else if (isLocked) {
           statusBadge = '<span class="badge-locked">🔒 BỊ KHÓA TẠM THỜI</span>';
-        } else if (d.is_online) {
+        } else if (actualOnline) {
           statusBadge = '<span class="badge-online">🟢 BẬT GPS</span>';
         } else {
           statusBadge = '<span class="badge-offline">⚪ Tắt GPS</span>';
@@ -546,7 +529,7 @@
         `;
         tbody.appendChild(tr);
 
-        if (!isLocked && d.is_active !== false && d.is_online && d.lat && d.lng) {
+        if (!isLocked && d.is_active !== false && actualOnline && d.lat && d.lng) {
           const marker = L.marker([d.lat, d.lng], { icon: icons[d.vehicle_type] || icons['bike'] })
             .addTo(map)
             .bindPopup(`<b>${d.name}</b><br>${d.phone}`);

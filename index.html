@@ -654,7 +654,6 @@
 async function loadDrivers() {
   const centerPoint = markerStart ? markerStart.getLatLng() : userLatLng;
 
-  // Nếu chưa có vị trí khách hàng, lấy danh sách xe online mặc định
   if (!centerPoint) {
     const { data } = await supabaseClient
       .from('public_drivers')
@@ -666,7 +665,6 @@ async function loadDrivers() {
     
     rawDriversData = data || [];
   } else {
-    // 1. Thử lọc trong bán kính 5km trực tiếp từ Database
     let { data: nearbyData } = await supabaseClient.rpc('get_nearby_drivers', {
       user_lat: centerPoint.lat,
       user_lng: centerPoint.lng,
@@ -674,7 +672,6 @@ async function loadDrivers() {
       v_type: activeFilter
     });
 
-    // 2. Nới rộng bán kính lên 15km nếu trong 5km không có xe
     if (!nearbyData || nearbyData.length === 0) {
       let { data: fallbackData } = await supabaseClient.rpc('get_nearby_drivers', {
         user_lat: centerPoint.lat,
@@ -688,7 +685,6 @@ async function loadDrivers() {
     }
   }
 
-  // Cập nhật lại tài xế đang chọn (nếu có)
   if (selectedDriver) {
     const freshDriverData = rawDriversData.find(d => d.id === selectedDriver.id);
     if (freshDriverData) {
@@ -820,10 +816,16 @@ async function loadDrivers() {
 
       const centerPoint = markerStart ? markerStart.getLatLng() : userLatLng;
 
-      // 1. Lọc xe đúng loại & có tọa độ
+      // 1. Lọc xe đúng loại, có tọa độ & LỌC BỎ TÀI XẾ SẬP NGUỒN/TẮT APPP NGHỈ (Quá 90s không phát tín hiệu)
       let baseFiltered = rawDriversData.filter(driver => {
         if (driver.vehicle_type !== activeFilter) return false;
         if (!driver.lat || !driver.lng) return false;
+        
+        if (driver.updated_at) {
+          const diffSeconds = (Date.now() - new Date(driver.updated_at).getTime()) / 1000;
+          if (diffSeconds > 90) return false; // Quá 90s (gấp 3 lần chu kỳ 30s) -> Coi như đã nghỉ
+        }
+        
         return true;
       });
 
@@ -831,19 +833,16 @@ async function loadDrivers() {
       let filteredDrivers = [];
 
       if (centerPoint) {
-        // Sắp xếp tăng dần theo khoảng cách đến điểm đón
         baseFiltered.sort((a, b) => {
           const distA = getHaversineDistance(centerPoint.lat, centerPoint.lng, a.lat, a.lng);
           const distB = getHaversineDistance(centerPoint.lat, centerPoint.lng, b.lat, b.lng);
           return distA - distB;
         });
 
-        // Tìm xe trong phạm vi 5km chuẩn
         filteredDrivers = baseFiltered.filter(driver => {
           return getHaversineDistance(centerPoint.lat, centerPoint.lng, driver.lat, driver.lng) <= 5;
         });
 
-        // CƠ CHẾ NỚI RỘNG BÁN KÍNH: Nếu 5km trống xe, nới rộng bán kính lên 15km
         if (filteredDrivers.length === 0) {
           filteredDrivers = baseFiltered.filter(driver => {
             return getHaversineDistance(centerPoint.lat, centerPoint.lng, driver.lat, driver.lng) <= 15;
