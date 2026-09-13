@@ -62,25 +62,37 @@ if (currentDriverId) {
 async function login() {
   const phone = document.getElementById('phoneInput').value.trim();
   const pin = document.getElementById('pinInput').value.trim();
- 
+
   if (!phone || !pin) {
     return alert("Vui lòng nhập đủ SĐT và Mã PIN!");
   }
 
   const btn = document.querySelector('#loginScreen button');
+  const now = Date.now();
+
+  // 1. CHẶN THIẾT BỊ NGAY NẾU ĐANG TRONG THỜI GIAN KHÓA (CHỐNG NHẬP ĐÚNG Ở LẦN THỨ 4)
+  const lockedUntil = parseInt(localStorage.getItem(`locked_${phone}`) || '0', 10);
+  if (lockedUntil > now) {
+    const remainingMinutes = Math.ceil((lockedUntil - now) / 60000);
+    return alert(`❌ Thiết bị này đã bị tạm khóa đăng nhập cho SĐT ${phone}!\nVui lòng thử lại sau ${remainingMinutes} phút hoặc liên hệ Admin.`);
+  }
+
   btn.innerText = "Đang kiểm tra...";
 
+  // 2. GỬI YÊU CẦU KIỂM TRA LÊN SUPABASE
   const { data: result, error } = await supabaseClient.rpc('check_driver_login', {
     p_phone: phone,
     p_pin: pin
   });
 
   if (error || !result || result.length === 0) {
-    let failCount = parseInt(localStorage.getItem(`fail_${phone}`) || '0') + 1;
+    let failCount = parseInt(localStorage.getItem(`fail_${phone}`) || '0', 10) + 1;
     localStorage.setItem(`fail_${phone}`, failCount.toString());
 
     if (failCount >= 3) {
-      alert("❌ Bạn đã nhập sai PIN hoặc SĐT 3 lần!\nTài khoản bị tạm khóa thử lại.");
+      const lockTime = now + LOCK_TIME_MS;
+      localStorage.setItem(`locked_${phone}`, lockTime.toString());
+      alert("❌ Bạn đã nhập sai PIN 3 lần!\nThiết bị này bị tạm khóa đăng nhập trong 60 phút.");
     } else {
       alert(`❌ Sai SĐT hoặc Mã PIN!\nCảnh báo: Còn ${3 - failCount} lần thử.`);
     }
@@ -88,8 +100,11 @@ async function login() {
     return;
   }
 
+  // 3. ĐĂNG NHẬP THÀNH CÔNG -> RESET LỊCH SỬ SAI TRÊN THIẾT BỊ
+  localStorage.removeItem(`fail_${phone}`);
+  localStorage.removeItem(`locked_${phone}`);
+
   const driverInfo = result[0];
-  const now = Date.now();
 
   if (driverInfo.locked_until && parseInt(driverInfo.locked_until) > now) {
     const lockedMinutes = Math.ceil((parseInt(driverInfo.locked_until) - now) / 60000);
@@ -106,7 +121,6 @@ async function login() {
   const newToken = Date.now().toString() + '_' + Math.random().toString(36).substring(2, 9);
   await supabaseClient.from('drivers').update({ session_token: newToken }).eq('id', driverInfo.id);
 
-  localStorage.removeItem(`fail_${phone}`);
   localStorage.setItem('avyo_driver_id', driverInfo.id);
   localStorage.setItem('avyo_driver_name', driverInfo.name);
   localStorage.setItem('avyo_session_token', newToken);
@@ -118,7 +132,7 @@ async function login() {
 function initDriverMap() {
   if (driverMap) return;
   driverMap = L.map('driverMap', { preferCanvas: true }).setView([18.7034, 105.6832], 14);
- 
+
   L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
     maxZoom: 19,
     subdomains: 'abcd',
@@ -157,7 +171,7 @@ async function loadDriverProfile() {
     document.getElementById('clickCountLabel').innerText = data.click_count || 0;
     document.getElementById('zaloCountLabel').innerText = data.zalo_count || 0;
     document.getElementById('callCountLabel').innerText = data.call_count || 0;
-   
+    
     const sum = data.rating_sum || 25;
     const count = data.rating_count || 5;
     document.getElementById('ratingLabel').innerText = `${(sum / count).toFixed(1)} (${count})`;
@@ -166,7 +180,7 @@ async function loadDriverProfile() {
     const monthStr = getLocalMonthStr();
     let displayMinsToday = data.online_minutes_today || 0;
     let displayMinsMonth = data.online_minutes_month || 0;
-   
+    
     if (data.last_online_date !== todayStr) displayMinsToday = 0;
     if (data.last_online_month !== monthStr) displayMinsMonth = 0;
 
@@ -224,7 +238,7 @@ async function toggleOnline() {
     }
 
     if (!navigator.geolocation) return alert('Thiết bị không hỗ trợ GPS');
-   
+    
     isOnline = true;
     hideNetworkAlert();
     await requestWakeLock();
@@ -255,7 +269,7 @@ async function toggleOnline() {
     let heartbeatTicks = 0;
     timeInterval = setInterval(async () => {
       if (!isOnline || !navigator.onLine) return;
-     
+      
       heartbeatTicks++;
       let updateObj = { updated_at: new Date().toISOString() };
 
@@ -316,7 +330,7 @@ async function toggleOnline() {
         updated_at: new Date().toISOString()
       }).eq('id', currentDriverId);
     }
-   
+    
     status.innerHTML = '🔴 ĐÃ TẮT ĐỊNH VỊ (Nghỉ ngơi)';
     status.style.color = '#ef4444';
     btn.innerText = 'BẮT ĐẦU NHẬN KHÁCH (BẬT GPS)';
@@ -370,7 +384,7 @@ if (currentDriverId) {
           logout(true); 
           return;
         }
-       
+        
         if (payload.new.click_count !== undefined) {
           document.getElementById('clickCountLabel').innerText = payload.new.click_count;
         }
