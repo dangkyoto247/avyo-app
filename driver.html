@@ -688,6 +688,14 @@
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('sw.js');
     }
+
+    // Kích hoạt Capacitor Updater an toàn (chỉ chạy trong môi trường App)
+    if (window.Capacitor && window.Capacitor.isNativePlatform()) {
+      const CapacitorUpdater = window.Capacitor.Plugins?.CapacitorUpdater;
+      if (CapacitorUpdater) {
+        CapacitorUpdater.notifyAppReady();
+      }
+    }
   </script>
 </body>
 </html>
