@@ -1,5 +1,5 @@
 const TILE_CACHE_NAME = 'carto-tiles-v1';
-const STATIC_CACHE_NAME = 'avyo-static-v5';
+const STATIC_CACHE_NAME = 'avyo-static-v6';
 
 const STATIC_ASSETS = [
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
@@ -15,7 +15,7 @@ const STATIC_ASSETS = [
   'offline.html'
 ];
 
-// 1. TẢI VÀ LƯU TRƯỚC (PRE-CACHE) TỆP OFFLINE VÀ MÃ NGUỒN NGAY KHI CÀI ĐẶT
+// 1. TẢI VÀ LƯU TRƯỚC (PRE-CACHE)
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(STATIC_CACHE_NAME).then((cache) => {
@@ -34,7 +34,7 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
-// 2. TỰ ĐỘNG XÓA CACHE CŨ KHI NÂNG CẤP PHIÊN BẢN V5
+// 2. TỰ ĐỘNG XÓA CACHE CỦ KHI NÂNG CẤP PHIÊN BẢN V6
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
@@ -90,19 +90,28 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 5. TRUY CẬP TRANG GIAO DIỆN (HTML)
+  // 5. TRUY CẬP TRANG HTML - KHẮC PHỤC LỖI REDIRECT TRÊN SAFARI (IOS)
   if (event.request.mode === 'navigate' || (event.request.headers.get('accept') && event.request.headers.get('accept').includes('text/html'))) {
     event.respondWith(
-      fetch(event.request).catch(async () => {
-        const cachedOffline = await caches.match('offline.html');
-        if (cachedOffline) return cachedOffline;
-        
-        // Dự phòng an toàn tuyệt đối nếu tệp offline.html chưa kịp nạp
-        return new Response(
-          '<!DOCTYPE html><html lang="vi"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Avyo Offline</title><style>body{font-family:sans-serif;text-align:center;padding:40px 20px;background:#f8fafc;color:#334155}.card{background:white;padding:30px 20px;border-radius:16px;max-width:360px;margin:auto;box-shadow:0 4px 12px rgba(0,0,0,.08)}h2{color:#dc2626;margin-top:0}button{background:#00b14f;color:#fff;border:none;padding:12px 24px;border-radius:10px;font-weight:700;width:100%;margin-top:15px}</style></head><body><div class="card"><h2>📡 Mất kết nối Internet</h2><p>Không thể kết nối đến máy chủ Avyo. Vui lòng kiểm tra lại 4G/Wifi.</p><button onclick="window.location.reload()">🔄 THỬ LẠI</button></div></body></html>',
-          { headers: { 'Content-Type': 'text/html; charset=utf-8' } }
-        );
-      })
+      (async () => {
+        try {
+          const response = await fetch(event.request);
+          
+          // Xử lý riêng cho Safari: Nếu response bị chuyển hướng, gọi fetch thẳng URL đích
+          if (response.redirected) {
+            return await fetch(response.url);
+          }
+          return response;
+        } catch (err) {
+          const cachedOffline = await caches.match('offline.html');
+          if (cachedOffline) return cachedOffline;
+          
+          return new Response(
+            '<!DOCTYPE html><html lang="vi"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Avyo Offline</title><style>body{font-family:sans-serif;text-align:center;padding:40px 20px;background:#f8fafc;color:#334155}.card{background:white;padding:30px 20px;border-radius:16px;max-width:360px;margin:auto;box-shadow:0 4px 12px rgba(0,0,0,.08)}h2{color:#dc2626;margin-top:0}button{background:#00b14f;color:#fff;border:none;padding:12px 24px;border-radius:10px;font-weight:700;width:100%;margin-top:15px}</style></head><body><div class="card"><h2>📡 Mất kết nối Internet</h2><p>Không thể kết nối đến máy chủ Avyo. Vui lòng kiểm tra lại 4G/Wifi.</p><button onclick="window.location.reload()">🔄 THỬ LẠI</button></div></body></html>',
+            { headers: { 'Content-Type': 'text/html; charset=utf-8' } }
+          );
+        }
+      })()
     );
     return;
   }
