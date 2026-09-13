@@ -1,19 +1,28 @@
+// ==========================================
+// KHU VỰC ĐIỀN GOONG API KEY (TÌM KIẾM & CHỈ ĐƯỜNG)
+// ==========================================
+const GOONG_API_KEY = 'NHẬP_GOONG_API_KEY_CỦA_BẠN_TẠI_ĐÂY'; 
+
 const map = L.map('map', { 
   preferCanvas: true,
   attributionControl: false,
-  zoomControl: false
+  zoomControl: false,
+  fadeAnimation: true
 }).setView([18.7034, 105.6832], 13);
 
 L.control.zoom({ position: 'topright' }).addTo(map);
 
+// Sử dụng nền bản đồ CartoDB Voyager gốc kèm cấu hình nạp trước chống mảng xám
 L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
   maxZoom: 19,
-  subdomains: 'abcd'
+  subdomains: 'abcd',
+  keepBuffer: 8,         // Nạp trước 8 ô bản đồ xung quanh màn hình
+  updateWhenIdle: false,  // Cập nhật ô ảnh ngay lập tức khi tay di chuyển
+  updateWhenZooming: false
 }).addTo(map);
 
 setTimeout(() => { if (map) map.invalidateSize(); }, 300);
 
-const GOONG_API_KEY = ''; 
 const SUPABASE_URL = 'https://yvucyqkglbgxvozrznir.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl2dWN5cWtnbGJneHZvenJ6bmlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkxMzA3ODAsImV4cCI6MjEwNDcwNjc4MH0.Zagl4i2LPmxW3w9ih0h4LRsrm-OOGtPcWgvEs2vHBqo';
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -343,7 +352,7 @@ async function fetchAddressSuggestions(query, callback) {
     }
   } catch (err) {}
 
-  if (GOONG_API_KEY) {
+  if (GOONG_API_KEY && GOONG_API_KEY !== 'NHẬP_GOONG_API_KEY_CỦA_BẠN_TẠI_ĐÂY') {
     try {
       const res = await fetch(`https://api.goong.io/Place/AutoComplete?api_key=${GOONG_API_KEY}&input=${encodeURIComponent(query)}`);
       const data = await res.json();
@@ -411,7 +420,7 @@ async function calculateRoute() {
   const rawKm = calculateDistance(start.lat, start.lng, end.lat, end.lng);
   currentDistance = rawKm.toFixed(1);
 
-  if (GOONG_API_KEY) {
+  if (GOONG_API_KEY && GOONG_API_KEY !== 'NHẬP_GOONG_API_KEY_CỦA_BẠN_TẠI_ĐÂY') {
     try {
       const res = await fetch(`https://api.goong.io/Direction?origin=${start.lat},${start.lng}&destination=${end.lat},${end.lng}&vehicle=car&api_key=${GOONG_API_KEY}`);
       const data = await res.json();
