@@ -19,6 +19,30 @@ let lastSentLat = 0, lastSentLng = 0;
 const LOCK_TIME_MS = 60 * 60 * 1000;
 const typeLabels = { 'bike': '🛵 Xe máy', 'car': '🚕 Ô tô', 'driver': '👤 Lái xe hộ', 'truck': '🚚 Chở hàng' };
 
+// --- XỬ LÝ CHUYỂN ĐỔI GIAO DIỆN TỐI / SÁNG ---
+function initTheme() {
+  const savedTheme = localStorage.getItem('avyo_theme') || 'dark';
+  const btn = document.getElementById('themeToggleBtn');
+  if (savedTheme === 'light') {
+    document.body.classList.add('light-mode');
+    if (btn) btn.innerText = '☀️';
+  } else {
+    document.body.classList.remove('light-mode');
+    if (btn) btn.innerText = '🌙';
+  }
+}
+
+function toggleTheme() {
+  const isLight = document.body.classList.toggle('light-mode');
+  const newTheme = isLight ? 'light' : 'dark';
+  localStorage.setItem('avyo_theme', newTheme);
+  const btn = document.getElementById('themeToggleBtn');
+  if (btn) btn.innerText = isLight ? '☀️' : '🌙';
+}
+
+// Khởi chạy chế độ giao diện ngay khi tải JS
+initTheme();
+
 function showNetworkAlert() {
   document.getElementById('networkAlertModal').style.display = 'block';
 }
@@ -70,7 +94,6 @@ async function login() {
   const btn = document.querySelector('#loginScreen button');
   const now = Date.now();
 
-  // 1. CHẶN THIẾT BỊ NGAY NẾU ĐANG TRONG THỜI GIAN KHÓA (CHỐNG NHẬP ĐÚNG Ở LẦN THỨ 4)
   const lockedUntil = parseInt(localStorage.getItem(`locked_${phone}`) || '0', 10);
   if (lockedUntil > now) {
     const remainingMinutes = Math.ceil((lockedUntil - now) / 60000);
@@ -79,7 +102,6 @@ async function login() {
 
   btn.innerText = "Đang kiểm tra...";
 
-  // 2. GỬI YÊU CẦU KIỂM TRA LÊN SUPABASE
   const { data: result, error } = await supabaseClient.rpc('check_driver_login', {
     p_phone: phone,
     p_pin: pin
@@ -100,7 +122,6 @@ async function login() {
     return;
   }
 
-  // 3. ĐĂNG NHẬP THÀNH CÔNG -> RESET LỊCH SỬ SAI TRÊN THIẾT BỊ
   localStorage.removeItem(`fail_${phone}`);
   localStorage.removeItem(`locked_${phone}`);
 
@@ -125,16 +146,13 @@ async function login() {
   localStorage.setItem('avyo_driver_name', driverInfo.name);
   localStorage.setItem('avyo_session_token', newToken);
 
-  alert("✅ Đăng nhập thành công!");
   window.location.reload();
 }
 
 function initDriverMap() {
   if (driverMap) return;
-  // Đã thêm attributionControl: false vào object tùy chọn
   driverMap = L.map('driverMap', { preferCanvas: true, attributionControl: false }).setView([18.7034, 105.6832], 14);
 
-  // Đã xóa dòng attribution ở tileLayer
   L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
     maxZoom: 19,
     subdomains: 'abcd'
@@ -254,7 +272,7 @@ async function toggleOnline() {
     btn.innerText = 'TẮT NHẬN KHÁCH (NGHỈ NGƠI)';
     btn.style.background = '#ef4444';
     status.innerHTML = '🟢 ĐANG PHÁT GPS ĐỂ ĐÓN KHÁCH';
-    status.style.color = '#16a34a';
+    status.style.color = '#10b981';
 
     setTimeout(() => { if (driverMap) driverMap.invalidateSize(); }, 200);
 
@@ -333,9 +351,9 @@ async function toggleOnline() {
     }
     
     status.innerHTML = '🔴 ĐÃ TẮT ĐỊNH VỊ (Nghỉ ngơi)';
-    status.style.color = '#ef4444';
+    status.style.color = '#f87171';
     btn.innerText = 'BẮT ĐẦU NHẬN KHÁCH (BẬT GPS)';
-    btn.style.background = '#22c55e';
+    btn.style.background = 'linear-gradient(135deg, #10b981, #047857)';
   }
 }
 
@@ -344,7 +362,7 @@ window.addEventListener('online', async () => {
   const status = document.getElementById('status');
   if (isOnline) {
     status.innerHTML = '🟢 ĐÃ KHÔI PHỤC INTERNET - ĐANG PHÁT GPS';
-    status.style.color = '#16a34a';
+    status.style.color = '#10b981';
 
     lastSentLat = 0;
     lastSentLng = 0;

@@ -9,7 +9,7 @@
   <link rel="icon" href="driver.png" type="image/png">
   <link rel="apple-touch-icon" sizes="180x180" href="driver.png">
   <link rel="manifest" href="driver-manifest.json">
-  <meta name="theme-color" content="#16a34a">
+  <meta name="theme-color" content="#0b1320">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -19,9 +19,12 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
  
-  <link rel="stylesheet" href="driver.css">
+  <link rel="stylesheet" href="driver.css?v=3">
 </head>
 <body>
+
+  <!-- Nút Chế độ Tối/Sáng góc trên bên phải -->
+  <button id="themeToggleBtn" class="theme-toggle-btn" onclick="toggleTheme()" title="Đổi giao diện Tối/Sáng">🌙</button>
 
   <div id="networkAlertModal" class="network-alert-box">
     ⚠️ Mất kết nối 4G/5G/WIFI!<br>
@@ -29,8 +32,8 @@
   </div>
 
   <div id="loginScreen" class="card" style="display: none; text-align: center;">
-    <h2 style="margin-top: 0; color: #16a34a;">🚕 Avyo Tài Xế</h2>
-    <p style="color: #64748b; font-size: 14px; margin-bottom: 15px;">Đăng nhập để nhận cuốc xe</p>
+    <h2 style="margin-top: 0; color: #10b981;">🚕 Avyo Tài Xế</h2>
+    <p style="color: #94a3b8; font-size: 14px; margin-bottom: 15px;">Đăng nhập để nhận cuốc xe</p>
    
     <input type="tel" id="phoneInput" placeholder="Số điện thoại của bạn" autocomplete="off">
     <input type="password" id="pinInput" placeholder="Mã PIN (Mật khẩu)" autocomplete="off">
@@ -47,7 +50,7 @@
       <div class="profile-header">
         <img id="driverAvatar" class="driver-avatar" src="https://cdn-icons-png.flaticon.com/512/149/149071.png" alt="Avatar">
         <div>
-          <b id="driverNameLabel" style="font-size: 16px; color: #0f172a; display: block;">--</b>
+          <b id="driverNameLabel" style="font-size: 17px; color: #f8fafc; display: block;">--</b>
           <span id="cccdLabel" class="small-text">CCCD: --</span>
           <span id="addressLabel" class="small-text">📍 --</span>
           <span id="joinDateLabel" class="small-text">📅 Tham gia: --</span>
@@ -56,49 +59,49 @@
 
       <div class="info-grid">
         <div class="info-box">
-          <b>Loại xe:</b>
-          <div id="vehicleTypeLabel" style="font-weight: bold; color: #16a34a; margin-top: 2px;">--</div>
+          <b class="info-title">Loại xe:</b>
+          <div id="vehicleTypeLabel" style="font-weight: bold; color: #10b981; margin-top: 2px; font-size: 13px;">--</div>
           <span id="vehicleDetailLabel" class="small-text">--</span>
         </div>
         <div class="info-box">
-          <b>Đăng nhập:</b>
-          <div class="small-text" style="margin-top: 2px;">SĐT: <b id="phoneLabel" style="color:#0f172a;">--</b></div>
-          <div class="small-text">PIN: <b style="color:#eab308;">***</b></div>
+          <b class="info-title">Đăng nhập:</b>
+          <div class="small-text" style="margin-top: 2px;">SĐT: <b id="phoneLabel" style="color:#f8fafc;">--</b></div>
+          <div class="small-text">PIN: <b style="color:#f59e0b;">***</b></div>
         </div>
       </div>
 
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px;">
-        <div style="background: #f8fafc; padding: 8px; border-radius: 10px; border: 1px solid #e2e8f0; text-align: center;">
-          <span style="font-size: 11px; color: #64748b; display: block;">👁️ Xem hồ sơ</span>
-          <b id="clickCountLabel" style="color: #16a34a; font-size: 14px;">0</b>
+        <div class="stat-card">
+          <span style="font-size: 11px; color: #94a3b8; display: block;">👁️ Xem hồ sơ</span>
+          <b id="clickCountLabel" style="color: #10b981; font-size: 15px;">0</b>
         </div>
-        <div style="background: #f8fafc; padding: 8px; border-radius: 10px; border: 1px solid #e2e8f0; text-align: center;">
-          <span style="font-size: 11px; color: #64748b; display: block;">⭐ Đánh giá</span>
-          <b id="ratingLabel" style="color: #eab308; font-size: 14px;">5.0 (0)</b>
+        <div class="stat-card">
+          <span style="font-size: 11px; color: #94a3b8; display: block;">⭐ Đánh giá</span>
+          <b id="ratingLabel" style="color: #f59e0b; font-size: 15px;">5.0 (0)</b>
         </div>
-        <div style="background: #f0fdf4; padding: 8px; border-radius: 10px; border: 1px solid #bbf7d0; text-align: center;">
-          <span style="font-size: 11px; color: #15803d; display: block;">💬 Nhắn Zalo</span>
-          <b id="zaloCountLabel" style="color: #16a34a; font-size: 14px;">0</b>
+        <div class="stat-card">
+          <span style="font-size: 11px; color: #94a3b8; display: block;">💬 Nhắn Zalo</span>
+          <b id="zaloCountLabel" style="color: #10b981; font-size: 15px;">0</b>
         </div>
-        <div style="background: #f0f9ff; padding: 8px; border-radius: 10px; border: 1px solid #bae6fd; text-align: center;">
-          <span style="font-size: 11px; color: #0369a1; display: block;">📞 Cuộc gọi</span>
-          <b id="callCountLabel" style="color: #0284c7; font-size: 14px;">0</b>
+        <div class="stat-card">
+          <span style="font-size: 11px; color: #94a3b8; display: block;">📞 Cuộc gọi</span>
+          <b id="callCountLabel" style="color: #38bdf8; font-size: 15px;">0</b>
         </div>
-        <div style="background: #fffbeb; padding: 8px; border-radius: 10px; border: 1px solid #fde68a; text-align: center;">
-          <span style="font-size: 11px; color: #b45309; display: block;">⏱️ Online Hôm nay</span>
-          <b id="timeTodayLabel" style="color: #d97706; font-size: 14px;">0p</b>
+        <div class="stat-card">
+          <span style="font-size: 11px; color: #94a3b8; display: block;">⏱️ Online Hôm nay</span>
+          <b id="timeTodayLabel" style="color: #fb923c; font-size: 15px;">0p</b>
         </div>
-        <div style="background: #fffbeb; padding: 8px; border-radius: 10px; border: 1px solid #fde68a; text-align: center;">
-          <span style="font-size: 11px; color: #b45309; display: block;">⏳ Online Tháng này</span>
-          <b id="timeMonthLabel" style="color: #d97706; font-size: 14px;">0p</b>
+        <div class="stat-card">
+          <span style="font-size: 11px; color: #94a3b8; display: block;">⏳ Online Tháng này</span>
+          <b id="timeMonthLabel" style="color: #fb923c; font-size: 15px;">0p</b>
         </div>
       </div>
     </div>
 
     <div class="card">
-      <div id="status" class="status" style="color: #ef4444;">🔴 Đang tắt định vị (Nghỉ ngơi)</div>
+      <div id="status" class="status" style="color: #f87171;">🔴 Đang tắt định vị (Nghỉ ngơi)</div>
       <div id="driverMap"></div>
-      <p style="font-size: 12px; color: #64748b; text-align: center; margin-top: 8px;">Tọa độ GPS: <span id="coords">--</span></p>
+      <p style="font-size: 12px; color: #94a3b8; text-align: center; margin-top: 10px;">Tọa độ GPS: <span id="coords" style="color:#cbd5e1;">--</span></p>
 
       <button id="toggleBtn" onclick="toggleOnline()">BẮT ĐẦU NHẬN KHÁCH (BẬT GPS)</button>
       <a class="logout-text" onclick="logout()">Đăng xuất tài khoản</a>
@@ -106,6 +109,6 @@
   </div>
 
   <script src="utils.js"></script>
-  <script src="driver.js"></script>
+  <script src="driver.js?v=3"></script>
 </body>
 </html>

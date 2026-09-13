@@ -315,7 +315,6 @@ function renderAdminData() {
   const paginatedDrivers = filteredDrivers.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
   paginatedDrivers.forEach((d, index) => {
-    // ĐÃ THÊM: Tính toán số thứ tự theo phân trang
     const stt = startIndex + index + 1;
 
     const now = Date.now();
@@ -455,19 +454,50 @@ function changePage(newPage) {
   renderAdminData();
 }
 
+// HÀM LƯU TÀI XẾ: ĐÃ CẬP NHẬT KIỂM TRA BẮT BUỘC DẤU NGOẶC ĐƠN VÀ CHỮ IN HOA TRONG BIỂN SỐ XE
 async function saveDriver() {
   const id = document.getElementById('driverId').value;
   const name = document.getElementById('driverName').value.trim();
   const phone = document.getElementById('driverPhone').value.trim();
-  const pin = document.getElementById('driverPin').value.trim() || '1234';
+  const pin = document.getElementById('driverPin').value.trim();
   const avatar_url = document.getElementById('driverAvatarUrl').value.trim();
   const cccd = document.getElementById('driverCccd').value.trim();
   const address = document.getElementById('driverAddress').value.trim();
   const vehicle_type = document.getElementById('vehicleType').value;
   const vehicle = document.getElementById('vehicleDetail').value.trim();
 
-  if (!name || !phone) {
-    return alert("Vui lòng điền Tên và Số điện thoại!");
+  // 1. Tên tài xế: Bắt buộc, >= 4 ký tự, chỉ gồm chữ và khoảng trắng
+  const nameRegex = /^[a-zA-Z\sàáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệđìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵÀÁẢÃẠÂẦẤẨẪẬĂẰẮẲẴẶÈÉẺẼẸÊỀẾỂỄỆĐÌÍỈĨỊÒÓỎÕỌÔỒỐỔỖỘƠỜỚỞỠỢÙÚỦŨỤƯỪỨỬỮỰỲÝỶỸỴ]+$/;
+  if (!name || name.length < 4 || !nameRegex.test(name)) {
+    return alert("⚠️ Tên tài xế không hợp lệ!\nVui lòng nhập từ 4 ký tự trở lên và CHỈ ĐƯỢC NHẬP CHỮ (không chứa số hoặc ký tự đặc biệt).");
+  }
+
+  // 2. Số điện thoại: Bắt buộc, 10 số, bắt đầu bằng số 0
+  const phoneRegex = /^0\d{9}$/;
+  if (!phoneRegex.test(phone)) {
+    return alert("⚠️ Số điện thoại không đúng định dạng!\nVui lòng nhập đúng 10 chữ số (bắt đầu bằng số 0, VD: 0912345678).");
+  }
+
+  // 3. Mã PIN: Bắt buộc 6-15 ký tự, không dấu, không khoảng cách, gồm chữ, số và ký tự đặc biệt
+  const pinRegex = /^(?=.*[a-zA-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?])[a-zA-Z0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]{6,15}$/;
+  if (!pinRegex.test(pin)) {
+    return alert("⚠️ Mã PIN không đúng định dạng!\nMã PIN phải từ 6 đến 15 ký tự, KHÔNG DẤU, KHÔNG KHOẢNG CÁCH, gồm cả chữ, số và ít nhất 1 ký tự đặc biệt (Ví dụ: Tuan123@).");
+  }
+
+  // 4. Link ảnh đại diện: Bắt buộc, http:// hoặc https://
+  if (!avatar_url || !avatar_url.match(/^https?:\/\/.+/i)) {
+    return alert("⚠️ Vui lòng nhập Link ảnh đại diện hợp lệ!\nĐường dẫn bắt buộc phải bắt đầu bằng http:// hoặc https://");
+  }
+
+  // 5. Số CCCD: Bắt buộc, đúng 12 chữ số
+  if (!cccd || !/^\d{12}$/.test(cccd)) {
+    return alert("⚠️ Số CCCD không hợp lệ!\nVui lòng nhập đúng 12 chữ số.");
+  }
+
+  // 6. Kiểm tra Loại xe & Biển số: Bắt buộc phần sau cùng bọc trong ngoặc () và chữ cái phải IN HOA
+  const vehicleRegex = /\(\d{2}[A-Z][A-Z0-9]?-(?:\d{4}|\d{3}\.\d{2})\)$/;
+  if (!vehicle || !vehicleRegex.test(vehicle)) {
+    return alert("⚠️ Loại xe & Biển số không đúng định dạng!\nPhần biển số ở cuối bắt buộc phải bọc trong ngoặc đơn () và CHỮ IN HOA, đúng một trong các dạng:\n- (37K-1234) hoặc (37K-123.12)\n- (37K1-1234) hoặc (37K1-123.12)\n(Ví dụ: Wave (37B1-1234) hoặc Toyota (37K-123.12))");
   }
 
   const payload = {

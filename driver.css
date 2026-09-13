@@ -3,112 +3,203 @@ body {
   padding: 12px;
   max-width: 420px;
   margin: auto;
-  background: #f0fdf4;
+  position: relative;
+  background: #0b1320;
+  color: #f1f5f9;
   touch-action: manipulation;
   -webkit-text-size-adjust: 100%;
+  transition: background 0.3s ease, color 0.3s ease;
 }
+
+/* NÚT ĐỔI CHẾ ĐỘ TỐI / SÁNG GÓC TRÊN PHẢI */
+.theme-toggle-btn {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  z-index: 999;
+  width: 38px;
+  height: 38px;
+  margin-top: 0;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid #26354a;
+  background: #162235;
+  color: #f59e0b;
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+  transition: all 0.2s ease;
+}
+
+.theme-toggle-btn:active {
+  transform: scale(0.9);
+}
+
 .card {
-  background: white;
-  padding: 16px;
-  border-radius: 16px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-  margin-bottom: 12px;
+  background: #162235;
+  padding: 18px;
+  border-radius: 20px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  margin-bottom: 14px;
+  border: 1px solid #26354a;
+  transition: background 0.3s ease, border-color 0.3s ease;
 }
-input, button {
+
+input {
   width: 100%;
   padding: 14px;
   margin-top: 10px;
-  border-radius: 10px;
-  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  border: 1px solid #334155;
+  background: #0f172a;
+  color: #ffffff;
   font-size: 16px;
   box-sizing: border-box;
+  outline: none;
+  transition: all 0.2s ease;
 }
+
+input:focus {
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+}
+
 button {
-  background: #22c55e;
-  color: white;
-  font-weight: bold;
+  width: 100%;
+  padding: 14px;
+  margin-top: 12px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #10b981, #047857);
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 16px;
   border: none;
   cursor: pointer;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
+  transition: transform 0.1s ease, background 0.2s ease;
 }
+
+button:active {
+  transform: scale(0.98);
+}
+
 .status {
-  font-weight: bold;
+  font-weight: 700;
   margin: 12px 0;
   font-size: 15px;
   text-align: center;
+  padding: 10px;
+  border-radius: 10px;
+  background: #0f172a;
+  border: 1px solid #26354a;
 }
+
 #driverMap {
-  height: 200px;
+  height: 220px;
   width: 100%;
-  border-radius: 12px;
-  border: 1px solid #cbd5e1;
+  border-radius: 14px;
+  border: 1px solid #334155;
+  box-shadow: inset 0 2px 6px rgba(0,0,0,0.5);
 }
+
+.leaflet-control-attribution {
+  display: none !important;
+}
+
 .profile-header {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding-bottom: 12px;
-  border-bottom: 1px dashed #e2e8f0;
+  gap: 14px;
+  padding-bottom: 14px;
+  border-bottom: 1px dashed #334155;
 }
+
 .driver-avatar {
   width: 64px;
   height: 64px;
   border-radius: 50%;
   object-fit: cover;
-  border: 2px solid #16a34a;
-  background: #e2e8f0;
+  border: 2px solid #10b981;
+  background: #1e293b;
   flex-shrink: 0;
+  box-shadow: 0 4px 10px rgba(16, 185, 129, 0.25);
 }
+
 .info-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  margin-top: 10px;
+  gap: 10px;
+  margin-top: 12px;
 }
+
 .info-box {
-  background: #f8fafc;
-  padding: 10px;
-  border-radius: 10px;
-  border: 1px solid #e2e8f0;
+  background: #0f172a;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid #26354a;
   font-size: 12px;
-  color: #334155;
+  color: #cbd5e1;
 }
+
+.info-title {
+  color: #cbd5e1;
+}
+
+.stat-card {
+  background: #0f172a;
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid #26354a;
+  text-align: center;
+}
+
 .small-text { 
   font-size: 11px; 
-  color: #64748b; 
+  color: #94a3b8; 
   display: block; 
-  margin-top: 2px; 
+  margin-top: 3px; 
 }
+
 .logout-text {
-  color: #64748b;
+  color: #94a3b8;
   font-size: 14px;
   text-decoration: underline;
-  margin-top: 15px;
+  margin-top: 16px;
   display: block;
   text-align: center;
   cursor: pointer;
+  transition: color 0.2s;
 }
+
+.logout-text:hover {
+  color: #ef4444;
+}
+
 .btn-cskh {
-  background: #0284c7;
+  background: linear-gradient(135deg, #0284c7, #0369a1);
   color: white;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
   text-decoration: none;
-  padding: 12px;
-  border-radius: 10px;
+  padding: 14px;
+  border-radius: 12px;
   font-weight: bold;
   margin-top: 14px;
   font-size: 14px;
-  box-shadow: 0 2px 6px rgba(2, 132, 199, 0.3);
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35);
 }
 
-/* HỘP THÔNG BÁO MẤT MẠNG LỚN NHẤP NHÁY */
 @keyframes blinkAlert {
   0% { background: #dc2626; border-color: #fef08a; transform: translateX(-50%) scale(1); }
-  50% { background: #b91c1c; border-color: #ffffff; transform: translateX(-50%) scale(1.03); }
+  50% { background: #991b1b; border-color: #ffffff; transform: translateX(-50%) scale(1.02); }
   100% { background: #dc2626; border-color: #fef08a; transform: translateX(-50%) scale(1); }
 }
+
 .network-alert-box {
   position: fixed;
   top: 16px;
@@ -124,9 +215,61 @@ button {
   font-weight: bold;
   font-size: 16px;
   line-height: 1.4;
-  box-shadow: 0 10px 25px rgba(220, 38, 38, 0.6);
+  box-shadow: 0 10px 30px rgba(220, 38, 38, 0.7);
   z-index: 10000;
   border: 3px solid #fef08a;
   display: none;
   animation: blinkAlert 1s infinite ease-in-out;
+}
+
+/* =========================================================
+   GIAO DIỆN SÁNG (LIGHT MODE OVERRIDES)
+   ========================================================= */
+body.light-mode {
+  background: #f0fdf4;
+  color: #0f172a;
+}
+
+body.light-mode .theme-toggle-btn {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  color: #d97706;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+}
+
+body.light-mode .card {
+  background: #ffffff;
+  border-color: #e2e8f0;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+}
+
+body.light-mode input {
+  background: #ffffff;
+  color: #0f172a;
+  border-color: #cbd5e1;
+}
+
+body.light-mode .info-box,
+body.light-mode .stat-card,
+body.light-mode .status {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+
+body.light-mode .info-title {
+  color: #334155;
+}
+
+body.light-mode .small-text,
+body.light-mode .logout-text {
+  color: #64748b;
+}
+
+body.light-mode #driverNameLabel,
+body.light-mode #phoneLabel {
+  color: #0f172a !important;
+}
+
+body.light-mode #coords {
+  color: #64748b !important;
 }

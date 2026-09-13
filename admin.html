@@ -58,11 +58,11 @@
       <input type="hidden" id="driverId">
      
       <div class="form-grid">
-        <input type="text" id="driverName" placeholder="Tên tài xế (VD: Nguyễn Văn A)">
-        <input type="text" id="driverPhone" placeholder="Số điện thoại Zalo (Dùng đăng nhập)">
-        <input type="text" id="driverPin" placeholder="Mã PIN (Mật khẩu đăng nhập, VD: 1234)">
-        <input type="text" id="driverAvatarUrl" placeholder="Link ảnh đại diện (URL)">
-        <input type="text" id="driverCccd" placeholder="Số CCCD (Tùy chọn)">
+        <input type="text" id="driverName" placeholder="Tên tài xế (VD: Nguyễn Văn A - Chỉ nhập chữ)">
+        <input type="tel" id="driverPhone" maxlength="10" placeholder="Số điện thoại Zalo (10 số, VD: 0912345678)">
+        <input type="text" id="driverPin" maxlength="15" placeholder="Mã PIN (6-15 ký tự KHÔNG DẤU, KHÔNG KHOẢNG CÁCH)">
+        <input type="url" id="driverAvatarUrl" placeholder="Link ảnh đại diện (http:// hoặc https://)">
+        <input type="tel" id="driverCccd" maxlength="12" placeholder="Số CCCD (Bắt buộc 12 số)">
         <input type="text" id="driverAddress" placeholder="Nơi thường trú (Tùy chọn)">
         <select id="vehicleType">
           <option value="bike">🛵 Xe máy</option>
@@ -70,7 +70,7 @@
           <option value="driver">👤 Lái xe hộ</option>
           <option value="truck">🚚 Xe chở hàng</option>
         </select>
-        <input type="text" id="vehicleDetail" placeholder="Loại xe & Biển số (VD: Wave 37B1-1234)">
+        <input type="text" id="vehicleDetail" placeholder="Loại xe & Biển số (VD: Wave (37B1-1234) hoặc Toyota (37K-123.12))">
       </div>
 
       <div style="margin-top: 10px; display: flex; gap: 8px;">
@@ -126,6 +126,6 @@
   </div>
 
   <script src="utils.js"></script>
-  <script src="admin.js?v=2"></script>
+  <script src="admin.js?v=5"></script>
 </body>
 </html>
