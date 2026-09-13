@@ -197,7 +197,7 @@
       <div id="driverMap"></div>
       <p style="font-size: 12px; color: #64748b; text-align: center; margin-top: 8px;">Tọa độ GPS: <span id="coords">--</span></p>
 
-      <button id="toggleBtn" onclick="toggleOnline()">BẮT ĐẦU NHẬN KHÁCH (BẬT GPS)</button>
+      <button id="toggleBtn" onclick="toggleOnline()">BẮT ĐẦU NHẬN KHÁCH (BẬT GPS & 4G)</button>
       <a class="logout-text" onclick="logout()">Đăng xuất tài khoản</a>
     </div>
   </div>
@@ -433,7 +433,7 @@
     }
 
     async function updateLocation(lat, lng) {
-      if (!currentDriverId || !isOnline) return;
+      if (!currentDriverId || !isOnline || !navigator.onLine) return;
       await supabaseClient.rpc('update_driver_location', {
         p_driver_id: currentDriverId,
         p_lat: lat,
@@ -448,12 +448,16 @@
       const status = document.getElementById('status');
 
       if (!isOnline) {
+        // 1. Ktra thiết bị có kết nối 4G/Internet không
+        if (!navigator.onLine) {
+          return alert('⚠️ Vui lòng BẬT 4G / Wi-Fi trước khi bấm nhận khách!');
+        }
+
         if (!navigator.geolocation) return alert('Thiết bị không hỗ trợ GPS');
        
         isOnline = true;
         await requestWakeLock();
 
-        // Đặt lại biến theo dõi vị trí và phát tín hiệu online ngay lập tức
         lastSentLat = 0;
         lastSentLng = 0;
         await supabaseClient.from('drivers').update({
@@ -478,14 +482,13 @@
         document.getElementById('timeMonthLabel').innerText = formatTime(driverData.online_minutes_month);
 
         let heartbeatTicks = 0;
-        // GỬI HEARTBEAT 30 GIÂY / LẦN BÁO DANH "CÒN SỐNG"
+        // PING HEARTBEAT 30S / LẦN
         timeInterval = setInterval(async () => {
-          if (!isOnline) return;
+          if (!isOnline || !navigator.onLine) return;
          
           heartbeatTicks++;
           let updateObj = { updated_at: new Date().toISOString() };
 
-          // Cứ 2 lần 30s (đủ 60s) thì tăng 1 phút hoạt động
           if (heartbeatTicks % 2 === 0) {
             driverData.online_minutes_today = (driverData.online_minutes_today || 0) + 1;
             driverData.online_minutes_month = (driverData.online_minutes_month || 0) + 1;
@@ -500,7 +503,7 @@
           }
 
           await supabaseClient.from('drivers').update(updateObj).eq('id', currentDriverId);
-        }, 30000); // 30,000ms = 30 giây
+        }, 30000);
 
         let lastUpdateTime = 0;
         watchId = navigator.geolocation.watchPosition(async (pos) => {
@@ -535,17 +538,48 @@
           clearInterval(timeInterval);
           timeInterval = null;
         }
-        await supabaseClient.from('drivers').update({
-          is_online: false,
-          updated_at: new Date().toISOString()
-        }).eq('id', currentDriverId);
+
+        if (navigator.onLine) {
+          await supabaseClient.from('drivers').update({
+            is_online: false,
+            updated_at: new Date().toISOString()
+          }).eq('id', currentDriverId);
+        }
        
         status.innerHTML = '🔴 ĐÃ TẮT ĐỊNH VỊ (Nghỉ ngơi)';
         status.style.color = '#ef4444';
-        btn.innerText = 'BẮT ĐẦU NHẬN KHÁCH (BẬT GPS)';
+        btn.innerText = 'BẮT ĐẦU NHẬN KHÁCH (BẬT GPS & 4G)';
         btn.style.background = '#22c55e';
       }
     }
+
+    // ----------------------------------------------------------------------
+    // TỰ ĐỘNG KHÔI PHỤC KHI BẬT LẠI 4G / MẤT KẾT NỐI MẠNG
+    // ----------------------------------------------------------------------
+    window.addEventListener('online', async () => {
+      const status = document.getElementById('status');
+      if (isOnline) {
+        status.innerHTML = '🟢 ĐÃ KHÔI PHỤC 4G - ĐANG PHÁT GPS';
+        status.style.color = '#16a34a';
+
+        lastSentLat = 0;
+        lastSentLng = 0;
+        if (currentDriverId) {
+          await supabaseClient.from('drivers').update({
+            is_online: true,
+            updated_at: new Date().toISOString()
+          }).eq('id', currentDriverId);
+        }
+      }
+    });
+
+    window.addEventListener('offline', () => {
+      const status = document.getElementById('status');
+      if (isOnline) {
+        status.innerHTML = '⚠️ MẤT KẾT NỐI 4G! VUI LÒNG BẬT LẠI MẠNG...';
+        status.style.color = '#d97706';
+      }
+    });
 
     if (currentDriverId) {
       supabaseClient.channel('driver-self-update')
@@ -586,9 +620,8 @@
         .subscribe();
     }
 
-    // BÁO TẮT GPS KHI TÀI XẾ VUỐT TẮT NGANNG APP TRÊN ĐIỆN THOẠI
     window.addEventListener('beforeunload', () => {
-      if (isOnline && currentDriverId) {
+      if (isOnline && currentDriverId && navigator.onLine) {
         fetch(`${SUPABASE_URL}/rest/v1/drivers?id=eq.${currentDriverId}`, {
           method: 'PATCH',
           headers: {
