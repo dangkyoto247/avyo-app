@@ -1,0 +1,132 @@
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  padding: 12px;
+  max-width: 420px;
+  margin: auto;
+  background: #f0fdf4;
+  touch-action: manipulation;
+  -webkit-text-size-adjust: 100%;
+}
+.card {
+  background: white;
+  padding: 16px;
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  margin-bottom: 12px;
+}
+input, button {
+  width: 100%;
+  padding: 14px;
+  margin-top: 10px;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  font-size: 16px;
+  box-sizing: border-box;
+}
+button {
+  background: #22c55e;
+  color: white;
+  font-weight: bold;
+  border: none;
+  cursor: pointer;
+}
+.status {
+  font-weight: bold;
+  margin: 12px 0;
+  font-size: 15px;
+  text-align: center;
+}
+#driverMap {
+  height: 200px;
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid #cbd5e1;
+}
+.profile-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px dashed #e2e8f0;
+}
+.driver-avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #16a34a;
+  background: #e2e8f0;
+  flex-shrink: 0;
+}
+.info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 10px;
+}
+.info-box {
+  background: #f8fafc;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  font-size: 12px;
+  color: #334155;
+}
+.small-text { 
+  font-size: 11px; 
+  color: #64748b; 
+  display: block; 
+  margin-top: 2px; 
+}
+.logout-text {
+  color: #64748b;
+  font-size: 14px;
+  text-decoration: underline;
+  margin-top: 15px;
+  display: block;
+  text-align: center;
+  cursor: pointer;
+}
+.btn-cskh {
+  background: #0284c7;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-decoration: none;
+  padding: 12px;
+  border-radius: 10px;
+  font-weight: bold;
+  margin-top: 14px;
+  font-size: 14px;
+  box-shadow: 0 2px 6px rgba(2, 132, 199, 0.3);
+}
+
+/* HỘP THÔNG BÁO MẤT MẠNG LỚN NHẤP NHÁY */
+@keyframes blinkAlert {
+  0% { background: #dc2626; border-color: #fef08a; transform: translateX(-50%) scale(1); }
+  50% { background: #b91c1c; border-color: #ffffff; transform: translateX(-50%) scale(1.03); }
+  100% { background: #dc2626; border-color: #fef08a; transform: translateX(-50%) scale(1); }
+}
+.network-alert-box {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 90%;
+  max-width: 380px;
+  background: #dc2626;
+  color: white;
+  padding: 16px;
+  border-radius: 16px;
+  text-align: center;
+  font-weight: bold;
+  font-size: 16px;
+  line-height: 1.4;
+  box-shadow: 0 10px 25px rgba(220, 38, 38, 0.6);
+  z-index: 10000;
+  border: 3px solid #fef08a;
+  display: none;
+  animation: blinkAlert 1s infinite ease-in-out;
+}
