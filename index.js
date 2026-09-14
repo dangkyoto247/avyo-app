@@ -62,6 +62,10 @@ let rawDriversData = [];
 let searchTimer = null;
 let mapboxTimeout = null;
 
+// BIẾN QUẢN LÝ CỬ CHỈ GIỮ VÀ VUỐT CHỌN SAO
+let currentDragRating = 0;
+let isStarDragging = false;
+
 function getRecentPickups() {
   try {
     const data = localStorage.getItem(RECENT_PICKUPS_KEY);
@@ -700,10 +704,54 @@ function calcRating(driver) {
 
 function highlightStars(count) {
   const stars = document.querySelectorAll('.star-btn');
-  stars.forEach((star, index) => {
-    if (index < count) star.classList.add('active');
+  stars.forEach((star) => {
+    const starVal = parseInt(star.getAttribute('data-star'), 10);
+    if (starVal <= count) star.classList.add('active');
     else star.classList.remove('active');
   });
+}
+
+// XỬ LÝ SỰ KIỆN VUỐT/GIỮ ĐỂ CHỌN SAO
+function updateStarRatingFromEvent(e) {
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  if (!clientX || !clientY) return;
+
+  const target = document.elementFromPoint(clientX, clientY);
+  if (target && target.classList.contains('star-btn')) {
+    const starVal = parseInt(target.getAttribute('data-star'), 10);
+    if (starVal) {
+      currentDragRating = starVal;
+      highlightStars(starVal);
+    }
+  }
+}
+
+function handleStarDragStart(e) {
+  isStarDragging = true;
+  updateStarRatingFromEvent(e);
+}
+
+function handleStarDragMove(e) {
+  if (isStarDragging || e.type === 'mousemove') {
+    updateStarRatingFromEvent(e);
+  }
+}
+
+function handleStarDragEnd(e) {
+  if (isStarDragging) {
+    isStarDragging = false;
+    if (currentDragRating > 0) {
+      submitRating(currentDragRating);
+    }
+  }
+}
+
+function handleStarMouseLeave() {
+  if (!isStarDragging) {
+    currentDragRating = 0;
+    highlightStars(0);
+  }
 }
 
 async function submitRating(stars) {
@@ -784,13 +832,20 @@ async function selectDriver(driver) {
     </div>
    
     <div style="margin-top: 8px; padding-top: 6px; border-top: 1px dashed #e2e8f0; text-align: center;">
-      <span style="font-size: 11px; color: #64748b; display: block; margin-bottom: 2px;">Chạm chọn số sao để đánh giá dịch vụ:</span>
-      <div style="font-size: 22px; user-select: none;" onmouseleave="highlightStars(0)">
-        <span class="star-btn" onmouseover="highlightStars(1)" onclick="submitRating(1)">⭐</span>
-        <span class="star-btn" onmouseover="highlightStars(2)" onclick="submitRating(2)">⭐</span>
-        <span class="star-btn" onmouseover="highlightStars(3)" onclick="submitRating(3)">⭐</span>
-        <span class="star-btn" onmouseover="highlightStars(4)" onclick="submitRating(4)">⭐</span>
-        <span class="star-btn" onmouseover="highlightStars(5)" onclick="submitRating(5)">⭐</span>
+      <span style="font-size: 11px; color: #64748b; display: block; margin-bottom: 2px;">Chạm hoặc giữ vuốt để chọn số sao:</span>
+      <div id="starBox" class="star-box" 
+           onmousedown="handleStarDragStart(event)" 
+           onmousemove="handleStarDragMove(event)" 
+           onmouseup="handleStarDragEnd(event)"
+           ontouchstart="handleStarDragStart(event)" 
+           ontouchmove="handleStarDragMove(event)" 
+           ontouchend="handleStarDragEnd(event)"
+           onmouseleave="handleStarMouseLeave()">
+        <span class="star-btn" data-star="1">⭐</span>
+        <span class="star-btn" data-star="2">⭐</span>
+        <span class="star-btn" data-star="3">⭐</span>
+        <span class="star-btn" data-star="4">⭐</span>
+        <span class="star-btn" data-star="5">⭐</span>
       </div>
     </div>
   `;

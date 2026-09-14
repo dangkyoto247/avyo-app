@@ -87,8 +87,32 @@ body {
 .driver-profile-box { display: flex; align-items: center; gap: 12px; margin-top: 4px; }
 .driver-avatar-img { width: 50px; height: 50px; border-radius: 50%; object-fit: cover; border: 2px solid #00b14f; flex-shrink: 0; background: #e2e8f0; }
 
-.star-btn { cursor: pointer; filter: grayscale(100%); opacity: 0.4; transition: all 0.15s ease; display: inline-block; margin: 0 2px; }
-.star-btn.active { filter: grayscale(0%); opacity: 1; transform: scale(1.2); }
+/* KHU VỰC ĐÁNH GIÁ SAO VÀ CỬ CHỈ VUỐT */
+.star-box {
+  font-size: 26px;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none; /* Ngăn cuộn trang khi vuốt chọn sao */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 10px;
+}
+
+.star-btn { 
+  cursor: pointer; 
+  filter: grayscale(100%); 
+  opacity: 0.4; 
+  transition: all 0.15s ease; 
+  display: inline-block; 
+  margin: 0 4px; 
+  pointer-events: auto;
+}
+.star-btn.active { 
+  filter: grayscale(0%); 
+  opacity: 1; 
+  transform: scale(1.25); 
+}
 
 .top3-item {
   display: flex;
