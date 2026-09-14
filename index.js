@@ -612,7 +612,7 @@ async function openZalo() {
   if (markerEnd) {
     msg += `\n🚩 Điểm đến: https://maps.google.com/?q=${markerEnd.getLatLng().lat.toFixed(5)},${markerEnd.getLatLng().lng.toFixed(5)}`;
     msg += `\n📏 Quãng đường: ${currentDistance} km`;
-    msg += `\n💰 Cước ước tính: ${selectedDriver.vehicle_type === 'truck' ? 'Thỏa thuận' : currentPrice.toLocaleString('vi-VN') + ' VNĐ'}`;
+    msg += `\n💰 Cước phí: ${selectedDriver.vehicle_type === 'truck' ? 'Thỏa thuận' : currentPrice.toLocaleString('vi-VN') + ' VNĐ'}`;
   }
 
   const noteInput = document.getElementById('noteInput');
@@ -781,7 +781,6 @@ async function selectDriver(driver) {
   document.getElementById('phoneBtn').href = `tel:${driver.phone}`;
   updatePrice();
   
-  // HIỆN CÁC NÚT VÀ KHUNG GHI CHÚ KHI CHỌN XE
   document.getElementById('zaloBtn').style.display = 'block';
   document.getElementById('phoneBtn').style.display = 'block';
   
