@@ -1,5 +1,5 @@
-const TILE_CACHE_NAME = 'osm-tiles-v1';
-const STATIC_CACHE_NAME = 'avyo-static-v10';
+const TILE_CACHE_NAME = 'google-tiles-v1';
+const STATIC_CACHE_NAME = 'avyo-static-v11';
 
 const STATIC_ASSETS = [
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
@@ -17,7 +17,6 @@ const STATIC_ASSETS = [
   'offline.html'
 ];
 
-// Hàm lọc sạch phản hồi, loại bỏ hoàn toàn cờ Chuyển hướng (Redirect) gây lỗi Safari
 async function cleanResponse(response) {
   if (!response || (!response.ok && response.type !== 'opaque')) return response;
   const blob = await response.blob();
@@ -49,7 +48,7 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
-// 2. XÓA SẠCH CACHE CỦ (BAO GỒM BẢN ĐỒ CARTO CŨ) KHI NÂNG CẤP V10
+// 2. XÓA SẠCH CACHE CŨ KHI NÂNG CẤP V11
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
@@ -91,8 +90,8 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 4. MẢNH HÌNH ẢNH BẢN ĐỒ OPENSTREETMAP (Đã chuyển từ CartoDB sang OSM)
-  if (requestUrl.includes('tile.openstreetmap.org')) {
+  // 4. MẢNH HÌNH ẢNH BẢN ĐỒ GOOGLE (Nhận diện mt0, mt1, mt2.google.com)
+  if (requestUrl.includes('google.com/vt')) {
     event.respondWith(
       caches.open(TILE_CACHE_NAME).then(async (cache) => {
         const cachedResponse = await cache.match(event.request);
@@ -111,7 +110,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 5. TRUY CẬP TRANG GIAO DIỆN (HTML) - XỬ LÝ AN TOÀN CHO SAFARI
+  // 5. TRUY CẬP TRANG GIAO DIỆN (HTML)
   if (event.request.mode === 'navigate' || (event.request.headers.get('accept') && event.request.headers.get('accept').includes('text/html'))) {
     event.respondWith(
       (async () => {

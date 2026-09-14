@@ -199,10 +199,11 @@ function initMap() {
   if (map) return;
   map = L.map('map', { preferCanvas: true, attributionControl: false }).setView([18.7034, 105.6832], 12);
  
-  // Đã thay thế thành OpenStreetMap
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+  // Đã cập nhật sang Google Maps: Tải cực nhanh trên 4G/5G, miễn phí 100%
+  L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+    subdomains: ['0', '1', '2', '3'],
+    maxZoom: 20,
+    attribution: '&copy; Google Maps'
   }).addTo(map);
 
   setTimeout(() => { if (map) map.invalidateSize(); }, 300);
