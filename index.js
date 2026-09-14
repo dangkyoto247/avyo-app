@@ -333,7 +333,7 @@ document.addEventListener('click', (e) => {
   }
 });
 
-// VẼ ĐƯỜNG UỐN LƯỢN QUA MAPBOX API (DỰ PHÒNG MÁY CHỦ OSRM VÀ TOÁN HAVERSINE)
+// VẼ ĐƯỜNG UỐN LƯỢN BO MỊN QUA MAPBOX API (DỰ PHÒNG OSRM VÀ HAVERSINE)
 async function calculateRoute() {
   if (!markerStart || !markerEnd) return;
 
@@ -344,10 +344,10 @@ async function calculateRoute() {
 
   let routePoints = null;
 
-  // 1. Thử lấy mảng tọa độ đường đi uốn lượn qua Mapbox API
+  // 1. Lấy mảng tọa độ uốn lượn đầy đủ qua Mapbox API (overview=full)
   if (MAPBOX_TOKEN) {
     try {
-      const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${start.lng},${start.lat};${end.lng},${end.lat}?geometries=geojson&access_token=${MAPBOX_TOKEN}`;
+      const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${start.lng},${start.lat};${end.lng},${end.lat}?overview=full&geometries=geojson&access_token=${MAPBOX_TOKEN}`;
       const res = await fetch(url);
       if (res.ok) {
         const data = await res.json();
@@ -376,13 +376,25 @@ async function calculateRoute() {
     } catch (e) {}
   }
 
-  // 3. Vẽ nét liền xanh lá ôm sát lòng đường (Hoặc nét đứt dự phòng nếu mất mạng toàn bộ)
+  // 3. Vẽ nét liền xanh lá bo tròn góc rẽ mượt mà (Hoặc nét đứt nếu mất kết nối)
   if (routePoints && routePoints.length > 0) {
-    routeLine = L.polyline(routePoints, { color: '#00b14f', weight: 5, opacity: 0.85 }).addTo(map);
+    routeLine = L.polyline(routePoints, { 
+      color: '#00b14f', 
+      weight: 6, 
+      opacity: 0.9,
+      lineCap: 'round',    // Bo tròn hai đầu nét vẽ
+      lineJoin: 'round',   // Bo tròn mềm mại tại các góc rẽ ngã tư
+      smoothFactor: 1 
+    }).addTo(map);
   } else {
     const straightKm = getHaversineDistance(start.lat, start.lng, end.lat, end.lng);
     currentDistance = (straightKm * 1.3).toFixed(1);
-    routeLine = L.polyline([start, end], { color: '#00b14f', weight: 4, dashArray: '8, 8', opacity: 0.85 }).addTo(map);
+    routeLine = L.polyline([start, end], { 
+      color: '#00b14f', 
+      weight: 4, 
+      dashArray: '8, 8', 
+      opacity: 0.85 
+    }).addTo(map);
   }
 
   map.fitBounds(routeLine.getBounds(), { padding: [50, 50] });
