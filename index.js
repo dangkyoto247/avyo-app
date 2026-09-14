@@ -1,8 +1,3 @@
-// ==========================================
-// KHU VỰC ĐIỀN GOONG API KEY (TÌM KIẾM & CHỈ ĐƯỜNG)
-// ==========================================
-const GOONG_API_KEY = 'wZbBHiRfw0cPiZaPMXIIfRyXv7NOaMy2m5K5mF7l'; 
-
 const map = L.map('map', { 
   preferCanvas: true,
   attributionControl: false,
@@ -12,13 +7,23 @@ const map = L.map('map', {
 
 L.control.zoom({ position: 'topright' }).addTo(map);
 
-// Nền bản đồ OpenStreetMap miễn phí 100%, không tốn API key
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  maxZoom: 19,
-  keepBuffer: 8,
-  updateWhenIdle: false,
-  updateWhenZooming: false
-}).addTo(map);
+// Nền bản đồ Google Maps Tiles: Tải siêu mượt 5G, 0đ, không cần API Key
+const googleLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+  subdomains: ['0', '1', '2', '3'],
+  maxZoom: 20,
+  attribution: '&copy; Google Maps'
+});
+
+// Tự động chuyển sang Esri ArcGIS nếu kết nối 5G chập chờn
+googleLayer.on('tileerror', function() {
+  if (map.hasLayer(googleLayer)) {
+    map.removeLayer(googleLayer);
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+      maxZoom: 19
+    }).addTo(map);
+  }
+});
+googleLayer.addTo(map);
 
 setTimeout(() => { if (map) map.invalidateSize(); }, 300);
 
@@ -37,41 +42,11 @@ let selectedDriver = null;
 let rawDriversData = [];
 let searchTimer = null;
 
-// Hàm giải mã chuỗi overview_polyline của Goong/Google thành danh sách tọa độ [lat, lng]
-function decodePolyline(encoded) {
-  let points = [];
-  let index = 0, len = encoded.length;
-  let lat = 0, lng = 0;
-  while (index < len) {
-    let b, shift = 0, result = 0;
-    do {
-      b = encoded.charCodeAt(index++) - 63;
-      result |= (b & 0x1f) << shift;
-      shift += 5;
-    } while (b >= 0x20);
-    let dlat = ((result & 1) ? ~(result >> 1) : (result >> 1));
-    lat += dlat;
-    shift = 0;
-    result = 0;
-    do {
-      b = encoded.charCodeAt(index++) - 63;
-      result |= (b & 0x1f) << shift;
-      shift += 5;
-    } while (b >= 0x20);
-    let dlng = ((result & 1) ? ~(result >> 1) : (result >> 1));
-    lng += dlng;
-    points.push([lat / 1e5, lng / 1e5]);
-  }
-  return points;
-}
-
 function getRecentPickups() {
   try {
     const data = localStorage.getItem(RECENT_PICKUPS_KEY);
     return data ? JSON.parse(data) : [];
-  } catch (e) {
-    return [];
-  }
+  } catch (e) { return []; }
 }
 
 function saveRecentPickup(label, lat, lng) {
@@ -118,9 +93,7 @@ function getRecentDests() {
   try {
     const data = localStorage.getItem(RECENT_DESTS_KEY);
     return data ? JSON.parse(data) : [];
-  } catch (e) {
-    return [];
-  }
+  } catch (e) { return []; }
 }
 
 function saveRecentDest(label, lat, lng) {
@@ -288,143 +261,66 @@ map.on('click', function(e) {
   }
 });
 
+// TÌM KIẾM ĐỊA CHỈ MIỄN PHÍ 100% QUA PHOTON API
 function onSearchInput(type) {
   clearTimeout(searchTimer);
   const query = document.getElementById(type + 'Input').value.trim();
   const listEl = document.getElementById(type + 'Suggestions');
  
   if (query.length < 2) {
-    if (type === 'pickup') {
-      showRecentPickups();
-    } else if (type === 'dest') {
-      showRecentDests();
-    } else {
-      listEl.style.display = 'none';
-    }
+    if (type === 'pickup') showRecentPickups();
+    else if (type === 'dest') showRecentDests();
+    else listEl.style.display = 'none';
     return;
   }
 
-  searchTimer = setTimeout(() => {
-    fetchAddressSuggestions(query, (items) => {
+  searchTimer = setTimeout(async () => {
+    const centerPoint = markerStart ? markerStart.getLatLng() : (userLatLng || map.getCenter());
+    const photonParam = centerPoint ? `&lat=${centerPoint.lat}&lon=${centerPoint.lng}` : '';
+
+    try {
+      const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=5${photonParam}`);
+      if (!res.ok) throw new Error("Search error");
+      const data = await res.json();
+      
       listEl.innerHTML = '';
-      if (!items || items.length === 0) {
+      if (!data.features || data.features.length === 0) {
         listEl.style.display = 'none';
         return;
       }
-      items.forEach(item => {
+
+      data.features.forEach(f => {
+        const p = f.properties;
+        const fullAddr = [p.name, p.street, p.district, p.city].filter(Boolean).join(', ');
+        const lat = f.geometry.coordinates[1];
+        const lng = f.geometry.coordinates[0];
+
         const div = document.createElement('div');
         div.className = 'suggestion-item';
-        div.innerHTML = item.is_cached ? `⚡ <b>${item.label}</b>` : item.label;
-       
-        div.onclick = async () => {
-          document.getElementById(type + 'Input').value = item.label;
+        div.innerHTML = `📍 <b>${p.name}</b> <small style="color:#64748b; font-size:11px;">(${fullAddr})</small>`;
+        
+        div.onclick = () => {
+          document.getElementById(type + 'Input').value = fullAddr || p.name;
           listEl.style.display = 'none';
-         
-          if (item.lat && item.lng) {
-            const latlng = L.latLng(item.lat, item.lng);
-            map.setView(latlng, 15);
-            if (type === 'pickup') {
-              setPickupLocation(latlng);
-              saveRecentPickup(item.label, item.lat, item.lng);
-            } else {
-              setDestLocation(latlng);
-              saveRecentDest(item.label, item.lat, item.lng);
-            }
+          
+          const latlng = L.latLng(lat, lng);
+          map.setView(latlng, 15);
 
-            if (!item.is_cached) {
-              try {
-                await supabaseClient.from('cached_locations').insert([{
-                  name: item.label,
-                  lat: item.lat,
-                  lng: item.lng
-                }]);
-              } catch(e) {}
-            }
+          if (type === 'pickup') {
+            setPickupLocation(latlng);
+            saveRecentPickup(fullAddr || p.name, lat, lng);
+          } else {
+            setDestLocation(latlng);
+            saveRecentDest(fullAddr || p.name, lat, lng);
           }
         };
         listEl.appendChild(div);
       });
       listEl.style.display = 'block';
-    });
+    } catch (e) {
+      listEl.style.display = 'none';
+    }
   }, 350);
-}
-
-async function fetchAddressSuggestions(query, callback) {
-  const qLower = query.toLowerCase();
-  
-  const centerPoint = markerStart ? markerStart.getLatLng() : (userLatLng || map.getCenter());
-  const locationParam = centerPoint ? `&location=${centerPoint.lat},${centerPoint.lng}` : '';
-
-  const localKey = `avyo_search_v4_${qLower}_${centerPoint ? centerPoint.lat.toFixed(2) + '_' + centerPoint.lng.toFixed(2) : ''}`;
-  const localCache = localStorage.getItem(localKey);
- 
-  if (localCache) {
-    try {
-      return callback(JSON.parse(localCache));
-    } catch(e) {}
-  }
-
-  if (GOONG_API_KEY && GOONG_API_KEY !== 'NHẬP_GOONG_API_KEY_CỦA_BẠN_TẠI_ĐÂY') {
-    try {
-      const res = await fetch(`https://api.goong.io/Place/AutoComplete?api_key=${GOONG_API_KEY}&input=${encodeURIComponent(query)}${locationParam}`);
-      if (!res.ok) throw new Error(`Goong AutoComplete error: ${res.status}`);
-      
-      const data = await res.json();
-      if (data.predictions && data.predictions.length > 0) {
-        const results = [];
-        for (let p of data.predictions.slice(0, 5)) {
-          try {
-            const detailRes = await fetch(`https://api.goong.io/Place/Detail?api_key=${GOONG_API_KEY}&place_id=${p.place_id}`);
-            if (!detailRes.ok) continue;
-            const detailData = await detailRes.json();
-            if (detailData.result && detailData.result.geometry) {
-              results.push({
-                label: p.description,
-                lat: detailData.result.geometry.location.lat,
-                lng: detailData.result.geometry.location.lng,
-                is_cached: false
-              });
-            }
-          } catch(errDetail) {
-            console.warn("Goong Detail fetch failed:", errDetail);
-          }
-        }
-        if (results.length > 0) {
-          localStorage.setItem(localKey, JSON.stringify(results));
-          return callback(results);
-        }
-      }
-    } catch(errGoong) {
-      console.warn("Goong API AutoComplete failed, switching fallback:", errGoong);
-    }
-  }
-
-  try {
-    const photonParam = centerPoint ? `&lat=${centerPoint.lat}&lon=${centerPoint.lng}` : '';
-    const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=5${photonParam}`);
-    if (!res.ok) throw new Error("Photon fetch failed");
-    
-    const data = await res.json();
-    if (data.features) {
-      const results = data.features.map(f => {
-        const p = f.properties;
-        const fullAddr = [p.name, p.street, p.district, p.city, p.country].filter(Boolean).join(', ');
-        return {
-          label: fullAddr || p.name,
-          lat: f.geometry.coordinates[1],
-          lng: f.geometry.coordinates[0],
-          is_cached: false
-        };
-      });
-      if (results.length > 0) {
-        localStorage.setItem(localKey, JSON.stringify(results));
-      }
-      return callback(results);
-    }
-  } catch(e) {
-    console.warn("All search providers failed:", e);
-    callback([]);
-  }
 }
 
 document.addEventListener('click', (e) => {
@@ -434,8 +330,8 @@ document.addEventListener('click', (e) => {
   }
 });
 
-// ĐÃ SỬA: Vẽ đường đi thực tế uốn lượn theo giao thông bằng Goong API / OSRM
-async function calculateRoute() {
+// TÍNH QUÃNG ĐƯỜNG VÀ CƯỚC CHUYẾN TỨC THÌ (0.001s, 0Đ, KHÔNG LO LỖI)
+function calculateRoute() {
   if (!markerStart || !markerEnd) return;
 
   const start = markerStart.getLatLng();
@@ -443,64 +339,22 @@ async function calculateRoute() {
 
   if (routeLine) map.removeLayer(routeLine);
 
-  let routePoints = null;
+  // Tính khoảng cách toán học và nhân hệ số uốn lượn thực tế 1.3
+  const straightKm = getHaversineDistance(start.lat, start.lng, end.lat, end.lng);
+  currentDistance = (straightKm * 1.3).toFixed(1);
 
-  // 1. Thử tính đường và giải mã tọa độ từ Goong Direction API
-  if (GOONG_API_KEY && GOONG_API_KEY !== 'NHẬP_GOONG_API_KEY_CỦA_BẠN_TẠI_ĐÂY') {
-    try {
-      const res = await fetch(`https://api.goong.io/Direction?origin=${start.lat},${start.lng}&destination=${end.lat},${end.lng}&vehicle=car&api_key=${GOONG_API_KEY}`);
-      if (res.ok) {
-        const data = await res.json();
-        if (data.routes && data.routes.length > 0) {
-          currentDistance = (data.routes[0].legs[0].distance.value / 1000).toFixed(1);
-          if (data.routes[0].overview_polyline && data.routes[0].overview_polyline.points) {
-            routePoints = decodePolyline(data.routes[0].overview_polyline.points);
-          }
-        }
-      }
-    } catch(err) {
-      console.warn("Goong Direction failed, fallback to OSRM:", err);
-    }
-  }
+  routeLine = L.polyline([start, end], { 
+    color: '#00b14f', 
+    weight: 4, 
+    dashArray: '8, 8',
+    opacity: 0.85 
+  }).addTo(map);
 
-  // 2. Nếu Goong không trả về được nét vẽ, dự phòng bằng OSRM Routing
-  if (!routePoints) {
-    try {
-      const response = await fetch(`https://router.project-osrm.org/route/v1/driving/${start.lng},${start.lat};${end.lng},${end.lat}?overview=full&geometries=geojson`);
-      if (response.ok) {
-        const data = await response.json();
-        if (data.routes && data.routes.length > 0) {
-          routePoints = data.routes[0].geometry.coordinates.map(coord => [coord[1], coord[0]]);
-          currentDistance = (data.routes[0].distance / 1000).toFixed(1);
-        }
-      }
-    } catch (err) {
-      console.warn("OSRM Routing failed:", err);
-    }
-  }
-
-  // 3. Vẽ đường đi lên bản đồ (Đường uốn lượn thực tế hoặc dự phòng nét thẳng nếu thất bại cả 2 API)
-  if (routePoints && routePoints.length > 0) {
-    routeLine = L.polyline(routePoints, { color: '#00b14f', weight: 5, opacity: 0.85 }).addTo(map);
-    map.fitBounds(routeLine.getBounds(), { padding: [40, 40] });
-  } else {
-    drawFallbackRoute(start, end);
-  }
+  map.fitBounds(routeLine.getBounds(), { padding: [50, 50] });
 
   document.getElementById('distance').innerText = currentDistance;
   updatePrice();
   updateGuide();
-}
-
-function drawFallbackRoute(start, end) {
-  routeLine = L.polyline([start, end], { color: '#00b14f', weight: 4, dashArray: '8, 8' }).addTo(map);
-  map.fitBounds(routeLine.getBounds(), { padding: [40, 40] });
-  const km = calculateDistance(start.lat, start.lng, end.lat, end.lng);
-  currentDistance = km.toFixed(1);
-}
-
-function calculateDistance(lat1, lon1, lat2, lon2) {
-  return getHaversineDistance(lat1, lon1, lat2, lon2) * 1.28;
 }
 
 function updatePrice() {
@@ -971,10 +825,6 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-// ==========================================
-// CHỨC NĂNG CHẾ ĐỘ TỐI (DARK MODE)
-// ==========================================
-
 window.toggleDarkMode = function() {
   const body = document.body;
   const themeToggleBtn = document.getElementById('themeToggle');
@@ -1000,10 +850,6 @@ document.addEventListener('DOMContentLoaded', () => {
     themeToggleBtn.innerText = '☀️';
   }
 });
-
-// ==========================================
-// GHI ĐÈ HÀM ALERT BẰNG POPUP SANG TRỌNG (CUSTOM ALERT)
-// ==========================================
 
 window.alert = function(message) {
   return new Promise((resolve) => {
