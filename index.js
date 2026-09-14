@@ -1,3 +1,6 @@
+// MAPBOX ACCESS TOKEN CỦA BẠN
+const MAPBOX_TOKEN = 'pk.eyJ1IjoidHVhbmFuaDM0MTYyMyIsImEiOiJjbXUwcGhlYTExNHV5MnhvdjlyaXE5ZzM2In0.NN6tgrUWAN2tUubAZtTY_Q';
+
 const map = L.map('map', { 
   preferCanvas: true,
   attributionControl: false,
@@ -7,14 +10,14 @@ const map = L.map('map', {
 
 L.control.zoom({ position: 'topright' }).addTo(map);
 
-// Nền bản đồ Google Maps Tiles: Tải siêu mượt 5G, 0đ, không cần API Key
+// Nền bản đồ Google Maps Tiles: Siêu tốc 5G, 0Đ, Không API Key
 const googleLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
   subdomains: ['0', '1', '2', '3'],
   maxZoom: 20,
   attribution: '&copy; Google Maps'
 });
 
-// Tự động chuyển sang Esri ArcGIS nếu kết nối 5G chập chờn
+// Tự động chuyển Esri ArcGIS nếu Google Tile gặp sự cố kết nối
 googleLayer.on('tileerror', function() {
   if (map.hasLayer(googleLayer)) {
     map.removeLayer(googleLayer);
@@ -261,7 +264,7 @@ map.on('click', function(e) {
   }
 });
 
-// TÌM KIẾM ĐỊA CHỈ MIỄN PHÍ 100% QUA PHOTON API
+// TÌM KIẾM ĐỊA CHỈ MIỄN PHÍ QUA PHOTON API
 function onSearchInput(type) {
   clearTimeout(searchTimer);
   const query = document.getElementById(type + 'Input').value.trim();
@@ -330,8 +333,8 @@ document.addEventListener('click', (e) => {
   }
 });
 
-// TÍNH QUÃNG ĐƯỜNG VÀ CƯỚC CHUYẾN TỨC THÌ (0.001s, 0Đ, KHÔNG LO LỖI)
-function calculateRoute() {
+// VẼ ĐƯỜNG UỐN LƯỢN QUA MAPBOX API (DỰ PHÒNG MÁY CHỦ OSRM VÀ TOÁN HAVERSINE)
+async function calculateRoute() {
   if (!markerStart || !markerEnd) return;
 
   const start = markerStart.getLatLng();
@@ -339,19 +342,50 @@ function calculateRoute() {
 
   if (routeLine) map.removeLayer(routeLine);
 
-  // Tính khoảng cách toán học và nhân hệ số uốn lượn thực tế 1.3
-  const straightKm = getHaversineDistance(start.lat, start.lng, end.lat, end.lng);
-  currentDistance = (straightKm * 1.3).toFixed(1);
+  let routePoints = null;
 
-  routeLine = L.polyline([start, end], { 
-    color: '#00b14f', 
-    weight: 4, 
-    dashArray: '8, 8',
-    opacity: 0.85 
-  }).addTo(map);
+  // 1. Thử lấy mảng tọa độ đường đi uốn lượn qua Mapbox API
+  if (MAPBOX_TOKEN) {
+    try {
+      const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${start.lng},${start.lat};${end.lng},${end.lat}?geometries=geojson&access_token=${MAPBOX_TOKEN}`;
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.routes && data.routes.length > 0) {
+          routePoints = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+          currentDistance = (data.routes[0].distance / 1000).toFixed(1);
+        }
+      }
+    } catch (e) {
+      console.warn("Mapbox bận, chuyển OSRM dự phòng...", e);
+    }
+  }
+
+  // 2. Dự phòng máy chủ OSRM nếu Mapbox ngắt kết nối
+  if (!routePoints) {
+    try {
+      const osrmUrl = `https://routing.openstreetmap.de/routed-car/route/v1/driving/${start.lng},${start.lat};${end.lng},${end.lat}?overview=full&geometries=geojson`;
+      const res = await fetch(osrmUrl);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.routes && data.routes.length > 0) {
+          routePoints = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+          currentDistance = (data.routes[0].distance / 1000).toFixed(1);
+        }
+      }
+    } catch (e) {}
+  }
+
+  // 3. Vẽ nét liền xanh lá ôm sát lòng đường (Hoặc nét đứt dự phòng nếu mất mạng toàn bộ)
+  if (routePoints && routePoints.length > 0) {
+    routeLine = L.polyline(routePoints, { color: '#00b14f', weight: 5, opacity: 0.85 }).addTo(map);
+  } else {
+    const straightKm = getHaversineDistance(start.lat, start.lng, end.lat, end.lng);
+    currentDistance = (straightKm * 1.3).toFixed(1);
+    routeLine = L.polyline([start, end], { color: '#00b14f', weight: 4, dashArray: '8, 8', opacity: 0.85 }).addTo(map);
+  }
 
   map.fitBounds(routeLine.getBounds(), { padding: [50, 50] });
-
   document.getElementById('distance').innerText = currentDistance;
   updatePrice();
   updateGuide();
