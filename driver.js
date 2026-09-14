@@ -163,9 +163,9 @@ function initDriverMap() {
   if (driverMap) return;
   driverMap = L.map('driverMap', { preferCanvas: true, attributionControl: false }).setView([18.7034, 105.6832], 14);
 
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-    maxZoom: 19,
-    subdomains: 'abcd'
+  // Đã sửa thành OpenStreetMap theo yêu cầu
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19
   }).addTo(driverMap);
 
   setTimeout(() => { if (driverMap) driverMap.invalidateSize(); }, 300);

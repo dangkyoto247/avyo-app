@@ -12,7 +12,7 @@ const map = L.map('map', {
 
 L.control.zoom({ position: 'topright' }).addTo(map);
 
-// ĐÃ SỬA: Nền bản đồ OpenStreetMap miễn phí 100%, không tốn API key
+// Nền bản đồ OpenStreetMap miễn phí 100%, không tốn API key
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   maxZoom: 19,
   keepBuffer: 8,         // Nạp trước 8 ô bản đồ xung quanh màn hình
@@ -321,14 +321,16 @@ function onSearchInput(type) {
   }, 350);
 }
 
-// ĐÃ SỬA: Tích hợp vị trí hiện tại/tâm bản đồ vào tham số tìm kiếm địa chỉ
+// ĐÃ SỬA: Ép Goong API định vị ưu tiên khu vực xung quanh bạn, loại bỏ cache cũ gây lệch tỉnh
 async function fetchAddressSuggestions(query, callback) {
   const qLower = query.toLowerCase();
   
+  // Ưu tiên theo tọa độ: Điểm đón đã chọn > GPS vị trí hiện tại > Tâm bản đồ
   const centerPoint = markerStart ? markerStart.getLatLng() : (userLatLng || map.getCenter());
   const locationParam = centerPoint ? `&location=${centerPoint.lat},${centerPoint.lng}` : '';
 
-  const localKey = `avyo_search_${qLower}_${centerPoint ? centerPoint.lat.toFixed(2) + '_' + centerPoint.lng.toFixed(2) : ''}`;
+  // Sử dụng key v3 để tự động làm sạch cache cũ từ trình duyệt
+  const localKey = `avyo_search_v3_${qLower}_${centerPoint ? centerPoint.lat.toFixed(2) + '_' + centerPoint.lng.toFixed(2) : ''}`;
   const localCache = localStorage.getItem(localKey);
  
   if (localCache) {
@@ -337,30 +339,11 @@ async function fetchAddressSuggestions(query, callback) {
     } catch(e) {}
   }
 
-  try {
-    const { data: cachedData } = await supabaseClient
-      .from('cached_locations')
-      .select('*')
-      .ilike('name', `%${query}%`)
-      .limit(5);
-
-    if (cachedData && cachedData.length > 0) {
-      const resList = cachedData.map(item => ({
-        label: item.name,
-        lat: item.lat,
-        lng: item.lng,
-        is_cached: true
-      }));
-      localStorage.setItem(localKey, JSON.stringify(resList));
-      return callback(resList);
-    }
-  } catch (err) {}
-
   if (GOONG_API_KEY && GOONG_API_KEY !== 'NHẬP_GOONG_API_KEY_CỦA_BẠN_TẠI_ĐÂY') {
     try {
       const res = await fetch(`https://api.goong.io/Place/AutoComplete?api_key=${GOONG_API_KEY}&input=${encodeURIComponent(query)}${locationParam}`);
       const data = await res.json();
-      if (data.predictions) {
+      if (data.predictions && data.predictions.length > 0) {
         const results = [];
         for (let p of data.predictions.slice(0, 5)) {
           const detailRes = await fetch(`https://api.goong.io/Place/Detail?api_key=${GOONG_API_KEY}&place_id=${p.place_id}`);
