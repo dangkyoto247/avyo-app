@@ -329,7 +329,7 @@ function quickSelectPreset(placeName) {
   onSearchInput(targetType, true);
 }
 
-// XỬ LÝ TÌM KIẾM ĐỊA CHỈ: ƯU TIÊN 100% GOOGLE PLACES API (DỰ PHÒNG MAPBOX)
+// XỬ LÝ TÌM KIẾM ĐỊA CHỈ: TỐI ƯU 100% TƯƠNG THÍCH PLACES API (NEW + LEGACY)
 function onSearchInput(type, isDirectCall = false) {
   clearTimeout(searchTimer);
   const query = document.getElementById(type + 'Input').value.trim();
@@ -345,90 +345,108 @@ function onSearchInput(type, isDirectCall = false) {
   const executeSearch = async () => {
     const centerPoint = markerStart ? markerStart.getLatLng() : (userLatLng || map.getCenter());
 
-    // 1. ƯU TIÊN 1: GOOGLE PLACES API CHUẨN XÁC
+    // 1. GỌI GOOGLE PLACES API (TỰ ĐỘNG NHẬN DIỆN NEW VA LEGACY)
     if (typeof google !== 'undefined' && google.maps && google.maps.places) {
       try {
-        const service = new google.maps.places.AutocompleteService();
         const geocoder = new google.maps.Geocoder();
+        let suggestionsList = [];
 
-        const request = {
-          input: query,
-          componentRestrictions: { country: 'vn' }
-        };
-
-        if (centerPoint) {
-          request.location = new google.maps.LatLng(centerPoint.lat, centerPoint.lng);
-          request.radius = 20000; // Bán kính ưu tiên 20km quanh vị trí người dùng
+        // Kiểm tra Places API (New) AutocompleteSuggestion
+        if (google.maps.places.AutocompleteSuggestion) {
+          try {
+            const req = { input: query, includedRegionCodes: ['VN'] };
+            if (centerPoint) {
+              req.locationBias = { center: { lat: centerPoint.lat, lng: centerPoint.lng }, radius: 20000 };
+            }
+            const { suggestions } = await google.maps.places.AutocompleteSuggestion.fetchAutocompleteSuggestions(req);
+            if (suggestions && suggestions.length > 0) {
+              suggestionsList = suggestions.map(s => ({
+                place_id: s.placePrediction.placeId,
+                main_text: s.placePrediction.text.text,
+                secondary_text: s.placePrediction.secondaryText ? s.placePrediction.secondaryText.text : ''
+              }));
+            }
+          } catch (eNew) {
+            console.warn("Places API New bận, thử sang AutocompleteService...", eNew);
+          }
+        } 
+        
+        // Dự phòng AutocompleteService nếu SDK chưa kích hoạt API New
+        if (suggestionsList.length === 0 && google.maps.places.AutocompleteService) {
+          const service = new google.maps.places.AutocompleteService();
+          const req = { input: query, componentRestrictions: { country: 'vn' } };
+          if (centerPoint) {
+            req.location = new google.maps.LatLng(centerPoint.lat, centerPoint.lng);
+            req.radius = 20000;
+          }
+          const res = await new Promise(r => service.getPlacePredictions(req, (p, s) => r(s === 'OK' ? p : [])));
+          if (res && res.length > 0) {
+            suggestionsList = res.map(p => ({
+              place_id: p.place_id,
+              main_text: p.structured_formatting ? p.structured_formatting.main_text : p.description,
+              secondary_text: p.structured_formatting ? p.structured_formatting.secondary_text : ''
+            }));
+          }
         }
 
-        service.getPlacePredictions(request, (predictions, status) => {
-          if (status === google.maps.places.PlacesServiceStatus.OK && predictions && predictions.length > 0) {
-            listEl.innerHTML = '';
+        if (suggestionsList.length > 0) {
+          listEl.innerHTML = '';
 
-            if (isDirectCall && predictions.length > 0) {
-              const topResult = predictions[0];
-              geocoder.geocode({ placeId: topResult.place_id }, (results, gStatus) => {
+          if (isDirectCall) {
+            const topResult = suggestionsList[0];
+            geocoder.geocode({ placeId: topResult.place_id }, (results, gStatus) => {
+              if (gStatus === 'OK' && results && results[0]) {
+                const latlng = L.latLng(results[0].geometry.location.lat(), results[0].geometry.location.lng());
+                document.getElementById(type + 'Input').value = topResult.main_text;
+                listEl.style.display = 'none';
+                map.setView(latlng, 15);
+
+                if (type === 'pickup') {
+                  setPickupLocation(latlng);
+                  saveRecentPickup(topResult.main_text, latlng.lat, latlng.lng);
+                } else {
+                  setDestLocation(latlng);
+                  saveRecentDest(topResult.main_text, latlng.lat, latlng.lng);
+                }
+              }
+            });
+            return;
+          }
+
+          suggestionsList.forEach(p => {
+            const div = document.createElement('div');
+            div.className = 'suggestion-item';
+            div.innerHTML = `📍 <b>${p.main_text}</b> <small style="color:#64748b; font-size:11px;">(${p.secondary_text})</small>`;
+            
+            div.onclick = () => {
+              geocoder.geocode({ placeId: p.place_id }, (results, gStatus) => {
                 if (gStatus === 'OK' && results && results[0]) {
                   const latlng = L.latLng(results[0].geometry.location.lat(), results[0].geometry.location.lng());
-                  const placeName = topResult.structured_formatting ? topResult.structured_formatting.main_text : topResult.description;
-                  
-                  document.getElementById(type + 'Input').value = placeName;
+                  document.getElementById(type + 'Input').value = p.main_text;
                   listEl.style.display = 'none';
                   map.setView(latlng, 15);
 
                   if (type === 'pickup') {
                     setPickupLocation(latlng);
-                    saveRecentPickup(placeName, latlng.lat, latlng.lng);
+                    saveRecentPickup(p.main_text, latlng.lat, latlng.lng);
                   } else {
                     setDestLocation(latlng);
-                    saveRecentDest(placeName, latlng.lat, latlng.lng);
+                    saveRecentDest(p.main_text, latlng.lat, latlng.lng);
                   }
                 }
               });
-              return;
-            }
-
-            predictions.forEach(p => {
-              const mainText = p.structured_formatting ? p.structured_formatting.main_text : p.description;
-              const secondaryText = p.structured_formatting ? p.structured_formatting.secondary_text : '';
-
-              const div = document.createElement('div');
-              div.className = 'suggestion-item';
-              div.innerHTML = `📍 <b>${mainText}</b> <small style="color:#64748b; font-size:11px;">(${secondaryText})</small>`;
-              
-              div.onclick = () => {
-                geocoder.geocode({ placeId: p.place_id }, (results, gStatus) => {
-                  if (gStatus === 'OK' && results && results[0]) {
-                    const latlng = L.latLng(results[0].geometry.location.lat(), results[0].geometry.location.lng());
-                    document.getElementById(type + 'Input').value = mainText;
-                    listEl.style.display = 'none';
-                    map.setView(latlng, 15);
-
-                    if (type === 'pickup') {
-                      setPickupLocation(latlng);
-                      saveRecentPickup(mainText, latlng.lat, latlng.lng);
-                    } else {
-                      setDestLocation(latlng);
-                      saveRecentDest(mainText, latlng.lat, latlng.lng);
-                    }
-                  }
-                });
-              };
-              listEl.appendChild(div);
-            });
-            listEl.style.display = 'block';
-          } else {
-            // Google không trả kết quả -> Tự nhảy sang Mapbox
-            fetchMapboxFallback(query, centerPoint, type, listEl, isDirectCall);
-          }
-        });
-        return;
+            };
+            listEl.appendChild(div);
+          });
+          listEl.style.display = 'block';
+          return;
+        }
       } catch (err) {
         console.warn("Google Places bận, chuyển sang Mapbox...", err);
       }
     }
 
-    // 2. ƯU TIÊN 2: DỰ PHÒNG MAPBOX (Khi Google chưa nạp xong hoặc lỗi)
+    // 2. DỰ PHÒNG MAPBOX (Khi Google chưa tải xong hoặc có sự cố)
     fetchMapboxFallback(query, centerPoint, type, listEl, isDirectCall);
   };
 
