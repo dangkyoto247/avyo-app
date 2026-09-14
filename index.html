@@ -18,7 +18,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/gh/ewoken/Leaflet.MovingMarker@master/MovingMarker.js"></script>
 
-  <link rel="stylesheet" href="index.css?v=25">
+  <link rel="stylesheet" href="index.css?v=26">
 </head>
 <body>
 
@@ -35,22 +35,17 @@
     <div class="filter-chip" onclick="selectFilter('truck', this)">🚚 Chở hàng</div>
   </div>
 
+  <!-- CỤM TÌM KIẾM TRÊN CÙNG ĐÃ ĐƯỢC LÀM GỌN -->
   <div class="card" style="margin-bottom: 8px; padding: 8px 10px;">
     <div class="search-input-group">
       <input type="text" id="pickupInput" placeholder="📍 Tìm điểm đón (VD: Sân bay Vinh)..." autocomplete="off" oninput="onSearchInput('pickup')" onfocus="showRecentPickups()">
       <div id="pickupSuggestions" class="suggestions-list"></div>
     </div>
-    
-    <div class="search-input-group">
+    <div class="search-input-group" style="margin-bottom: 6px;">
       <input type="text" id="destInput" placeholder="🚩 Tìm điểm đến (VD: Bến xe Vinh)..." autocomplete="off" oninput="onSearchInput('dest')" onfocus="showRecentDests()">
       <div id="destSuggestions" class="suggestions-list"></div>
     </div>
     
-    <!-- Ô Ghi Chú Đã Tối Ưu Hiển Thị Rõ Ràng -->
-    <div style="margin-top: 6px; margin-bottom: 8px;">
-      <input type="text" id="noteInput" placeholder="📝 Ghi chú (VD: Số nhà 45, ngõ 12, cổng xanh)..." autocomplete="off" style="width: 100%; box-sizing: border-box; padding: 8px 12px; font-size: 13px; background-color: #f8fafc; border: 1px dashed #94a3b8; border-radius: 8px; outline: none; color: #0f172a;">
-    </div>
-
     <!-- Nút địa điểm HOT chọn nhanh 0đ API -->
     <div style="display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; -webkit-overflow-scrolling: touch;">
       <button class="preset-chip" onclick="quickSelectPreset('Sân bay Vinh')" style="font-size: 11px; padding: 4px 10px; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 12px; white-space: nowrap; color: #334155; font-weight: 600; cursor: pointer;">✈️ Sân bay Vinh</button>
@@ -86,15 +81,21 @@
     <div id="top3List"></div>
   </div>
 
+  <!-- THẺ TÀI XẾ ĐƯỢC CHỌN (GẮN Ô GHI CHÚ VÀO ĐÂY) -->
   <div class="card">
     <h4 style="margin: 0 0 6px 0; color: #334155; font-size: 14px;">Tài Xế Được Chọn</h4>
     <div id="driver-info" style="color: #64748b; font-size: 13px;"><i>Chạm chọn tài xế từ danh sách hoặc trên bản đồ...</i></div>
    
-    <button id="zaloBtn" class="btn-zalo" style="display:none;" onclick="openZalo()">💬 Nhắn Zalo (Tự động Copy)</button>
+    <!-- Ô Ghi chú ẩn mặc định, chỉ hiện khi đã chọn tài xế -->
+    <div id="noteContainer" style="display: none; margin-top: 12px; margin-bottom: 4px;">
+      <input type="text" id="noteInput" placeholder="📝 Thêm số nhà, ngõ, ghi chú cho tài xế..." autocomplete="off" style="width: 100%; box-sizing: border-box; padding: 10px 12px; font-size: 13px; background-color: #f0fdf4; border: 1px dashed #22c55e; border-radius: 8px; outline: none; color: #0f172a;">
+    </div>
+
+    <button id="zaloBtn" class="btn-zalo" style="display:none; margin-top: 8px;" onclick="openZalo()">💬 Nhắn Zalo (Tự động Copy)</button>
     <a id="phoneBtn" href="#" class="btn-phone" style="display:none;" onclick="trackCall(event)">📞 Gọi Điện Trực Tiếp</a>
   </div>
 
-  <script src="utils.js?v=25"></script>
-  <script src="index.js?v=25"></script>
+  <script src="utils.js?v=26"></script>
+  <script src="index.js?v=26"></script>
 </body>
 </html>

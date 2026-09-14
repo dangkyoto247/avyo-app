@@ -538,8 +538,9 @@ function resetRoute() {
   document.getElementById('resetBtn').style.display = 'none';
   document.getElementById('pickupInput').value = '';
   document.getElementById('destInput').value = '';
-  // Xóa nội dung ghi chú khi nhấn Đặt Lại
-  document.getElementById('noteInput').value = '';
+  
+  const noteInput = document.getElementById('noteInput');
+  if (noteInput) noteInput.value = '';
 
   updatePrice();
   loadDrivers();
@@ -549,8 +550,13 @@ function resetRoute() {
 function deselectDriver() {
   selectedDriver = null;
   document.getElementById('driver-info').innerHTML = '<i>Chạm chọn tài xế từ danh sách hoặc trên bản đồ...</i>';
+  
   document.getElementById('zaloBtn').style.display = 'none';
   document.getElementById('phoneBtn').style.display = 'none';
+  
+  const noteContainer = document.getElementById('noteContainer');
+  if (noteContainer) noteContainer.style.display = 'none';
+  
   updatePrice();
   updateGuide();
 }
@@ -609,8 +615,8 @@ async function openZalo() {
     msg += `\n💰 Cước ước tính: ${selectedDriver.vehicle_type === 'truck' ? 'Thỏa thuận' : currentPrice.toLocaleString('vi-VN') + ' VNĐ'}`;
   }
 
-  // BỔ SUNG: Gắn nội dung Ghi chú vào tin nhắn Zalo
-  const noteText = document.getElementById('noteInput').value.trim();
+  const noteInput = document.getElementById('noteInput');
+  const noteText = noteInput ? noteInput.value.trim() : '';
   if (noteText) {
     msg += `\n📝 Ghi chú: ${noteText}`;
   }
@@ -774,8 +780,13 @@ async function selectDriver(driver) {
 
   document.getElementById('phoneBtn').href = `tel:${driver.phone}`;
   updatePrice();
+  
+  // HIỆN CÁC NÚT VÀ KHUNG GHI CHÚ KHI CHỌN XE
   document.getElementById('zaloBtn').style.display = 'block';
   document.getElementById('phoneBtn').style.display = 'block';
+  
+  const noteContainer = document.getElementById('noteContainer');
+  if (noteContainer) noteContainer.style.display = 'block';
 
   renderDriverMarkers();
 
