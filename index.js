@@ -13,16 +13,16 @@ const map = L.map('map', {
 
 L.control.zoom({ position: 'topright' }).addTo(map);
 
-// Nền bản đồ Google Maps Tiles: Cấu hình mới khắc phục sọc trắng
+// Nền bản đồ Google Maps Tiles: Tải mượt liên tục, triệt tiêu vùng xám & sọc trắng
 const googleLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
   subdomains: ['0', '1', '2', '3'],
   maxZoom: 20,
   tileSize: 256,
   zoomOffset: 0,
   attribution: '&copy; Google Maps',
-  keepBuffer: 8,
-  updateWhenZooming: false, // Ngăn xé hình/hiện sọc trắng trong khi thao tác zoom
-  updateWhenIdle: true
+  keepBuffer: 15,          // Tải sẵn vùng đệm tile 15 hàng/cột xung quanh
+  updateWhenIdle: false,   // Nạp tile liên tục trực tiếp khi tay đang vuốt/kéo
+  updateWhenZooming: true  // Cập nhật tile lập tức trong cử chỉ phóng to/thu nhỏ
 });
 
 googleLayer.on('tileerror', function() {
@@ -35,7 +35,16 @@ googleLayer.on('tileerror', function() {
 });
 googleLayer.addTo(map);
 
+// Tự động re-render căn chỉnh kích thước khung chứa bản đồ
 setTimeout(() => { if (map) map.invalidateSize(); }, 300);
+
+window.addEventListener('resize', () => {
+  if (map) map.invalidateSize();
+});
+
+map.on('moveend resize', () => {
+  if (map) map.invalidateSize();
+});
 
 const SUPABASE_URL = 'https://yvucyqkglbgxvozrznir.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl2dWN5cWtnbGJneHZvenJ6bmlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkxMzA3ODAsImV4cCI6MjEwNDcwNjc4MH0.Zagl4i2LPmxW3w9ih0h4LRsrm-OOGtPcWgvEs2vHBqo';

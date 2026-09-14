@@ -345,9 +345,9 @@ body.dark-mode {
   color: #cbd5e1;
 }
 
-/* KHẮC PHỤC LỖI SỌC TRẮNG BẢN ĐỒ KHI ZOOM / PAN */
+/* KHẮC PHỤC LỖI SỌC TRẮNG VÀ VÙNG XÁM BẢN ĐỒ */
 .leaflet-container {
-  background-color: #e5e3df !important; /* Trùng màu nền chuẩn của Google Maps */
+  background-color: #e5e3df !important; /* Phủ màu nền chuẩn của Google Maps */
 }
 
 .dark-mode .leaflet-container {
@@ -355,7 +355,7 @@ body.dark-mode {
 }
 
 .leaflet-tile {
-  outline: 1px solid transparent; /* Khử khe hở viền subpixel giữa các tile */
+  outline: 1px solid transparent; /* Loại bỏ rãnh viền subpixel gây ra sọc trắng */
   -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
 }
