@@ -10,11 +10,13 @@ const map = L.map('map', {
 
 L.control.zoom({ position: 'topright' }).addTo(map);
 
-// Nền bản đồ Google Maps Tiles: Siêu tốc 5G, 0Đ, Không API Key
+// Nền bản đồ Google Maps Tiles: Tải trước vùng đệm (Pre-loading Buffer) 0Đ
 const googleLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
   subdomains: ['0', '1', '2', '3'],
   maxZoom: 20,
-  attribution: '&copy; Google Maps'
+  attribution: '&copy; Google Maps',
+  keepBuffer: 10,       // Tải sẵn 10 hàng/cột tile xung quanh khung nhìn để vuốt nhanh không bị vỡ hình
+  updateWhenIdle: false // Tải tile liên tục ngay cả khi ngón tay đang trượt/kéo
 });
 
 googleLayer.on('tileerror', function() {
