@@ -1,22 +1,28 @@
 // MAPBOX ACCESS TOKEN CỦA BẠN (Đã khóa URL an toàn)
 const MAPBOX_TOKEN = 'pk.eyJ1IjoidHVhbmFuaDM0MTYyMyIsImEiOiJjbXUwcGhlYTExNHV5MnhvdjlyaXE5ZzM2In0.NN6tgrUWAN2tUubAZtTY_Q';
 
+// Khởi tạo bản đồ - Khóa nấc zoom số nguyên chống sọc trắng
 const map = L.map('map', { 
   preferCanvas: true,
   attributionControl: false,
   zoomControl: false,
-  fadeAnimation: true
+  fadeAnimation: true,
+  zoomSnap: 1,        // Khóa zoom theo nấc số nguyên, tránh lẻ pixel gây sọc
+  zoomDelta: 1        // Mỗi lần bấm zoom nhảy chuẩn 1 cấp độ
 }).setView([18.7034, 105.6832], 13);
 
 L.control.zoom({ position: 'topright' }).addTo(map);
 
-// Nền bản đồ Google Maps Tiles: Tải trước vùng đệm (Pre-loading Buffer) 0Đ
+// Nền bản đồ Google Maps Tiles: Cấu hình mới khắc phục sọc trắng
 const googleLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
   subdomains: ['0', '1', '2', '3'],
   maxZoom: 20,
+  tileSize: 256,
+  zoomOffset: 0,
   attribution: '&copy; Google Maps',
-  keepBuffer: 10,       // Tải sẵn 10 hàng/cột tile xung quanh khung nhìn để vuốt nhanh không bị vỡ hình
-  updateWhenIdle: false // Tải tile liên tục ngay cả khi ngón tay đang trượt/kéo
+  keepBuffer: 8,
+  updateWhenZooming: false, // Ngăn xé hình/hiện sọc trắng trong khi thao tác zoom
+  updateWhenIdle: true
 });
 
 googleLayer.on('tileerror', function() {

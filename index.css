@@ -54,6 +54,8 @@ body {
   border-radius: 16px; 
   box-shadow: 0 4px 12px rgba(0,0,0,0.08); 
   margin-bottom: 10px; 
+  overflow: hidden;
+  transform: translateZ(0); /* Kích hoạt GPU Hardware Acceleration */
 }
 
 .card { background: white; padding: 12px; border-radius: 16px; margin-bottom: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
@@ -341,4 +343,19 @@ body.dark-mode {
 
 .dark-mode .custom-alert-msg {
   color: #cbd5e1;
+}
+
+/* KHẮC PHỤC LỖI SỌC TRẮNG BẢN ĐỒ KHI ZOOM / PAN */
+.leaflet-container {
+  background-color: #e5e3df !important; /* Trùng màu nền chuẩn của Google Maps */
+}
+
+.dark-mode .leaflet-container {
+  background-color: #121212 !important;
+}
+
+.leaflet-tile {
+  outline: 1px solid transparent; /* Khử khe hở viền subpixel giữa các tile */
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
 }
