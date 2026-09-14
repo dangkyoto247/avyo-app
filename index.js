@@ -12,11 +12,11 @@ const map = L.map('map', {
 
 L.control.zoom({ position: 'topright' }).addTo(map);
 
-// ĐÃ SỬA: Sử dụng nền bản đồ OpenStreetMap miễn phí để loại bỏ lỗi "API KEY REQUIRED"
+// ĐÃ SỬA: Nền bản đồ OpenStreetMap miễn phí 100%, không tốn API key
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   maxZoom: 19,
   keepBuffer: 8,         // Nạp trước 8 ô bản đồ xung quanh màn hình
-  updateWhenIdle: false,  // Cập nhật ô ảnh ngay lập tức khi tay di chuyển
+  updateWhenIdle: false,  // Cập nhật ô ảnh ngay lập tức khi di chuyển
   updateWhenZooming: false
 }).addTo(map);
 
@@ -321,9 +321,14 @@ function onSearchInput(type) {
   }, 350);
 }
 
+// ĐÃ SỬA: Tích hợp vị trí hiện tại/tâm bản đồ vào tham số tìm kiếm địa chỉ
 async function fetchAddressSuggestions(query, callback) {
   const qLower = query.toLowerCase();
-  const localKey = `avyo_search_${qLower}`;
+  
+  const centerPoint = markerStart ? markerStart.getLatLng() : (userLatLng || map.getCenter());
+  const locationParam = centerPoint ? `&location=${centerPoint.lat},${centerPoint.lng}` : '';
+
+  const localKey = `avyo_search_${qLower}_${centerPoint ? centerPoint.lat.toFixed(2) + '_' + centerPoint.lng.toFixed(2) : ''}`;
   const localCache = localStorage.getItem(localKey);
  
   if (localCache) {
@@ -353,7 +358,7 @@ async function fetchAddressSuggestions(query, callback) {
 
   if (GOONG_API_KEY && GOONG_API_KEY !== 'NHẬP_GOONG_API_KEY_CỦA_BẠN_TẠI_ĐÂY') {
     try {
-      const res = await fetch(`https://api.goong.io/Place/AutoComplete?api_key=${GOONG_API_KEY}&input=${encodeURIComponent(query)}`);
+      const res = await fetch(`https://api.goong.io/Place/AutoComplete?api_key=${GOONG_API_KEY}&input=${encodeURIComponent(query)}${locationParam}`);
       const data = await res.json();
       if (data.predictions) {
         const results = [];
@@ -378,7 +383,8 @@ async function fetchAddressSuggestions(query, callback) {
   }
 
   try {
-    const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=5`);
+    const photonParam = centerPoint ? `&lat=${centerPoint.lat}&lon=${centerPoint.lng}` : '';
+    const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=5${photonParam}`);
     const data = await res.json();
     if (data.features) {
       const results = data.features.map(f => {
