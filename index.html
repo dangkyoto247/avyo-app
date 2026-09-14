@@ -18,8 +18,8 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/gh/ewoken/Leaflet.MovingMarker@master/MovingMarker.js"></script>
 
-  <!-- Đã nâng cấp CSS lên v24 -->
-  <link rel="stylesheet" href="index.css?v=24">
+  <!-- Đã nâng cấp CSS lên v25 -->
+  <link rel="stylesheet" href="index.css?v=25">
 </head>
 <body>
 
@@ -44,6 +44,11 @@
     <div class="search-input-group" style="margin-bottom: 6px;">
       <input type="text" id="destInput" placeholder="🚩 Tìm điểm đến (VD: Bến xe Vinh)..." autocomplete="off" oninput="onSearchInput('dest')" onfocus="showRecentDests()">
       <div id="destSuggestions" class="suggestions-list"></div>
+    </div>
+    
+    <!-- Ô nhập Ghi chú cho tài xế -->
+    <div class="search-input-group" style="margin-bottom: 8px;">
+      <input type="text" id="noteInput" placeholder="📝 Ghi chú (VD: Số nhà 45, ngõ 12, cổng màu xanh)..." autocomplete="off" style="font-size: 13px; background-color: #f8fafc; border: 1px dashed #cbd5e1;">
     </div>
 
     <!-- Nút địa điểm HOT chọn nhanh 0đ API -->
@@ -89,8 +94,8 @@
     <a id="phoneBtn" href="#" class="btn-phone" style="display:none;" onclick="trackCall(event)">📞 Gọi Điện Trực Tiếp</a>
   </div>
 
-  <!-- Đã nâng cấp JS lên v24 -->
-  <script src="utils.js?v=24"></script>
-  <script src="index.js?v=24"></script>
+  <!-- Đã nâng cấp JS lên v25 -->
+  <script src="utils.js?v=25"></script>
+  <script src="index.js?v=25"></script>
 </body>
 </html>

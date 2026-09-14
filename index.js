@@ -290,7 +290,6 @@ function quickSelectPreset(placeName) {
   onSearchInput(targetType, true);
 }
 
-// TÌM KIẾM THÔNG MINH: ĐIỂM ĐÓN KHÓA TỈNH - ĐIỂM ĐẾN TỰ ĐỘNG MỞ RỘNG TOÀN QUỐC
 function onSearchInput(type, isDirectCall = false) {
   clearTimeout(searchTimer);
   const query = document.getElementById(type + 'Input').value.trim();
@@ -308,16 +307,12 @@ function onSearchInput(type, isDirectCall = false) {
     
     let locationParams = '';
     if (centerPoint) {
-      // Ưu tiên các địa điểm gần vị trí hiện tại
       locationParams += `&proximity=${centerPoint.lng},${centerPoint.lat}`;
-      
-      // Tạo khung 50km xung quanh vị trí khách
       const minLng = centerPoint.lng - 0.5, minLat = centerPoint.lat - 0.5;
       const maxLng = centerPoint.lng + 0.5, maxLat = centerPoint.lat + 0.5;
       locationParams += `&bbox=${minLng},${minLat},${maxLng},${maxLat}`;
     }
     
-    // Tìm kiếm trong khung 50km
     let url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${MAPBOX_TOKEN}&country=vn&limit=5${locationParams}`;
 
     try {
@@ -325,7 +320,6 @@ function onSearchInput(type, isDirectCall = false) {
       if (!res.ok) throw new Error("Search error");
       let data = await res.json();
 
-      // CƠ CHẾ FALLBACK: Nếu là ĐIỂM ĐẾN mà trong 50km KHÔNG thấy -> Mở rộng tìm TOÀN QUỐC!
       if (type === 'dest' && (!data.features || data.features.length === 0) && centerPoint) {
         const fallbackUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${MAPBOX_TOKEN}&country=vn&limit=5&proximity=${centerPoint.lng},${centerPoint.lat}`;
         const fallbackRes = await fetch(fallbackUrl);
@@ -340,7 +334,6 @@ function onSearchInput(type, isDirectCall = false) {
         return;
       }
 
-      // Nếu chọn từ Preset HOT -> Tự động chốt vị trí top 1
       if (isDirectCall && data.features.length > 0) {
         const topResult = data.features[0];
         const placeName = topResult.text || topResult.place_name;
@@ -364,7 +357,6 @@ function onSearchInput(type, isDirectCall = false) {
 
       data.features.forEach(f => {
         const placeName = f.text || f.place_name;
-        // Xóa bớt chữ Vietnam dư thừa cho đẹp giao diện mobile
         const fullAddr = f.place_name.replace(', Vietnam', '').replace(', Việt Nam', '');
         const [lng, lat] = f.geometry.coordinates;
 
@@ -546,6 +538,8 @@ function resetRoute() {
   document.getElementById('resetBtn').style.display = 'none';
   document.getElementById('pickupInput').value = '';
   document.getElementById('destInput').value = '';
+  // Xóa nội dung ghi chú khi nhấn Đặt Lại
+  document.getElementById('noteInput').value = '';
 
   updatePrice();
   loadDrivers();
@@ -615,8 +609,14 @@ async function openZalo() {
     msg += `\n💰 Cước ước tính: ${selectedDriver.vehicle_type === 'truck' ? 'Thỏa thuận' : currentPrice.toLocaleString('vi-VN') + ' VNĐ'}`;
   }
 
+  // BỔ SUNG: Gắn nội dung Ghi chú vào tin nhắn Zalo
+  const noteText = document.getElementById('noteInput').value.trim();
+  if (noteText) {
+    msg += `\n📝 Ghi chú: ${noteText}`;
+  }
+
   navigator.clipboard.writeText(msg).then(() => {
-    alert("✅ ĐÃ COPY LỘ TRÌNH!\n\nHệ thống mở Zalo ngay bây giờ. Bạn hãy dán (Paste) nội dung tin nhắn gửi cho tài xế nhé!");
+    alert("✅ ĐÃ COPY LỘ TRÌNH VÀ GHI CHÚ!\n\nHệ thống mở Zalo ngay bây giờ. Bạn hãy dán (Paste) nội dung tin nhắn gửi cho tài xế nhé!");
     window.open(`https://zalo.me/${selectedDriver.phone}`, '_blank');
   }).catch(() => {
     window.open(`https://zalo.me/${selectedDriver.phone}?text=${encodeURIComponent(msg)}`, '_blank');
