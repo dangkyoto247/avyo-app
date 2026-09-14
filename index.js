@@ -37,6 +37,34 @@ let selectedDriver = null;
 let rawDriversData = [];
 let searchTimer = null;
 
+// Hàm giải mã chuỗi overview_polyline của Goong/Google thành danh sách tọa độ [lat, lng]
+function decodePolyline(encoded) {
+  let points = [];
+  let index = 0, len = encoded.length;
+  let lat = 0, lng = 0;
+  while (index < len) {
+    let b, shift = 0, result = 0;
+    do {
+      b = encoded.charCodeAt(index++) - 63;
+      result |= (b & 0x1f) << shift;
+      shift += 5;
+    } while (b >= 0x20);
+    let dlat = ((result & 1) ? ~(result >> 1) : (result >> 1));
+    lat += dlat;
+    shift = 0;
+    result = 0;
+    do {
+      b = encoded.charCodeAt(index++) - 63;
+      result |= (b & 0x1f) << shift;
+      shift += 5;
+    } while (b >= 0x20);
+    let dlng = ((result & 1) ? ~(result >> 1) : (result >> 1));
+    lng += dlng;
+    points.push([lat / 1e5, lng / 1e5]);
+  }
+  return points;
+}
+
 function getRecentPickups() {
   try {
     const data = localStorage.getItem(RECENT_PICKUPS_KEY);
@@ -321,7 +349,6 @@ function onSearchInput(type) {
   }, 350);
 }
 
-// HÀM TÌM KIẾM ĐÃ ĐƯỢC BỌC LÓT LỖI FETCH AN TOÀN TUYỆT ĐỐI
 async function fetchAddressSuggestions(query, callback) {
   const qLower = query.toLowerCase();
   
@@ -407,6 +434,7 @@ document.addEventListener('click', (e) => {
   }
 });
 
+// ĐÃ SỬA: Vẽ đường đi thực tế uốn lượn theo giao thông bằng Goong API / OSRM
 async function calculateRoute() {
   if (!markerStart || !markerEnd) return;
 
@@ -415,38 +443,48 @@ async function calculateRoute() {
 
   if (routeLine) map.removeLayer(routeLine);
 
-  const rawKm = calculateDistance(start.lat, start.lng, end.lat, end.lng);
-  currentDistance = rawKm.toFixed(1);
+  let routePoints = null;
 
+  // 1. Thử tính đường và giải mã tọa độ từ Goong Direction API
   if (GOONG_API_KEY && GOONG_API_KEY !== 'NHẬP_GOONG_API_KEY_CỦA_BẠN_TẠI_ĐÂY') {
     try {
       const res = await fetch(`https://api.goong.io/Direction?origin=${start.lat},${start.lng}&destination=${end.lat},${end.lng}&vehicle=car&api_key=${GOONG_API_KEY}`);
-      if (!res.ok) throw new Error("Goong Direction API Error");
-      const data = await res.json();
-      if (data.routes && data.routes.length > 0) {
-        currentDistance = (data.routes[0].legs[0].distance.value / 1000).toFixed(1);
-        drawFallbackRoute(start, end);
-      } else {
-        drawFallbackRoute(start, end);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.routes && data.routes.length > 0) {
+          currentDistance = (data.routes[0].legs[0].distance.value / 1000).toFixed(1);
+          if (data.routes[0].overview_polyline && data.routes[0].overview_polyline.points) {
+            routePoints = decodePolyline(data.routes[0].overview_polyline.points);
+          }
+        }
       }
-    } catch(err) { drawFallbackRoute(start, end); }
-  } else {
+    } catch(err) {
+      console.warn("Goong Direction failed, fallback to OSRM:", err);
+    }
+  }
+
+  // 2. Nếu Goong không trả về được nét vẽ, dự phòng bằng OSRM Routing
+  if (!routePoints) {
     try {
       const response = await fetch(`https://router.project-osrm.org/route/v1/driving/${start.lng},${start.lat};${end.lng},${end.lat}?overview=full&geometries=geojson`);
-      if (!response.ok) throw new Error("OSRM Route Error");
-      const data = await response.json();
-
-      if (data.routes && data.routes.length > 0) {
-        const coordinates = data.routes[0].geometry.coordinates.map(coord => [coord[1], coord[0]]);
-        routeLine = L.polyline(coordinates, { color: '#00b14f', weight: 5, opacity: 0.85 }).addTo(map);
-        map.fitBounds(routeLine.getBounds(), { padding: [40, 40] });
-        currentDistance = (data.routes[0].distance / 1000).toFixed(1);
-      } else {
-        drawFallbackRoute(start, end);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.routes && data.routes.length > 0) {
+          routePoints = data.routes[0].geometry.coordinates.map(coord => [coord[1], coord[0]]);
+          currentDistance = (data.routes[0].distance / 1000).toFixed(1);
+        }
       }
     } catch (err) {
-      drawFallbackRoute(start, end);
+      console.warn("OSRM Routing failed:", err);
     }
+  }
+
+  // 3. Vẽ đường đi lên bản đồ (Đường uốn lượn thực tế hoặc dự phòng nét thẳng nếu thất bại cả 2 API)
+  if (routePoints && routePoints.length > 0) {
+    routeLine = L.polyline(routePoints, { color: '#00b14f', weight: 5, opacity: 0.85 }).addTo(map);
+    map.fitBounds(routeLine.getBounds(), { padding: [40, 40] });
+  } else {
+    drawFallbackRoute(start, end);
   }
 
   document.getElementById('distance').innerText = currentDistance;
