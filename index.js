@@ -12,10 +12,9 @@ const map = L.map('map', {
 
 L.control.zoom({ position: 'topright' }).addTo(map);
 
-// Sử dụng nền bản đồ CartoDB Voyager gốc kèm cấu hình nạp trước chống mảng xám
-L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+// ĐÃ SỬA: Sử dụng nền bản đồ OpenStreetMap miễn phí để loại bỏ lỗi "API KEY REQUIRED"
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   maxZoom: 19,
-  subdomains: 'abcd',
   keepBuffer: 8,         // Nạp trước 8 ô bản đồ xung quanh màn hình
   updateWhenIdle: false,  // Cập nhật ô ảnh ngay lập tức khi tay di chuyển
   updateWhenZooming: false
