@@ -1,4 +1,4 @@
-// MAPBOX ACCESS TOKEN CỦA BẠN
+// MAPBOX ACCESS TOKEN CỦA BẠN (Đã khóa URL an toàn)
 const MAPBOX_TOKEN = 'pk.eyJ1IjoidHVhbmFuaDM0MTYyMyIsImEiOiJjbXUwcGhlYTExNHV5MnhvdjlyaXE5ZzM2In0.NN6tgrUWAN2tUubAZtTY_Q';
 
 const map = L.map('map', { 
@@ -45,7 +45,6 @@ let rawDriversData = [];
 let searchTimer = null;
 let mapboxTimeout = null;
 
-// LỚP 1: BỘ NHỚ LƯU TRỮ ĐỊA ĐIỂM GẦN ĐÂY (0Đ API)
 function getRecentPickups() {
   try {
     const data = localStorage.getItem(RECENT_PICKUPS_KEY);
@@ -285,16 +284,13 @@ map.on('click', function(e) {
   }
 });
 
-// NÚT ĐỊA ĐIỂM HOT CHỌN NHANH (LỚP 1)
 function quickSelectPreset(placeName) {
   const targetType = !markerStart ? 'pickup' : 'dest';
   document.getElementById(targetType + 'Input').value = placeName;
-  
-  // Tự động kích hoạt tìm kiếm Mapbox Geocoding ngay
   onSearchInput(targetType, true);
 }
 
-// TÌM KIẾM ĐỊA CHỈ MAPBOX GEOCODING (LỚP 2 KHÓA BÁN KÍNH + LỚP 3 API 100K MIỄN PHÍ)
+// TÌM KIẾM THÔNG MINH: ĐIỂM ĐÓN KHÓA TỈNH - ĐIỂM ĐẾN TỰ ĐỘNG MỞ RỘNG TOÀN QUỐC
 function onSearchInput(type, isDirectCall = false) {
   clearTimeout(searchTimer);
   const query = document.getElementById(type + 'Input').value.trim();
@@ -310,16 +306,33 @@ function onSearchInput(type, isDirectCall = false) {
   const executeSearch = async () => {
     const centerPoint = markerStart ? markerStart.getLatLng() : (userLatLng || map.getCenter());
     
-    // Lớp 2: Khóa bán kính tìm kiếm ưu tiên khu vực xung quanh vị trí khách (lng,lat)
-    const proximityParam = centerPoint ? `&proximity=${centerPoint.lng},${centerPoint.lat}` : '';
+    let locationParams = '';
+    if (centerPoint) {
+      // Ưu tiên các địa điểm gần vị trí hiện tại
+      locationParams += `&proximity=${centerPoint.lng},${centerPoint.lat}`;
+      
+      // Tạo khung 50km xung quanh vị trí khách
+      const minLng = centerPoint.lng - 0.5, minLat = centerPoint.lat - 0.5;
+      const maxLng = centerPoint.lng + 0.5, maxLat = centerPoint.lat + 0.5;
+      locationParams += `&bbox=${minLng},${minLat},${maxLng},${maxLat}`;
+    }
     
-    // Lớp 3: Mapbox Geocoding API chính xác 100%, giới hạn lãnh thổ Việt Nam
-    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${MAPBOX_TOKEN}&country=vn&limit=5${proximityParam}`;
+    // Tìm kiếm trong khung 50km
+    let url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${MAPBOX_TOKEN}&country=vn&limit=5${locationParams}`;
 
     try {
-      const res = await fetch(url);
+      let res = await fetch(url);
       if (!res.ok) throw new Error("Search error");
-      const data = await res.json();
+      let data = await res.json();
+
+      // CƠ CHẾ FALLBACK: Nếu là ĐIỂM ĐẾN mà trong 50km KHÔNG thấy -> Mở rộng tìm TOÀN QUỐC!
+      if (type === 'dest' && (!data.features || data.features.length === 0) && centerPoint) {
+        const fallbackUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${MAPBOX_TOKEN}&country=vn&limit=5&proximity=${centerPoint.lng},${centerPoint.lat}`;
+        const fallbackRes = await fetch(fallbackUrl);
+        if (fallbackRes.ok) {
+          data = await fallbackRes.json();
+        }
+      }
       
       listEl.innerHTML = '';
       if (!data.features || data.features.length === 0) {
@@ -327,7 +340,7 @@ function onSearchInput(type, isDirectCall = false) {
         return;
       }
 
-      // Nếu chọn từ Preset HOT -> Tự động chốt vị trí top 1 ngay lập tức
+      // Nếu chọn từ Preset HOT -> Tự động chốt vị trí top 1
       if (isDirectCall && data.features.length > 0) {
         const topResult = data.features[0];
         const placeName = topResult.text || topResult.place_name;
@@ -351,7 +364,8 @@ function onSearchInput(type, isDirectCall = false) {
 
       data.features.forEach(f => {
         const placeName = f.text || f.place_name;
-        const fullAddr = f.place_name;
+        // Xóa bớt chữ Vietnam dư thừa cho đẹp giao diện mobile
+        const fullAddr = f.place_name.replace(', Vietnam', '').replace(', Việt Nam', '');
         const [lng, lat] = f.geometry.coordinates;
 
         const div = document.createElement('div');
@@ -384,7 +398,6 @@ function onSearchInput(type, isDirectCall = false) {
   if (isDirectCall) {
     executeSearch();
   } else {
-    // Chờ dừng gõ 350ms mới gửi Request để tiết kiệm tối đa API
     searchTimer = setTimeout(executeSearch, 350);
   }
 }
