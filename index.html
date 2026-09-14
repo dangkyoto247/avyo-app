@@ -18,7 +18,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/gh/ewoken/Leaflet.MovingMarker@master/MovingMarker.js"></script>
 
-  <link rel="stylesheet" href="index.css?v=27">
+  <link rel="stylesheet" href="index.css?v=28">
 </head>
 <body>
 
@@ -33,25 +33,18 @@
     <div class="filter-chip" onclick="selectFilter('car', this)">🚕 Ô tô</div>
     <div class="filter-chip" onclick="selectFilter('driver', this)">👤 Lái xe hộ</div>
     <div class="filter-chip" onclick="selectFilter('truck', this)">🚚 Chở hàng</div>
+    <div class="filter-chip" onclick="selectFilter('other', this)">✨ Khác</div>
   </div>
 
-  <!-- CỤM TÌM KIẾM TRÊN CÙNG ĐÃ ĐƯỢC LÀM GỌN -->
+  <!-- CỤM TÌM KIẾM TRÊN CÙNG -->
   <div class="card" style="margin-bottom: 8px; padding: 8px 10px;">
     <div class="search-input-group">
       <input type="text" id="pickupInput" placeholder="📍 Tìm điểm đón (VD: Sân bay Vinh)..." autocomplete="off" oninput="onSearchInput('pickup')" onfocus="showRecentPickups()">
       <div id="pickupSuggestions" class="suggestions-list"></div>
     </div>
-    <div class="search-input-group" style="margin-bottom: 6px;">
+    <div class="search-input-group" style="margin-bottom: 0px;">
       <input type="text" id="destInput" placeholder="🚩 Tìm điểm đến (VD: Bến xe Vinh)..." autocomplete="off" oninput="onSearchInput('dest')" onfocus="showRecentDests()">
       <div id="destSuggestions" class="suggestions-list"></div>
-    </div>
-    
-    <!-- Nút địa điểm HOT chọn nhanh 0đ API -->
-    <div style="display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; -webkit-overflow-scrolling: touch;">
-      <button class="preset-chip" onclick="quickSelectPreset('Sân bay Vinh')" style="font-size: 11px; padding: 4px 10px; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 12px; white-space: nowrap; color: #334155; font-weight: 600; cursor: pointer;">✈️ Sân bay Vinh</button>
-      <button class="preset-chip" onclick="quickSelectPreset('Bến xe Vinh')" style="font-size: 11px; padding: 4px 10px; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 12px; white-space: nowrap; color: #334155; font-weight: 600; cursor: pointer;">🚌 Bến xe Vinh</button>
-      <button class="preset-chip" onclick="quickSelectPreset('Bệnh viện Cửa Đông')" style="font-size: 11px; padding: 4px 10px; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 12px; white-space: nowrap; color: #334155; font-weight: 600; cursor: pointer;">🏥 BV Cửa Đông</button>
-      <button class="preset-chip" onclick="quickSelectPreset('Ga Vinh')" style="font-size: 11px; padding: 4px 10px; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 12px; white-space: nowrap; color: #334155; font-weight: 600; cursor: pointer;">🚆 Ga Vinh</button>
     </div>
   </div>
 
@@ -81,7 +74,7 @@
     <div id="top3List"></div>
   </div>
 
-  <!-- THẺ TÀI XẾ ĐƯỢC CHỌN (GẮN Ô GHI CHÚ VÀO ĐÂY) -->
+  <!-- THẺ TÀI XẾ ĐƯỢC CHỌN -->
   <div class="card">
     <h4 style="margin: 0 0 6px 0; color: #334155; font-size: 14px;">Tài Xế Được Chọn</h4>
     <div id="driver-info" style="color: #64748b; font-size: 13px;"><i>Chạm chọn tài xế từ danh sách hoặc trên bản đồ...</i></div>
@@ -95,7 +88,7 @@
     <a id="phoneBtn" href="#" class="btn-phone" style="display:none;" onclick="trackCall(event)">📞 Gọi Điện Trực Tiếp</a>
   </div>
 
-  <script src="utils.js?v=27"></script>
-  <script src="index.js?v=27"></script>
+  <script src="utils.js?v=28"></script>
+  <script src="index.js?v=28"></script>
 </body>
 </html>

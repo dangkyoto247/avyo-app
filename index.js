@@ -222,6 +222,24 @@ function selectFilter(type, element) {
     deselectDriver();
   }
 
+  if (type === 'other') {
+    deselectDriver();
+    alert("🚌 Xe tiện chuyến\n\n⚠️ Dịch vụ đang trong quá trình phát triển, sẽ sớm ra mắt!");
+    
+    const top3Card = document.getElementById('top3Card');
+    const top3List = document.getElementById('top3List');
+    const radiusBadge = document.getElementById('radiusBadge');
+    
+    top3Card.style.display = 'block';
+    radiusBadge.innerText = 'Đang phát triển';
+    top3List.innerHTML = `
+      <div style="font-size:13px; color:#0369a1; text-align:center; padding:16px 12px; background:#f0f9ff; border-radius:12px; border:1.5px solid #bae6fd;">
+        🚌 <b>Dịch vụ Xe Tiện Chuyến</b><br>
+        <span style="font-size:12px; color:#0284c7; display:block; margin-top:4px;">(Đang phát triển - Sẽ sớm ra mắt quý khách!)</span>
+      </div>`;
+    return;
+  }
+
   loadDrivers();
 }
 
@@ -591,7 +609,13 @@ const icons = {
   'truck': L.divIcon({ html: '<div class="vehicle-icon">🚚</div>', className: 'custom-icon', iconSize: [30, 30], iconAnchor: [15, 15] })
 };
 
-const typeNames = { 'bike': '🛵 Xe máy', 'car': '🚕 Ô tô', 'driver': '👤 Lái xe hộ', 'truck': '🚚 Xe chở hàng' };
+const typeNames = { 
+  'bike': '🛵 Xe máy', 
+  'car': '🚕 Ô tô', 
+  'driver': '👤 Lái xe hộ', 
+  'truck': '🚚 Xe chở hàng',
+  'other': '✨ Khác'
+};
 
 async function trackCall(event) {
   if (event) event.preventDefault();
