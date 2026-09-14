@@ -347,8 +347,10 @@ function onSearchInput(type, isDirectCall = false) {
     let locationParams = '';
     if (centerPoint) {
       locationParams += `&proximity=${centerPoint.lng},${centerPoint.lat}`;
-      const minLng = centerPoint.lng - 0.5, minLat = centerPoint.lat - 0.5;
-      const maxLng = centerPoint.lng + 0.5, maxLat = centerPoint.lat + 0.5;
+      
+      // ±0.135 độ tương đương với bán kính khoảng ~15km xung quanh tâm
+      const minLng = centerPoint.lng - 0.135, minLat = centerPoint.lat - 0.135;
+      const maxLng = centerPoint.lng + 0.135, maxLat = centerPoint.lat + 0.135;
       locationParams += `&bbox=${minLng},${minLat},${maxLng},${maxLat}`;
     }
     
@@ -359,7 +361,8 @@ function onSearchInput(type, isDirectCall = false) {
       if (!res.ok) throw new Error("Search error");
       let data = await res.json();
 
-      if (type === 'dest' && (!data.features || data.features.length === 0) && centerPoint) {
+      // DỰ PHÒNG: Nếu tìm trong bán kính 15km không có kết quả, tự động mở rộng tìm kiếm xa hơn
+      if ((!data.features || data.features.length === 0) && centerPoint) {
         const fallbackUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${MAPBOX_TOKEN}&country=vn&limit=5&proximity=${centerPoint.lng},${centerPoint.lat}`;
         const fallbackRes = await fetch(fallbackUrl);
         if (fallbackRes.ok) {
