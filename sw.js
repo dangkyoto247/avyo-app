@@ -1,10 +1,11 @@
-const TILE_CACHE_NAME = 'carto-tiles-v1';
-const STATIC_CACHE_NAME = 'avyo-static-v8';
+const TILE_CACHE_NAME = 'osm-tiles-v1';
+const STATIC_CACHE_NAME = 'avyo-static-v10';
 
 const STATIC_ASSETS = [
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',
+  'https://cdn.jsdelivr.net/npm/sweetalert2@11',
   'utils.js',
   'index.css',
   'index.js',
@@ -12,6 +13,7 @@ const STATIC_ASSETS = [
   'driver.js',
   'admin.css',
   'admin.js',
+  'admin.html',
   'offline.html'
 ];
 
@@ -47,7 +49,7 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
-// 2. XÓA CACHE CŨ KHI NÂNG CẤP PHIÊN BẢN V8
+// 2. XÓA SẠCH CACHE CỦ (BAO GỒM BẢN ĐỒ CARTO CŨ) KHI NÂNG CẤP V10
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
@@ -89,8 +91,8 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 4. MẢNH HÌNH ẢNH BẢN ĐỒ CARTODB
-  if (requestUrl.includes('basemaps.cartocdn.com')) {
+  // 4. MẢNH HÌNH ẢNH BẢN ĐỒ OPENSTREETMAP (Đã chuyển từ CartoDB sang OSM)
+  if (requestUrl.includes('tile.openstreetmap.org')) {
     event.respondWith(
       caches.open(TILE_CACHE_NAME).then(async (cache) => {
         const cachedResponse = await cache.match(event.request);
