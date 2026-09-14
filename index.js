@@ -256,7 +256,7 @@ function setPickupLocation(latlng, isAuto = false) {
   markerStart = L.marker(latlng, { icon: pickupIcon, draggable: true }).addTo(map)
     .bindPopup(isAuto ? "<b style='color:#dc2626;'>📍 Điểm đón của bạn</b><br><small><i>(Nhấn giữ & kéo để đổi vị trí)</i></small>" : "<b style='color:#dc2626;'>📍 Điểm đón</b><br><small><i>(Nhấn giữ & kéo để đổi vị trí)</i></small>")
     .openPopup();
-   
+    
   markerStart.on('drag', () => {
     calculateFastRoute();
   });
@@ -269,7 +269,7 @@ function setPickupLocation(latlng, isAuto = false) {
       loadDrivers();
     }, 1200);
   });
-   
+    
   document.getElementById('resetBtn').style.display = 'block';
   if (markerEnd) calculateMapboxRoute();
 
@@ -283,7 +283,7 @@ function setDestLocation(latlng) {
   markerEnd = L.marker(latlng, { icon: destinationIcon, draggable: true }).addTo(map)
     .bindPopup("<b style='color:#2563eb;'>🚩 Điểm đến</b><br><small><i>(Nhấn giữ & kéo để đổi vị trí)</i></small>")
     .openPopup();
-   
+    
   markerEnd.on('drag', () => {
     calculateFastRoute();
   });
@@ -296,7 +296,7 @@ function setDestLocation(latlng) {
       loadDrivers();
     }, 1200);
   });
-   
+    
   document.getElementById('resetBtn').style.display = 'block';
   calculateMapboxRoute();
   loadDrivers();
@@ -329,6 +329,7 @@ function quickSelectPreset(placeName) {
   onSearchInput(targetType, true);
 }
 
+// XỬ LÝ TÌM KIẾM ĐỊA CHỈ: ƯU TIÊN GOOGLE PLACES API (DỰ PHÒNG MAPBOX)
 function onSearchInput(type, isDirectCall = false) {
   clearTimeout(searchTimer);
   const query = document.getElementById(type + 'Input').value.trim();
@@ -343,12 +344,96 @@ function onSearchInput(type, isDirectCall = false) {
 
   const executeSearch = async () => {
     const centerPoint = markerStart ? markerStart.getLatLng() : (userLatLng || map.getCenter());
-    
+
+    // 1. DÙNG GOOGLE PLACES API (Tự động lấy dữ liệu Google Places)
+    if (typeof google !== 'undefined' && google.maps && google.maps.places) {
+      try {
+        const service = new google.maps.places.AutocompleteService();
+        const geocoder = new google.maps.Geocoder();
+
+        const request = {
+          input: query,
+          componentRestrictions: { country: 'vn' }
+        };
+
+        if (centerPoint) {
+          request.locationBias = new google.maps.Circle({
+            center: { lat: centerPoint.lat, lng: centerPoint.lng },
+            radius: 15000
+          });
+        }
+
+        service.getPlacePredictions(request, (predictions, status) => {
+          if (status !== google.maps.places.PlacesServiceStatus.OK || !predictions || predictions.length === 0) {
+            listEl.style.display = 'none';
+            return;
+          }
+
+          listEl.innerHTML = '';
+
+          if (isDirectCall && predictions.length > 0) {
+            const topResult = predictions[0];
+            geocoder.geocode({ placeId: topResult.place_id }, (results, gStatus) => {
+              if (gStatus === 'OK' && results && results[0]) {
+                const latlng = L.latLng(results[0].geometry.location.lat(), results[0].geometry.location.lng());
+                const placeName = topResult.structured_formatting ? topResult.structured_formatting.main_text : topResult.description;
+                
+                document.getElementById(type + 'Input').value = placeName;
+                listEl.style.display = 'none';
+                map.setView(latlng, 15);
+
+                if (type === 'pickup') {
+                  setPickupLocation(latlng);
+                  saveRecentPickup(placeName, latlng.lat, latlng.lng);
+                } else {
+                  setDestLocation(latlng);
+                  saveRecentDest(placeName, latlng.lat, latlng.lng);
+                }
+              }
+            });
+            return;
+          }
+
+          predictions.forEach(p => {
+            const mainText = p.structured_formatting ? p.structured_formatting.main_text : p.description;
+            const secondaryText = p.structured_formatting ? p.structured_formatting.secondary_text : '';
+
+            const div = document.createElement('div');
+            div.className = 'suggestion-item';
+            div.innerHTML = `📍 <b>${mainText}</b> <small style="color:#64748b; font-size:11px;">(${secondaryText})</small>`;
+            
+            div.onclick = () => {
+              geocoder.geocode({ placeId: p.place_id }, (results, gStatus) => {
+                if (gStatus === 'OK' && results && results[0]) {
+                  const latlng = L.latLng(results[0].geometry.location.lat(), results[0].geometry.location.lng());
+                  document.getElementById(type + 'Input').value = mainText;
+                  listEl.style.display = 'none';
+                  map.setView(latlng, 15);
+
+                  if (type === 'pickup') {
+                    setPickupLocation(latlng);
+                    saveRecentPickup(mainText, latlng.lat, latlng.lng);
+                  } else {
+                    setDestLocation(latlng);
+                    saveRecentDest(mainText, latlng.lat, latlng.lng);
+                  }
+                }
+              });
+            };
+            listEl.appendChild(div);
+          });
+          listEl.style.display = 'block';
+        });
+        return;
+      } catch (err) {
+        console.warn("Google Places bận, chuyển sang Mapbox...", err);
+      }
+    }
+
+    // 2. DỰ PHÒNG MAPBOX (Khi Google chưa tải xong hoặc có sự cố)
     let locationParams = '';
     if (centerPoint) {
       locationParams += `&proximity=${centerPoint.lng},${centerPoint.lat}`;
-      
-      // ±0.135 độ tương đương với bán kính khoảng ~15km xung quanh tâm
       const minLng = centerPoint.lng - 0.135, minLat = centerPoint.lat - 0.135;
       const maxLng = centerPoint.lng + 0.135, maxLat = centerPoint.lat + 0.135;
       locationParams += `&bbox=${minLng},${minLat},${maxLng},${maxLat}`;
@@ -361,13 +446,10 @@ function onSearchInput(type, isDirectCall = false) {
       if (!res.ok) throw new Error("Search error");
       let data = await res.json();
 
-      // DỰ PHÒNG: Nếu tìm trong bán kính 15km không có kết quả, tự động mở rộng tìm kiếm xa hơn
       if ((!data.features || data.features.length === 0) && centerPoint) {
         const fallbackUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${MAPBOX_TOKEN}&country=vn&limit=5&proximity=${centerPoint.lng},${centerPoint.lat}`;
         const fallbackRes = await fetch(fallbackUrl);
-        if (fallbackRes.ok) {
-          data = await fallbackRes.json();
-        }
+        if (fallbackRes.ok) data = await fallbackRes.json();
       }
       
       listEl.innerHTML = '';
@@ -383,7 +465,6 @@ function onSearchInput(type, isDirectCall = false) {
         
         document.getElementById(type + 'Input').value = placeName;
         listEl.style.display = 'none';
-        
         const latlng = L.latLng(lat, lng);
         map.setView(latlng, 15);
 
