@@ -545,6 +545,7 @@ function calculateFastRoute() {
   updatePrice();
 }
 
+// XỬ LÝ TÍNH ĐƯỜNG ĐỊNH HUYẾT: MAPBOX DIRECTIONS (MIỄN PHÍ 100k LƯỢT/THÁNG) -> DỰ PHÒNG NẾU LỖI LÀ NẾT ĐỨT TOÁN HỌC
 async function calculateMapboxRoute() {
   if (!markerStart || !markerEnd) return;
 
@@ -552,6 +553,7 @@ async function calculateMapboxRoute() {
   const end = markerEnd.getLatLng();
   let routePoints = null;
 
+  // 1. CHÍNH THỨC: LẤY LỘ TRÌNH VÀ KHOẢNG CÁCH CHÍNH XÁC TỪ MAPBOX
   if (MAPBOX_TOKEN) {
     try {
       const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${start.lng},${start.lat};${end.lng},${end.lat}?overview=full&geometries=geojson&access_token=${MAPBOX_TOKEN}`;
@@ -564,13 +566,15 @@ async function calculateMapboxRoute() {
         }
       }
     } catch (e) {
-      console.warn("Mapbox bận, nhảy về tuyến dự phòng...");
+      console.warn("Mapbox bận/lỗi kết nối, chuyển sang phương án đường thẳng nét đứt...");
     }
   }
 
   if (routeLine) map.removeLayer(routeLine);
 
+  // 2. VẼ ĐƯỜNG LÊN BẢN ĐỒ LEAFLET
   if (routePoints && routePoints.length > 0) {
+    // Mapbox hoạt động tốt: Vẽ tuyến đường nét liền màu xanh lá bám theo con đường
     routeLine = L.polyline(routePoints, { 
       color: '#00b14f', 
       weight: 6, 
@@ -580,6 +584,7 @@ async function calculateMapboxRoute() {
       smoothFactor: 1 
     }).addTo(map);
   } else {
+    // ĐÈN ĐỎ DỰ PHÒNG: Khi Mapbox lỗi -> Tính khoảng cách toán học (Haversine * 1.3) & vẽ nét đứt
     const straightKm = getHaversineDistance(start.lat, start.lng, end.lat, end.lng);
     currentDistance = (straightKm * 1.3).toFixed(1);
     routeLine = L.polyline([start, end], { 
