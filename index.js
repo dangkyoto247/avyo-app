@@ -1,7 +1,7 @@
 // ==========================================
 // KHU VỰC ĐIỀN GOONG API KEY (TÌM KIẾM & CHỈ ĐƯỜNG)
 // ==========================================
-const GOONG_API_KEY = 'NHẬP_GOONG_API_KEY_CỦA_BẠN_TẠI_ĐÂY'; 
+const GOONG_API_KEY = 'wZbBHiRfw0cPiZaPMXIIfRyXv7NOaMy2m5K5mF7l'; 
 
 const map = L.map('map', { 
   preferCanvas: true,
