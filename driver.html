@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Avyo - App Tài Xế</title>
  
-  <!-- Khai báo Icon và Manifest PWA -->
   <link rel="icon" href="driver.png" type="image/png">
   <link rel="apple-touch-icon" sizes="180x180" href="driver.png">
   <link rel="manifest" href="driver-manifest.json">
@@ -14,19 +13,16 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
  
-  <!-- Thư viện giao diện & kết nối -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
  
-  <link rel="stylesheet" href="driver.css?v=10">
+  <link rel="stylesheet" href="driver.css?v=12">
 </head>
 <body>
 
-  <!-- Nút Chế độ Tối/Sáng góc trên bên phải -->
   <button id="themeToggleBtn" class="theme-toggle-btn" onclick="toggleTheme()" title="Đổi giao diện Tối/Sáng">🌙</button>
 
-  <!-- Modal Xác nhận Đăng xuất Tùy chỉnh -->
   <div id="logoutModal" class="modal-overlay" style="display: none;">
     <div class="modal-card">
       <div class="modal-icon">🚪</div>
@@ -48,10 +44,7 @@
     <h2 style="margin-top: 0; color: #10b981;">🚕 Avyo Tài Xế</h2>
     <p style="color: #94a3b8; font-size: 14px; margin-bottom: 15px;">Đăng nhập để nhận cuốc xe</p>
    
-    <!-- Ô SĐT giữ bàn phím số -->
     <input type="tel" id="phoneInput" placeholder="Số điện thoại của bạn" autocomplete="off" inputmode="numeric" pattern="[0-9]*">
-    
-    <!-- Ô Mã PIN mở bàn phím chữ mặc định, cho phép đổi qua số & ký tự đặc biệt -->
     <input type="password" id="pinInput" placeholder="Mã PIN (Mật khẩu)" autocomplete="off">
    
     <button onclick="login()" style="margin-top: 15px;">ĐĂNG NHẬP</button>
@@ -125,6 +118,6 @@
   </div>
 
   <script src="utils.js"></script>
-  <script src="driver.js?v=10"></script>
+  <script src="driver.js?v=12"></script>
 </body>
 </html>

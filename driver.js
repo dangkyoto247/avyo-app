@@ -40,7 +40,6 @@ function toggleTheme() {
 
 initTheme();
 
-// TỰ ĐỘNG ĐIỀN SĐT ĐÃ LƯU TRƯỚC ĐÓ NẾU CÓ
 function initSavedPhone() {
   const savedPhone = localStorage.getItem('avyo_last_phone');
   if (savedPhone) {
@@ -153,7 +152,6 @@ async function login() {
   localStorage.setItem('avyo_driver_name', driverInfo.name);
   localStorage.setItem('avyo_session_token', newToken);
   
-  // LƯU LẠI SĐT KHI ĐĂNG NHẬP THÀNH CÔNG
   localStorage.setItem('avyo_last_phone', phone);
 
   window.location.reload();
@@ -163,10 +161,23 @@ function initDriverMap() {
   if (driverMap) return;
   driverMap = L.map('driverMap', { preferCanvas: true, attributionControl: false }).setView([18.7034, 105.6832], 14);
 
-  // Đã sửa thành OpenStreetMap theo yêu cầu
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19
-  }).addTo(driverMap);
+  const googleLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+    subdomains: ['0', '1', '2', '3'],
+    maxZoom: 20,
+    attribution: '&copy; Google Maps'
+  });
+
+  googleLayer.on('tileerror', function() {
+    if (driverMap.hasLayer(googleLayer)) {
+      driverMap.removeLayer(googleLayer);
+      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+        maxZoom: 19,
+        attribution: 'Tiles &copy; Esri'
+      }).addTo(driverMap);
+    }
+  });
+
+  googleLayer.addTo(driverMap);
 
   setTimeout(() => { if (driverMap) driverMap.invalidateSize(); }, 300);
 }
@@ -270,7 +281,6 @@ function executeLogout() {
   if (isOnline) toggleOnline();
   releaseWakeLock();
   hideNetworkAlert();
-  // Giữ lại 'avyo_last_phone', chỉ xóa phiên đăng nhập hiện tại
   localStorage.removeItem('avyo_driver_id');
   localStorage.removeItem('avyo_driver_name');
   localStorage.removeItem('avyo_session_token');

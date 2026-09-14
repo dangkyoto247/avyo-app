@@ -1,5 +1,5 @@
-const TILE_CACHE_NAME = 'google-tiles-v1';
-const STATIC_CACHE_NAME = 'avyo-static-v11';
+const TILE_CACHE_NAME = 'map-tiles-v2';
+const STATIC_CACHE_NAME = 'avyo-static-v12';
 
 const STATIC_ASSETS = [
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
@@ -14,6 +14,7 @@ const STATIC_ASSETS = [
   'admin.css',
   'admin.js',
   'admin.html',
+  'driver.html',
   'offline.html'
 ];
 
@@ -28,7 +29,6 @@ async function cleanResponse(response) {
   });
 }
 
-// 1. LƯU TRƯỚC VÀ LÀM SẠCH BỘ NHỚ CACHE
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(STATIC_CACHE_NAME).then(async (cache) => {
@@ -48,7 +48,6 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
-// 2. XÓA SẠCH CACHE CŨ KHI NÂNG CẤP V11
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
@@ -68,7 +67,6 @@ self.addEventListener('fetch', (event) => {
 
   if (event.request.method !== 'GET') return;
 
-  // 3. THƯ VIỆN & MÃ NGUỒN TĨNH
   if (STATIC_ASSETS.some(url => requestUrl.includes(url))) {
     event.respondWith(
       caches.open(STATIC_CACHE_NAME).then(async (cache) => {
@@ -90,8 +88,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 4. MẢNH HÌNH ẢNH BẢN ĐỒ GOOGLE (Nhận diện mt0, mt1, mt2.google.com)
-  if (requestUrl.includes('google.com/vt')) {
+  if (requestUrl.includes('google.com/vt') || requestUrl.includes('arcgisonline.com')) {
     event.respondWith(
       caches.open(TILE_CACHE_NAME).then(async (cache) => {
         const cachedResponse = await cache.match(event.request);
@@ -110,7 +107,6 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 5. TRUY CẬP TRANG GIAO DIỆN (HTML)
   if (event.request.mode === 'navigate' || (event.request.headers.get('accept') && event.request.headers.get('accept').includes('text/html'))) {
     event.respondWith(
       (async () => {

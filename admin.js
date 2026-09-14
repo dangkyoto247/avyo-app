@@ -199,12 +199,23 @@ function initMap() {
   if (map) return;
   map = L.map('map', { preferCanvas: true, attributionControl: false }).setView([18.7034, 105.6832], 12);
  
-  // Đã cập nhật sang Google Maps: Tải cực nhanh trên 4G/5G, miễn phí 100%
-  L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+  const googleLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
     subdomains: ['0', '1', '2', '3'],
     maxZoom: 20,
     attribution: '&copy; Google Maps'
-  }).addTo(map);
+  });
+
+  googleLayer.on('tileerror', function() {
+    if (map.hasLayer(googleLayer)) {
+      map.removeLayer(googleLayer);
+      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+        maxZoom: 19,
+        attribution: 'Tiles &copy; Esri'
+      }).addTo(map);
+    }
+  });
+
+  googleLayer.addTo(map);
 
   setTimeout(() => { if (map) map.invalidateSize(); }, 300);
 }
