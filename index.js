@@ -15,8 +15,8 @@ L.control.zoom({ position: 'topright' }).addTo(map);
 // Nền bản đồ OpenStreetMap miễn phí 100%, không tốn API key
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   maxZoom: 19,
-  keepBuffer: 8,         // Nạp trước 8 ô bản đồ xung quanh màn hình
-  updateWhenIdle: false,  // Cập nhật ô ảnh ngay lập tức khi di chuyển
+  keepBuffer: 8,
+  updateWhenIdle: false,
   updateWhenZooming: false
 }).addTo(map);
 
@@ -321,16 +321,14 @@ function onSearchInput(type) {
   }, 350);
 }
 
-// ĐÃ SỬA: Ép Goong API định vị ưu tiên khu vực xung quanh bạn, loại bỏ cache cũ gây lệch tỉnh
+// HÀM TÌM KIẾM ĐÃ ĐƯỢC BỌC LÓT LỖI FETCH AN TOÀN TUYỆT ĐỐI
 async function fetchAddressSuggestions(query, callback) {
   const qLower = query.toLowerCase();
   
-  // Ưu tiên theo tọa độ: Điểm đón đã chọn > GPS vị trí hiện tại > Tâm bản đồ
   const centerPoint = markerStart ? markerStart.getLatLng() : (userLatLng || map.getCenter());
   const locationParam = centerPoint ? `&location=${centerPoint.lat},${centerPoint.lng}` : '';
 
-  // Sử dụng key v3 để tự động làm sạch cache cũ từ trình duyệt
-  const localKey = `avyo_search_v3_${qLower}_${centerPoint ? centerPoint.lat.toFixed(2) + '_' + centerPoint.lng.toFixed(2) : ''}`;
+  const localKey = `avyo_search_v4_${qLower}_${centerPoint ? centerPoint.lat.toFixed(2) + '_' + centerPoint.lng.toFixed(2) : ''}`;
   const localCache = localStorage.getItem(localKey);
  
   if (localCache) {
@@ -342,19 +340,26 @@ async function fetchAddressSuggestions(query, callback) {
   if (GOONG_API_KEY && GOONG_API_KEY !== 'NHẬP_GOONG_API_KEY_CỦA_BẠN_TẠI_ĐÂY') {
     try {
       const res = await fetch(`https://api.goong.io/Place/AutoComplete?api_key=${GOONG_API_KEY}&input=${encodeURIComponent(query)}${locationParam}`);
+      if (!res.ok) throw new Error(`Goong AutoComplete error: ${res.status}`);
+      
       const data = await res.json();
       if (data.predictions && data.predictions.length > 0) {
         const results = [];
         for (let p of data.predictions.slice(0, 5)) {
-          const detailRes = await fetch(`https://api.goong.io/Place/Detail?api_key=${GOONG_API_KEY}&place_id=${p.place_id}`);
-          const detailData = await detailRes.json();
-          if (detailData.result && detailData.result.geometry) {
-            results.push({
-              label: p.description,
-              lat: detailData.result.geometry.location.lat,
-              lng: detailData.result.geometry.location.lng,
-              is_cached: false
-            });
+          try {
+            const detailRes = await fetch(`https://api.goong.io/Place/Detail?api_key=${GOONG_API_KEY}&place_id=${p.place_id}`);
+            if (!detailRes.ok) continue;
+            const detailData = await detailRes.json();
+            if (detailData.result && detailData.result.geometry) {
+              results.push({
+                label: p.description,
+                lat: detailData.result.geometry.location.lat,
+                lng: detailData.result.geometry.location.lng,
+                is_cached: false
+              });
+            }
+          } catch(errDetail) {
+            console.warn("Goong Detail fetch failed:", errDetail);
           }
         }
         if (results.length > 0) {
@@ -362,12 +367,16 @@ async function fetchAddressSuggestions(query, callback) {
           return callback(results);
         }
       }
-    } catch(e) {}
+    } catch(errGoong) {
+      console.warn("Goong API AutoComplete failed, switching fallback:", errGoong);
+    }
   }
 
   try {
     const photonParam = centerPoint ? `&lat=${centerPoint.lat}&lon=${centerPoint.lng}` : '';
     const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=5${photonParam}`);
+    if (!res.ok) throw new Error("Photon fetch failed");
+    
     const data = await res.json();
     if (data.features) {
       const results = data.features.map(f => {
@@ -386,6 +395,7 @@ async function fetchAddressSuggestions(query, callback) {
       return callback(results);
     }
   } catch(e) {
+    console.warn("All search providers failed:", e);
     callback([]);
   }
 }
@@ -411,6 +421,7 @@ async function calculateRoute() {
   if (GOONG_API_KEY && GOONG_API_KEY !== 'NHẬP_GOONG_API_KEY_CỦA_BẠN_TẠI_ĐÂY') {
     try {
       const res = await fetch(`https://api.goong.io/Direction?origin=${start.lat},${start.lng}&destination=${end.lat},${end.lng}&vehicle=car&api_key=${GOONG_API_KEY}`);
+      if (!res.ok) throw new Error("Goong Direction API Error");
       const data = await res.json();
       if (data.routes && data.routes.length > 0) {
         currentDistance = (data.routes[0].legs[0].distance.value / 1000).toFixed(1);
@@ -422,6 +433,7 @@ async function calculateRoute() {
   } else {
     try {
       const response = await fetch(`https://router.project-osrm.org/route/v1/driving/${start.lng},${start.lat};${end.lng},${end.lat}?overview=full&geometries=geojson`);
+      if (!response.ok) throw new Error("OSRM Route Error");
       const data = await response.json();
 
       if (data.routes && data.routes.length > 0) {
