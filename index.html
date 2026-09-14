@@ -18,7 +18,6 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/gh/ewoken/Leaflet.MovingMarker@master/MovingMarker.js"></script>
 
-  <!-- Đã nâng cấp CSS lên v25 -->
   <link rel="stylesheet" href="index.css?v=25">
 </head>
 <body>
@@ -41,14 +40,15 @@
       <input type="text" id="pickupInput" placeholder="📍 Tìm điểm đón (VD: Sân bay Vinh)..." autocomplete="off" oninput="onSearchInput('pickup')" onfocus="showRecentPickups()">
       <div id="pickupSuggestions" class="suggestions-list"></div>
     </div>
-    <div class="search-input-group" style="margin-bottom: 6px;">
+    
+    <div class="search-input-group">
       <input type="text" id="destInput" placeholder="🚩 Tìm điểm đến (VD: Bến xe Vinh)..." autocomplete="off" oninput="onSearchInput('dest')" onfocus="showRecentDests()">
       <div id="destSuggestions" class="suggestions-list"></div>
     </div>
     
-    <!-- Ô nhập Ghi chú cho tài xế -->
-    <div class="search-input-group" style="margin-bottom: 8px;">
-      <input type="text" id="noteInput" placeholder="📝 Ghi chú (VD: Số nhà 45, ngõ 12, cổng màu xanh)..." autocomplete="off" style="font-size: 13px; background-color: #f8fafc; border: 1px dashed #cbd5e1;">
+    <!-- Ô Ghi Chú Đã Tối Ưu Hiển Thị Rõ Ràng -->
+    <div style="margin-top: 6px; margin-bottom: 8px;">
+      <input type="text" id="noteInput" placeholder="📝 Ghi chú (VD: Số nhà 45, ngõ 12, cổng xanh)..." autocomplete="off" style="width: 100%; box-sizing: border-box; padding: 8px 12px; font-size: 13px; background-color: #f8fafc; border: 1px dashed #94a3b8; border-radius: 8px; outline: none; color: #0f172a;">
     </div>
 
     <!-- Nút địa điểm HOT chọn nhanh 0đ API -->
@@ -94,7 +94,6 @@
     <a id="phoneBtn" href="#" class="btn-phone" style="display:none;" onclick="trackCall(event)">📞 Gọi Điện Trực Tiếp</a>
   </div>
 
-  <!-- Đã nâng cấp JS lên v25 -->
   <script src="utils.js?v=25"></script>
   <script src="index.js?v=25"></script>
 </body>
