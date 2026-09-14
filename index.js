@@ -329,7 +329,7 @@ function quickSelectPreset(placeName) {
   onSearchInput(targetType, true);
 }
 
-// XỬ LÝ TÌM KIẾM ĐỊA CHỈ: ƯU TIÊN GOOGLE PLACES API (DỰ PHÒNG MAPBOX)
+// XỬ LÝ TÌM KIẾM ĐỊA CHỈ: ƯU TIÊN 100% GOOGLE PLACES API (DỰ PHÒNG MAPBOX)
 function onSearchInput(type, isDirectCall = false) {
   clearTimeout(searchTimer);
   const query = document.getElementById(type + 'Input').value.trim();
@@ -345,7 +345,7 @@ function onSearchInput(type, isDirectCall = false) {
   const executeSearch = async () => {
     const centerPoint = markerStart ? markerStart.getLatLng() : (userLatLng || map.getCenter());
 
-    // 1. DÙNG GOOGLE PLACES API (Tự động lấy dữ liệu Google Places)
+    // 1. ƯU TIÊN 1: GOOGLE PLACES API CHUẨN XÁC
     if (typeof google !== 'undefined' && google.maps && google.maps.places) {
       try {
         const service = new google.maps.places.AutocompleteService();
@@ -357,72 +357,70 @@ function onSearchInput(type, isDirectCall = false) {
         };
 
         if (centerPoint) {
-          request.locationBias = new google.maps.Circle({
-            center: { lat: centerPoint.lat, lng: centerPoint.lng },
-            radius: 15000
-          });
+          request.location = new google.maps.LatLng(centerPoint.lat, centerPoint.lng);
+          request.radius = 20000; // Bán kính ưu tiên 20km quanh vị trí người dùng
         }
 
         service.getPlacePredictions(request, (predictions, status) => {
-          if (status !== google.maps.places.PlacesServiceStatus.OK || !predictions || predictions.length === 0) {
-            listEl.style.display = 'none';
-            return;
-          }
+          if (status === google.maps.places.PlacesServiceStatus.OK && predictions && predictions.length > 0) {
+            listEl.innerHTML = '';
 
-          listEl.innerHTML = '';
-
-          if (isDirectCall && predictions.length > 0) {
-            const topResult = predictions[0];
-            geocoder.geocode({ placeId: topResult.place_id }, (results, gStatus) => {
-              if (gStatus === 'OK' && results && results[0]) {
-                const latlng = L.latLng(results[0].geometry.location.lat(), results[0].geometry.location.lng());
-                const placeName = topResult.structured_formatting ? topResult.structured_formatting.main_text : topResult.description;
-                
-                document.getElementById(type + 'Input').value = placeName;
-                listEl.style.display = 'none';
-                map.setView(latlng, 15);
-
-                if (type === 'pickup') {
-                  setPickupLocation(latlng);
-                  saveRecentPickup(placeName, latlng.lat, latlng.lng);
-                } else {
-                  setDestLocation(latlng);
-                  saveRecentDest(placeName, latlng.lat, latlng.lng);
-                }
-              }
-            });
-            return;
-          }
-
-          predictions.forEach(p => {
-            const mainText = p.structured_formatting ? p.structured_formatting.main_text : p.description;
-            const secondaryText = p.structured_formatting ? p.structured_formatting.secondary_text : '';
-
-            const div = document.createElement('div');
-            div.className = 'suggestion-item';
-            div.innerHTML = `📍 <b>${mainText}</b> <small style="color:#64748b; font-size:11px;">(${secondaryText})</small>`;
-            
-            div.onclick = () => {
-              geocoder.geocode({ placeId: p.place_id }, (results, gStatus) => {
+            if (isDirectCall && predictions.length > 0) {
+              const topResult = predictions[0];
+              geocoder.geocode({ placeId: topResult.place_id }, (results, gStatus) => {
                 if (gStatus === 'OK' && results && results[0]) {
                   const latlng = L.latLng(results[0].geometry.location.lat(), results[0].geometry.location.lng());
-                  document.getElementById(type + 'Input').value = mainText;
+                  const placeName = topResult.structured_formatting ? topResult.structured_formatting.main_text : topResult.description;
+                  
+                  document.getElementById(type + 'Input').value = placeName;
                   listEl.style.display = 'none';
                   map.setView(latlng, 15);
 
                   if (type === 'pickup') {
                     setPickupLocation(latlng);
-                    saveRecentPickup(mainText, latlng.lat, latlng.lng);
+                    saveRecentPickup(placeName, latlng.lat, latlng.lng);
                   } else {
                     setDestLocation(latlng);
-                    saveRecentDest(mainText, latlng.lat, latlng.lng);
+                    saveRecentDest(placeName, latlng.lat, latlng.lng);
                   }
                 }
               });
-            };
-            listEl.appendChild(div);
-          });
-          listEl.style.display = 'block';
+              return;
+            }
+
+            predictions.forEach(p => {
+              const mainText = p.structured_formatting ? p.structured_formatting.main_text : p.description;
+              const secondaryText = p.structured_formatting ? p.structured_formatting.secondary_text : '';
+
+              const div = document.createElement('div');
+              div.className = 'suggestion-item';
+              div.innerHTML = `📍 <b>${mainText}</b> <small style="color:#64748b; font-size:11px;">(${secondaryText})</small>`;
+              
+              div.onclick = () => {
+                geocoder.geocode({ placeId: p.place_id }, (results, gStatus) => {
+                  if (gStatus === 'OK' && results && results[0]) {
+                    const latlng = L.latLng(results[0].geometry.location.lat(), results[0].geometry.location.lng());
+                    document.getElementById(type + 'Input').value = mainText;
+                    listEl.style.display = 'none';
+                    map.setView(latlng, 15);
+
+                    if (type === 'pickup') {
+                      setPickupLocation(latlng);
+                      saveRecentPickup(mainText, latlng.lat, latlng.lng);
+                    } else {
+                      setDestLocation(latlng);
+                      saveRecentDest(mainText, latlng.lat, latlng.lng);
+                    }
+                  }
+                });
+              };
+              listEl.appendChild(div);
+            });
+            listEl.style.display = 'block';
+          } else {
+            // Google không trả kết quả -> Tự nhảy sang Mapbox
+            fetchMapboxFallback(query, centerPoint, type, listEl, isDirectCall);
+          }
         });
         return;
       } catch (err) {
@@ -430,41 +428,67 @@ function onSearchInput(type, isDirectCall = false) {
       }
     }
 
-    // 2. DỰ PHÒNG MAPBOX (Khi Google chưa tải xong hoặc có sự cố)
-    let locationParams = '';
-    if (centerPoint) {
-      locationParams += `&proximity=${centerPoint.lng},${centerPoint.lat}`;
-      const minLng = centerPoint.lng - 0.135, minLat = centerPoint.lat - 0.135;
-      const maxLng = centerPoint.lng + 0.135, maxLat = centerPoint.lat + 0.135;
-      locationParams += `&bbox=${minLng},${minLat},${maxLng},${maxLat}`;
+    // 2. ƯU TIÊN 2: DỰ PHÒNG MAPBOX (Khi Google chưa nạp xong hoặc lỗi)
+    fetchMapboxFallback(query, centerPoint, type, listEl, isDirectCall);
+  };
+
+  if (isDirectCall) executeSearch();
+  else searchTimer = setTimeout(executeSearch, 300);
+}
+
+// HÀM DỰ PHÒNG MAPBOX TÌM KIẾM ĐỊA CHỈ
+async function fetchMapboxFallback(query, centerPoint, type, listEl, isDirectCall = false) {
+  let locationParams = '';
+  if (centerPoint) {
+    locationParams += `&proximity=${centerPoint.lng},${centerPoint.lat}`;
+  }
+  
+  let url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${MAPBOX_TOKEN}&country=vn&limit=5${locationParams}`;
+
+  try {
+    let res = await fetch(url);
+    if (!res.ok) return;
+    let data = await res.json();
+
+    listEl.innerHTML = '';
+    if (!data.features || data.features.length === 0) {
+      listEl.style.display = 'none';
+      return;
     }
-    
-    let url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${MAPBOX_TOKEN}&country=vn&limit=5${locationParams}`;
 
-    try {
-      let res = await fetch(url);
-      if (!res.ok) throw new Error("Search error");
-      let data = await res.json();
-
-      if ((!data.features || data.features.length === 0) && centerPoint) {
-        const fallbackUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${MAPBOX_TOKEN}&country=vn&limit=5&proximity=${centerPoint.lng},${centerPoint.lat}`;
-        const fallbackRes = await fetch(fallbackUrl);
-        if (fallbackRes.ok) data = await fallbackRes.json();
-      }
+    if (isDirectCall && data.features.length > 0) {
+      const topResult = data.features[0];
+      const placeName = topResult.text || topResult.place_name;
+      const [lng, lat] = topResult.geometry.coordinates;
       
-      listEl.innerHTML = '';
-      if (!data.features || data.features.length === 0) {
-        listEl.style.display = 'none';
-        return;
-      }
+      document.getElementById(type + 'Input').value = placeName;
+      listEl.style.display = 'none';
+      const latlng = L.latLng(lat, lng);
+      map.setView(latlng, 15);
 
-      if (isDirectCall && data.features.length > 0) {
-        const topResult = data.features[0];
-        const placeName = topResult.text || topResult.place_name;
-        const [lng, lat] = topResult.geometry.coordinates;
-        
+      if (type === 'pickup') {
+        setPickupLocation(latlng);
+        saveRecentPickup(placeName, lat, lng);
+      } else {
+        setDestLocation(latlng);
+        saveRecentDest(placeName, lat, lng);
+      }
+      return;
+    }
+
+    data.features.forEach(f => {
+      const placeName = f.text || f.place_name;
+      const fullAddr = f.place_name.replace(', Vietnam', '').replace(', Việt Nam', '');
+      const [lng, lat] = f.geometry.coordinates;
+
+      const div = document.createElement('div');
+      div.className = 'suggestion-item';
+      div.innerHTML = `📍 <b>${placeName}</b> <small style="color:#64748b; font-size:11px;">(${fullAddr})</small>`;
+      
+      div.onclick = () => {
         document.getElementById(type + 'Input').value = placeName;
         listEl.style.display = 'none';
+        
         const latlng = L.latLng(lat, lng);
         map.setView(latlng, 15);
 
@@ -475,45 +499,12 @@ function onSearchInput(type, isDirectCall = false) {
           setDestLocation(latlng);
           saveRecentDest(placeName, lat, lng);
         }
-        return;
-      }
-
-      data.features.forEach(f => {
-        const placeName = f.text || f.place_name;
-        const fullAddr = f.place_name.replace(', Vietnam', '').replace(', Việt Nam', '');
-        const [lng, lat] = f.geometry.coordinates;
-
-        const div = document.createElement('div');
-        div.className = 'suggestion-item';
-        div.innerHTML = `📍 <b>${placeName}</b> <small style="color:#64748b; font-size:11px;">(${fullAddr})</small>`;
-        
-        div.onclick = () => {
-          document.getElementById(type + 'Input').value = placeName;
-          listEl.style.display = 'none';
-          
-          const latlng = L.latLng(lat, lng);
-          map.setView(latlng, 15);
-
-          if (type === 'pickup') {
-            setPickupLocation(latlng);
-            saveRecentPickup(placeName, lat, lng);
-          } else {
-            setDestLocation(latlng);
-            saveRecentDest(placeName, lat, lng);
-          }
-        };
-        listEl.appendChild(div);
-      });
-      listEl.style.display = 'block';
-    } catch (e) {
-      listEl.style.display = 'none';
-    }
-  };
-
-  if (isDirectCall) {
-    executeSearch();
-  } else {
-    searchTimer = setTimeout(executeSearch, 350);
+      };
+      listEl.appendChild(div);
+    });
+    listEl.style.display = 'block';
+  } catch (e) {
+    listEl.style.display = 'none';
   }
 }
 
