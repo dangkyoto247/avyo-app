@@ -43,8 +43,9 @@ let currentDistance = 0, currentPrice = 0;
 let selectedDriver = null;
 let rawDriversData = [];
 let searchTimer = null;
-let mapboxTimeout = null; // Bộ đếm thời gian cho kĩ thuật Debounce
+let mapboxTimeout = null;
 
+// LỚP 1: BỘ NHỚ LƯU TRỮ ĐỊA ĐIỂM GẦN ĐÂY (0Đ API)
 function getRecentPickups() {
   try {
     const data = localStorage.getItem(RECENT_PICKUPS_KEY);
@@ -218,12 +219,10 @@ function setPickupLocation(latlng, isAuto = false) {
     .bindPopup(isAuto ? "<b style='color:#dc2626;'>📍 Điểm đón của bạn</b><br><small><i>(Nhấn giữ & kéo để đổi vị trí)</i></small>" : "<b style='color:#dc2626;'>📍 Điểm đón</b><br><small><i>(Nhấn giữ & kéo để đổi vị trí)</i></small>")
     .openPopup();
    
-  // Khi kéo ghim -> Tính nháp liên tục 0 API
   markerStart.on('drag', () => {
     calculateFastRoute();
   });
 
-  // Khi thả tay ra -> Đợi 1.2s chốt vị trí mới gọi Mapbox
   markerStart.on('dragend', () => {
     calculateFastRoute();
     clearTimeout(mapboxTimeout);
@@ -247,12 +246,10 @@ function setDestLocation(latlng) {
     .bindPopup("<b style='color:#2563eb;'>🚩 Điểm đến</b><br><small><i>(Nhấn giữ & kéo để đổi vị trí)</i></small>")
     .openPopup();
    
-  // Khi kéo ghim -> Tính nháp liên tục 0 API
   markerEnd.on('drag', () => {
     calculateFastRoute();
   });
 
-  // Khi thả tay ra -> Đợi 1.2s chốt vị trí mới gọi Mapbox
   markerEnd.on('dragend', () => {
     calculateFastRoute();
     clearTimeout(mapboxTimeout);
@@ -288,7 +285,17 @@ map.on('click', function(e) {
   }
 });
 
-function onSearchInput(type) {
+// NÚT ĐỊA ĐIỂM HOT CHỌN NHANH (LỚP 1)
+function quickSelectPreset(placeName) {
+  const targetType = !markerStart ? 'pickup' : 'dest';
+  document.getElementById(targetType + 'Input').value = placeName;
+  
+  // Tự động kích hoạt tìm kiếm Mapbox Geocoding ngay
+  onSearchInput(targetType, true);
+}
+
+// TÌM KIẾM ĐỊA CHỈ MAPBOX GEOCODING (LỚP 2 KHÓA BÁN KÍNH + LỚP 3 API 100K MIỄN PHÍ)
+function onSearchInput(type, isDirectCall = false) {
   clearTimeout(searchTimer);
   const query = document.getElementById(type + 'Input').value.trim();
   const listEl = document.getElementById(type + 'Suggestions');
@@ -300,12 +307,17 @@ function onSearchInput(type) {
     return;
   }
 
-  searchTimer = setTimeout(async () => {
+  const executeSearch = async () => {
     const centerPoint = markerStart ? markerStart.getLatLng() : (userLatLng || map.getCenter());
-    const photonParam = centerPoint ? `&lat=${centerPoint.lat}&lon=${centerPoint.lng}` : '';
+    
+    // Lớp 2: Khóa bán kính tìm kiếm ưu tiên khu vực xung quanh vị trí khách (lng,lat)
+    const proximityParam = centerPoint ? `&proximity=${centerPoint.lng},${centerPoint.lat}` : '';
+    
+    // Lớp 3: Mapbox Geocoding API chính xác 100%, giới hạn lãnh thổ Việt Nam
+    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${MAPBOX_TOKEN}&country=vn&limit=5${proximityParam}`;
 
     try {
-      const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=5${photonParam}`);
+      const res = await fetch(url);
       if (!res.ok) throw new Error("Search error");
       const data = await res.json();
       
@@ -315,18 +327,39 @@ function onSearchInput(type) {
         return;
       }
 
+      // Nếu chọn từ Preset HOT -> Tự động chốt vị trí top 1 ngay lập tức
+      if (isDirectCall && data.features.length > 0) {
+        const topResult = data.features[0];
+        const placeName = topResult.text || topResult.place_name;
+        const [lng, lat] = topResult.geometry.coordinates;
+        
+        document.getElementById(type + 'Input').value = placeName;
+        listEl.style.display = 'none';
+        
+        const latlng = L.latLng(lat, lng);
+        map.setView(latlng, 15);
+
+        if (type === 'pickup') {
+          setPickupLocation(latlng);
+          saveRecentPickup(placeName, lat, lng);
+        } else {
+          setDestLocation(latlng);
+          saveRecentDest(placeName, lat, lng);
+        }
+        return;
+      }
+
       data.features.forEach(f => {
-        const p = f.properties;
-        const fullAddr = [p.name, p.street, p.district, p.city].filter(Boolean).join(', ');
-        const lat = f.geometry.coordinates[1];
-        const lng = f.geometry.coordinates[0];
+        const placeName = f.text || f.place_name;
+        const fullAddr = f.place_name;
+        const [lng, lat] = f.geometry.coordinates;
 
         const div = document.createElement('div');
         div.className = 'suggestion-item';
-        div.innerHTML = `📍 <b>${p.name}</b> <small style="color:#64748b; font-size:11px;">(${fullAddr})</small>`;
+        div.innerHTML = `📍 <b>${placeName}</b> <small style="color:#64748b; font-size:11px;">(${fullAddr})</small>`;
         
         div.onclick = () => {
-          document.getElementById(type + 'Input').value = fullAddr || p.name;
+          document.getElementById(type + 'Input').value = placeName;
           listEl.style.display = 'none';
           
           const latlng = L.latLng(lat, lng);
@@ -334,10 +367,10 @@ function onSearchInput(type) {
 
           if (type === 'pickup') {
             setPickupLocation(latlng);
-            saveRecentPickup(fullAddr || p.name, lat, lng);
+            saveRecentPickup(placeName, lat, lng);
           } else {
             setDestLocation(latlng);
-            saveRecentDest(fullAddr || p.name, lat, lng);
+            saveRecentDest(placeName, lat, lng);
           }
         };
         listEl.appendChild(div);
@@ -346,7 +379,14 @@ function onSearchInput(type) {
     } catch (e) {
       listEl.style.display = 'none';
     }
-  }, 350);
+  };
+
+  if (isDirectCall) {
+    executeSearch();
+  } else {
+    // Chờ dừng gõ 350ms mới gửi Request để tiết kiệm tối đa API
+    searchTimer = setTimeout(executeSearch, 350);
+  }
 }
 
 document.addEventListener('click', (e) => {
@@ -356,7 +396,6 @@ document.addEventListener('click', (e) => {
   }
 });
 
-// 1. TÍNH NHÁP REAL-TIME BẰNG TOÁN HỌC HAVERSINE (0 API - DÙNG KHI KÉO GHIM)
 function calculateFastRoute() {
   if (!markerStart || !markerEnd) return;
   const start = markerStart.getLatLng();
@@ -367,7 +406,6 @@ function calculateFastRoute() {
   const straightKm = getHaversineDistance(start.lat, start.lng, end.lat, end.lng);
   currentDistance = (straightKm * 1.3).toFixed(1);
 
-  // Đường nét đứt xám nhạt xem trước
   routeLine = L.polyline([start, end], { 
     color: '#94a3b8', 
     weight: 4, 
@@ -379,7 +417,6 @@ function calculateFastRoute() {
   updatePrice();
 }
 
-// 2. VẼ ĐƯỜNG CHÍNH THỨC QUA MAPBOX API (CHỈ GỌI KHI ĐÃ CHỐT VỊ TRÍ)
 async function calculateMapboxRoute() {
   if (!markerStart || !markerEnd) return;
 
@@ -406,7 +443,6 @@ async function calculateMapboxRoute() {
   if (routeLine) map.removeLayer(routeLine);
 
   if (routePoints && routePoints.length > 0) {
-    // Vẽ nét liền xanh lá bo tròn mượt mà
     routeLine = L.polyline(routePoints, { 
       color: '#00b14f', 
       weight: 6, 
@@ -416,7 +452,6 @@ async function calculateMapboxRoute() {
       smoothFactor: 1 
     }).addTo(map);
   } else {
-    // Fallback toán học khi rớt mạng
     const straightKm = getHaversineDistance(start.lat, start.lng, end.lat, end.lng);
     currentDistance = (straightKm * 1.3).toFixed(1);
     routeLine = L.polyline([start, end], { 
@@ -485,7 +520,7 @@ function updatePrice() {
 }
 
 function resetRoute() {
-  clearTimeout(mapboxTimeout); // Xóa bộ đếm để ngăn gọi API ẩn
+  clearTimeout(mapboxTimeout);
   if (markerStart) map.removeLayer(markerStart);
   if (markerEnd) map.removeLayer(markerEnd);
   if (routeLine) map.removeLayer(routeLine);

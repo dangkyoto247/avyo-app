@@ -18,7 +18,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/gh/ewoken/Leaflet.MovingMarker@master/MovingMarker.js"></script>
 
-  <link rel="stylesheet" href="index.css?v=21">
+  <link rel="stylesheet" href="index.css?v=22">
 </head>
 <body>
 
@@ -40,9 +40,17 @@
       <input type="text" id="pickupInput" placeholder="📍 Tìm điểm đón (VD: Sân bay Vinh)..." autocomplete="off" oninput="onSearchInput('pickup')" onfocus="showRecentPickups()">
       <div id="pickupSuggestions" class="suggestions-list"></div>
     </div>
-    <div class="search-input-group" style="margin-bottom: 0;">
+    <div class="search-input-group" style="margin-bottom: 6px;">
       <input type="text" id="destInput" placeholder="🚩 Tìm điểm đến (VD: Bến xe Vinh)..." autocomplete="off" oninput="onSearchInput('dest')" onfocus="showRecentDests()">
       <div id="destSuggestions" class="suggestions-list"></div>
+    </div>
+
+    <!-- Lớp 1: Các nút địa điểm HOT chọn nhanh 0đ API -->
+    <div style="display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; -webkit-overflow-scrolling: touch;">
+      <button class="preset-chip" onclick="quickSelectPreset('Sân bay Vinh')" style="font-size: 11px; padding: 4px 10px; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 12px; white-space: nowrap; color: #334155; font-weight: 600; cursor: pointer;">✈️ Sân bay Vinh</button>
+      <button class="preset-chip" onclick="quickSelectPreset('Bến xe Vinh')" style="font-size: 11px; padding: 4px 10px; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 12px; white-space: nowrap; color: #334155; font-weight: 600; cursor: pointer;">🚌 Bến xe Vinh</button>
+      <button class="preset-chip" onclick="quickSelectPreset('Bệnh viện Cửa Đông')" style="font-size: 11px; padding: 4px 10px; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 12px; white-space: nowrap; color: #334155; font-weight: 600; cursor: pointer;">🏥 BV Cửa Đông</button>
+      <button class="preset-chip" onclick="quickSelectPreset('Ga Vinh')" style="font-size: 11px; padding: 4px 10px; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 12px; white-space: nowrap; color: #334155; font-weight: 600; cursor: pointer;">🚆 Ga Vinh</button>
     </div>
   </div>
 
@@ -80,7 +88,7 @@
     <a id="phoneBtn" href="#" class="btn-phone" style="display:none;" onclick="trackCall(event)">📞 Gọi Điện Trực Tiếp</a>
   </div>
 
-  <script src="utils.js?v=21"></script>
-  <script src="index.js?v=21"></script>
+  <script src="utils.js?v=22"></script>
+  <script src="index.js?v=22"></script>
 </body>
 </html>
