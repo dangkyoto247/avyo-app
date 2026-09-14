@@ -1,5 +1,5 @@
 // MAPBOX ACCESS TOKEN CỦA BẠN
-const MAPBOX_TOKEN = 'pk.eyJ1IjoidHVhbmFuaDM0MTYyMyIsImEiOiJjbXUwdHo3NHQwMG93MnlxemtrcmR0MzBuIn0.QKjVs1m4NPekmHPpzhL6Dg';
+const MAPBOX_TOKEN = 'pk.eyJ1IjoidHVhbmFuaDM0MTYyMyIsImEiOiJjbXUwcGhlYTExNHV5MnhvdjlyaXE5ZzM2In0.NN6tgrUWAN2tUubAZtTY_Q';
 
 const map = L.map('map', { 
   preferCanvas: true,
@@ -17,7 +17,6 @@ const googleLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&
   attribution: '&copy; Google Maps'
 });
 
-// Tự động chuyển Esri ArcGIS nếu Google Tile gặp sự cố kết nối
 googleLayer.on('tileerror', function() {
   if (map.hasLayer(googleLayer)) {
     map.removeLayer(googleLayer);
@@ -44,6 +43,7 @@ let currentDistance = 0, currentPrice = 0;
 let selectedDriver = null;
 let rawDriversData = [];
 let searchTimer = null;
+let mapboxTimeout = null; // Bộ đếm thời gian cho kĩ thuật Debounce
 
 function getRecentPickups() {
   try {
@@ -218,13 +218,23 @@ function setPickupLocation(latlng, isAuto = false) {
     .bindPopup(isAuto ? "<b style='color:#dc2626;'>📍 Điểm đón của bạn</b><br><small><i>(Nhấn giữ & kéo để đổi vị trí)</i></small>" : "<b style='color:#dc2626;'>📍 Điểm đón</b><br><small><i>(Nhấn giữ & kéo để đổi vị trí)</i></small>")
     .openPopup();
    
+  // Khi kéo ghim -> Tính nháp liên tục 0 API
+  markerStart.on('drag', () => {
+    calculateFastRoute();
+  });
+
+  // Khi thả tay ra -> Đợi 1.2s chốt vị trí mới gọi Mapbox
   markerStart.on('dragend', () => {
-    calculateRoute();
-    loadDrivers();
+    calculateFastRoute();
+    clearTimeout(mapboxTimeout);
+    mapboxTimeout = setTimeout(() => {
+      calculateMapboxRoute();
+      loadDrivers();
+    }, 1200);
   });
    
   document.getElementById('resetBtn').style.display = 'block';
-  if (markerEnd) calculateRoute();
+  if (markerEnd) calculateMapboxRoute();
 
   loadDrivers();
   updateGuide();
@@ -237,9 +247,23 @@ function setDestLocation(latlng) {
     .bindPopup("<b style='color:#2563eb;'>🚩 Điểm đến</b><br><small><i>(Nhấn giữ & kéo để đổi vị trí)</i></small>")
     .openPopup();
    
-  markerEnd.on('dragend', calculateRoute);
+  // Khi kéo ghim -> Tính nháp liên tục 0 API
+  markerEnd.on('drag', () => {
+    calculateFastRoute();
+  });
+
+  // Khi thả tay ra -> Đợi 1.2s chốt vị trí mới gọi Mapbox
+  markerEnd.on('dragend', () => {
+    calculateFastRoute();
+    clearTimeout(mapboxTimeout);
+    mapboxTimeout = setTimeout(() => {
+      calculateMapboxRoute();
+      loadDrivers();
+    }, 1200);
+  });
+   
   document.getElementById('resetBtn').style.display = 'block';
-  calculateRoute();
+  calculateMapboxRoute();
   loadDrivers();
   updateGuide();
 }
@@ -264,7 +288,6 @@ map.on('click', function(e) {
   }
 });
 
-// TÌM KIẾM ĐỊA CHỈ MIỄN PHÍ QUA PHOTON API
 function onSearchInput(type) {
   clearTimeout(searchTimer);
   const query = document.getElementById(type + 'Input').value.trim();
@@ -333,18 +356,37 @@ document.addEventListener('click', (e) => {
   }
 });
 
-// VẼ ĐƯỜNG UỐN LƯỢN BO MỊN QUA MAPBOX API (DỰ PHÒNG OSRM VÀ HAVERSINE)
-async function calculateRoute() {
+// 1. TÍNH NHÁP REAL-TIME BẰNG TOÁN HỌC HAVERSINE (0 API - DÙNG KHI KÉO GHIM)
+function calculateFastRoute() {
   if (!markerStart || !markerEnd) return;
-
   const start = markerStart.getLatLng();
   const end = markerEnd.getLatLng();
 
   if (routeLine) map.removeLayer(routeLine);
 
+  const straightKm = getHaversineDistance(start.lat, start.lng, end.lat, end.lng);
+  currentDistance = (straightKm * 1.3).toFixed(1);
+
+  // Đường nét đứt xám nhạt xem trước
+  routeLine = L.polyline([start, end], { 
+    color: '#94a3b8', 
+    weight: 4, 
+    dashArray: '8, 8', 
+    opacity: 0.8 
+  }).addTo(map);
+
+  document.getElementById('distance').innerText = currentDistance;
+  updatePrice();
+}
+
+// 2. VẼ ĐƯỜNG CHÍNH THỨC QUA MAPBOX API (CHỈ GỌI KHI ĐÃ CHỐT VỊ TRÍ)
+async function calculateMapboxRoute() {
+  if (!markerStart || !markerEnd) return;
+
+  const start = markerStart.getLatLng();
+  const end = markerEnd.getLatLng();
   let routePoints = null;
 
-  // 1. Lấy mảng tọa độ uốn lượn đầy đủ qua Mapbox API (overview=full)
   if (MAPBOX_TOKEN) {
     try {
       const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${start.lng},${start.lat};${end.lng},${end.lat}?overview=full&geometries=geojson&access_token=${MAPBOX_TOKEN}`;
@@ -357,36 +399,24 @@ async function calculateRoute() {
         }
       }
     } catch (e) {
-      console.warn("Mapbox bận, chuyển OSRM dự phòng...", e);
+      console.warn("Mapbox bận, nhảy về tuyến dự phòng...");
     }
   }
 
-  // 2. Dự phòng máy chủ OSRM nếu Mapbox ngắt kết nối
-  if (!routePoints) {
-    try {
-      const osrmUrl = `https://routing.openstreetmap.de/routed-car/route/v1/driving/${start.lng},${start.lat};${end.lng},${end.lat}?overview=full&geometries=geojson`;
-      const res = await fetch(osrmUrl);
-      if (res.ok) {
-        const data = await res.json();
-        if (data.routes && data.routes.length > 0) {
-          routePoints = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
-          currentDistance = (data.routes[0].distance / 1000).toFixed(1);
-        }
-      }
-    } catch (e) {}
-  }
+  if (routeLine) map.removeLayer(routeLine);
 
-  // 3. Vẽ nét liền xanh lá bo tròn góc rẽ mượt mà (Hoặc nét đứt nếu mất kết nối)
   if (routePoints && routePoints.length > 0) {
+    // Vẽ nét liền xanh lá bo tròn mượt mà
     routeLine = L.polyline(routePoints, { 
       color: '#00b14f', 
       weight: 6, 
       opacity: 0.9,
-      lineCap: 'round',    // Bo tròn hai đầu nét vẽ
-      lineJoin: 'round',   // Bo tròn mềm mại tại các góc rẽ ngã tư
+      lineCap: 'round',    
+      lineJoin: 'round',   
       smoothFactor: 1 
     }).addTo(map);
   } else {
+    // Fallback toán học khi rớt mạng
     const straightKm = getHaversineDistance(start.lat, start.lng, end.lat, end.lng);
     currentDistance = (straightKm * 1.3).toFixed(1);
     routeLine = L.polyline([start, end], { 
@@ -455,6 +485,7 @@ function updatePrice() {
 }
 
 function resetRoute() {
+  clearTimeout(mapboxTimeout); // Xóa bộ đếm để ngăn gọi API ẩn
   if (markerStart) map.removeLayer(markerStart);
   if (markerEnd) map.removeLayer(markerEnd);
   if (routeLine) map.removeLayer(routeLine);
