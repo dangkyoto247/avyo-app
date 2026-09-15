@@ -14,7 +14,7 @@ body {
   overflow-x: hidden;
 }
 
-/* BẢN ĐỒ CỐ ĐỊNH NỀN TOÀN MÀN HÌNH */
+/* BẢN ĐỒ CỐ ĐỊNH NỀN */
 #map { 
   position: fixed;
   top: 0;
@@ -25,6 +25,29 @@ body {
   margin: 0;
   overflow: hidden;
   transform: translateZ(0);
+}
+
+/* GIỚI HẠN KHUNG BẢN ĐỒ TRÊN MÁY TÍNH (MÀN HÌNH > 480PX) */
+@media (min-width: 481px) {
+  html {
+    background-color: #cbd5e1;
+  }
+
+  #map {
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    width: 100% !important;
+    max-width: 480px !important;
+    box-shadow: 0 0 25px rgba(0, 0, 0, 0.25);
+  }
+
+  body.dark-mode {
+    background-color: #0f172a;
+  }
+
+  .btn-gps-float {
+    right: calc(50vw - 240px + 16px);
+  }
 }
 
 /* GHIM CỐ ĐỊNH CHÍNH GIỮA MÀN HÌNH TẠI MỐC 1/3 PHÍA TRÊN */
@@ -89,13 +112,6 @@ body.selecting-dest .fixed-center-pin {
   justify-content: center;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   padding: 0;
-}
-
-/* GIỚI HẠN VỊ TRÍ NÚT KHI MỞ TRÊN MÁY TÍNH (MÀN HÌNH RỘNG > 480PX) */
-@media (min-width: 481px) {
-  .btn-gps-float {
-    right: calc(50vw - 240px + 16px);
-  }
 }
 
 .btn-gps-float:hover {
@@ -168,44 +184,6 @@ body.selecting-dest .btn-confirm-select {
 /* ẨN BẢN QUYỀN LEAFLET & CARTO DƯỚI GÓC BẢN ĐỒ */
 .leaflet-control-attribution {
   display: none !important;
-}
-
-/* KHUNG HƯỚNG DẪN CỐ ĐỊNH KHI CUỘN MÀN HÌNH */
-.guide-box { 
-  position: sticky; 
-  top: 4px; 
-  z-index: 2000; 
-  background: #eff6ff; 
-  border: 1.5px solid #93c5fd; 
-  color: #1e40af; 
-  padding: 8px 12px; 
-  border-radius: 12px; 
-  margin-bottom: 8px; 
-  font-size: 13px; 
-  font-weight: 500; 
-  display: flex; 
-  align-items: center; 
-  gap: 8px; 
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); 
-  transition: all 0.3s ease; 
-}
-
-.guide-box.success { 
-  background: #f0fdf4; 
-  border-color: #86efac; 
-  color: #166534; 
-}
-
-.brand-badge {
-  background: #00b14f;
-  color: white;
-  padding: 3px 8px;
-  border-radius: 8px;
-  font-weight: 800;
-  font-size: 12px;
-  letter-spacing: 0.5px;
-  flex-shrink: 0;
-  box-shadow: 0 2px 4px rgba(0,177,79,0.3);
 }
 
 .card { 
@@ -335,30 +313,6 @@ body.selecting-dest .btn-confirm-select {
   font-size: 14px; 
 }
 
-.btn-gps { 
-  background: #00b14f; 
-  color: white; 
-  padding: 11px; 
-  border-radius: 12px; 
-  border: none; 
-  font-weight: bold; 
-  width: 100%; 
-  cursor: pointer; 
-  font-size: 14px; 
-  margin-bottom: 6px; 
-  box-shadow: 0 3px 10px rgba(0, 177, 79, 0.3); 
-  transition: all 0.2s ease; 
-  display: flex; 
-  align-items: center; 
-  justify-content: center; 
-  gap: 6px; 
-}
-
-.btn-gps:active { 
-  background: #009643; 
-  transform: scale(0.99); 
-}
-
 .vehicle-icon { 
   font-size: 30px; 
   text-align: center; 
@@ -372,6 +326,7 @@ body.selecting-dest .btn-confirm-select {
   overflow-x: auto; 
   padding-bottom: 6px; 
   margin-bottom: 6px; 
+  align-items: center;
 }
 
 .filter-chip { 
@@ -483,12 +438,12 @@ body.selecting-dest .btn-confirm-select {
   color: #334155; 
 }
 
-/* NÚT TỐI/SÁNG LỒNG TRONG GUIDE-BOX */
+/* NÚT TỐI/SÁNG */
 .btn-theme-toggle {
   background: rgba(255, 255, 255, 0.9);
-  border: 1px solid #93c5fd;
-  border-radius: 8px;
-  width: 30px;
+  border: 1px solid #cbd5e1;
+  border-radius: 20px;
+  min-width: 32px;
   height: 30px;
   font-size: 15px;
   display: flex;
@@ -498,7 +453,7 @@ body.selecting-dest .btn-confirm-select {
   flex-shrink: 0;
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
   transition: all 0.2s ease;
-  padding: 0;
+  padding: 0 8px;
 }
 
 /* GIAO DIỆN TỐI (DARK MODE) */
@@ -510,18 +465,6 @@ body.dark-mode {
 .dark-mode .card {
   background: #1e1e1e;
   box-shadow: 0 2px 8px rgba(0,0,0,0.4);
-}
-
-.dark-mode .guide-box {
-  background: #1e293b;
-  border-color: #334155;
-  color: #93c5fd;
-}
-
-.dark-mode .guide-box.success {
-  background: #064e3b;
-  border-color: #059669;
-  color: #6ee7b7;
 }
 
 .dark-mode .search-input-group input {
@@ -620,40 +563,7 @@ body.dark-mode {
   box-shadow: 0 3px 14px rgba(0,0,0,0.6);
 }
 
-.dark-mode [style*="color: #0f172a"], 
-.dark-mode [style*="color:#0f172a"] { 
-  color: #f8fafc !important; 
-}
-
-.dark-mode [style*="color: #334155"], 
-.dark-mode [style*="color:#334155"] { 
-  color: #cbd5e1 !important; 
-}
-
-.dark-mode [style*="color: #64748b"], 
-.dark-mode [style*="color:#64748b"] { 
-  color: #94a3b8 !important; 
-}
-
-.dark-mode [style*="background: #f0fdf4"] { 
-  background: #064e3b !important; 
-  border-bottom-color: #059669 !important; 
-}
-
-.dark-mode [style*="background: #eff6ff"] { 
-  background: #1e3a8a !important; 
-  border-bottom-color: #1e40af !important; 
-}
-
-.dark-mode [style*="background:#fef2f2"] { 
-  background: #450a0a !important; 
-  border-color: #7f1d1d !important; 
-}
-
-/* =========================================
-   HỆ THỐNG THÔNG BÁO CAO CẤP (GLASSMORPHISM POPUP)
-========================================= */
-
+/* HỆ THỐNG THÔNG BÁO CAO CẤP */
 .custom-alert-overlay {
   position: fixed;
   top: 0; 
@@ -745,7 +655,6 @@ body.dark-mode {
   box-shadow: 0 2px 6px rgba(0, 177, 79, 0.2);
 }
 
-/* CHẾ ĐỘ TỐI BẢNG THÔNG BÁO */
 .dark-mode .custom-alert-overlay {
   background: rgba(0, 0, 0, 0.7);
 }

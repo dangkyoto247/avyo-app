@@ -177,32 +177,7 @@ function showRecentDests() {
 }
 
 function updateGuide() {
-  const guideBox = document.getElementById('guideBox');
-  const guideText = document.getElementById('guideText');
-  if (!guideText) return;
-
-  const hasPickup = !!markerStart;
-  const hasDest = !!markerEnd;
-  const hasDriver = !!selectedDriver;
-
-  guideBox.classList.remove('success');
-
-  if (!hasPickup && !hasDest && !hasDriver) {
-    guideText.innerHTML = "📍 <b>Bước 1:</b> Nhập địa chỉ hoặc chạm bản đồ chọn <b>Điểm đón</b>.";
-  } else if (hasPickup && !hasDest && !hasDriver) {
-    guideText.innerHTML = "🚩 <b>Bước 2:</b> Nhập điểm đến hoặc chọn <b>Tài xế gần nhất</b>.";
-  } else if (hasPickup && hasDest && !hasDriver) {
-    guideText.innerHTML = "🚕 <b>Bước 3:</b> Chọn <b>Tài xế</b> bên dưới để xem giá & liên hệ.";
-  } else if (hasDriver && !hasPickup && !hasDest) {
-    guideText.innerHTML = `📍 Đã chọn <b>${selectedDriver.name}</b>! Chọn <b>Điểm đón</b> để tiếp tục.`;
-  } else if (hasDriver && hasPickup && !hasDest) {
-    guideText.innerHTML = `🚩 Đã có điểm đón! Chọn <b>Điểm đến</b> để tính tổng tiền cước.`;
-  } else if (hasDriver && !hasPickup && hasDest) {
-    guideText.innerHTML = `📍 Đã có điểm đến! Chọn <b>Điểm đón</b>.`;
-  } else if (hasPickup && hasDest && hasDriver) {
-    guideBox.classList.add('success');
-    guideText.innerHTML = `🎉 <b>Hoàn tất!</b> Bấm <b>"💬 Nhắn Zalo"</b> hoặc <b>"📞 Gọi Điện"</b> để đặt xe.`;
-  }
+  // Đã xóa nội dung hướng dẫn Bước 1, Bước 2 để ẩn khung
 }
 
 const pickupIcon = L.divIcon({
