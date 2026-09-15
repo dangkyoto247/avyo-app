@@ -570,9 +570,6 @@ function resetRoute() {
   document.getElementById('resetBtn').style.display = 'none';
   document.getElementById('pickupInput').value = '';
   document.getElementById('destInput').value = '';
-  
-  const noteInput = document.getElementById('noteInput');
-  if (noteInput) noteInput.value = '';
 
   updatePrice();
   loadDrivers();
@@ -582,13 +579,7 @@ function resetRoute() {
 function deselectDriver() {
   selectedDriver = null;
   document.getElementById('driver-info').innerHTML = '<i>Chạm chọn tài xế từ danh sách hoặc trên bản đồ...</i>';
-  
-  document.getElementById('zaloBtn').style.display = 'none';
-  document.getElementById('phoneBtn').style.display = 'none';
-  
-  const noteContainer = document.getElementById('noteContainer');
-  if (noteContainer) noteContainer.style.display = 'none';
-  
+
   updatePrice();
   updateGuide();
 }
@@ -609,38 +600,48 @@ const typeNames = {
   'truck': '🚚 Chở hàng (Thỏa thuận)'
 };
 
-async function trackCall(event) {
+async function trackCallById(event, driverId) {
   if (event) event.preventDefault();
-  if (!selectedDriver) return;
+  const driver = rawDriversData.find(d => d.id === driverId) || selectedDriver;
+  if (!driver) return;
+
+  if (!selectedDriver || selectedDriver.id !== driver.id) {
+    await selectDriver(driver);
+  }
 
   const centerPoint = markerStart ? markerStart.getLatLng() : userLatLng;
   if (centerPoint) {
-    const distKm = safeDistance(centerPoint.lat, centerPoint.lng, selectedDriver.lat, selectedDriver.lng);
+    const distKm = safeDistance(centerPoint.lat, centerPoint.lng, driver.lat, driver.lng);
     if (distKm > 15) {
       return alert(`⚠️ Tài xế đang ở cách bạn ${distKm.toFixed(1)}km (ngoài bán kính 15km). Hãy chọn tài xế ở gần hơn!`);
     }
   }
 
-  localStorage.setItem(`avyo_unlocked_rating_${selectedDriver.id}`, 'true');
-  await supabaseClient.rpc('increment_driver_call', { target_id: selectedDriver.id });
-  window.location.href = `tel:${selectedDriver.phone}`;
+  localStorage.setItem(`avyo_unlocked_rating_${driver.id}`, 'true');
+  await supabaseClient.rpc('increment_driver_call', { target_id: driver.id });
+  window.location.href = `tel:${driver.phone}`;
 }
 
-async function openZalo() {
-  if (!selectedDriver) return;
+async function openZaloById(driverId) {
+  const driver = rawDriversData.find(d => d.id === driverId) || selectedDriver;
+  if (!driver) return;
+
+  if (!selectedDriver || selectedDriver.id !== driver.id) {
+    await selectDriver(driver);
+  }
 
   const centerPoint = markerStart ? markerStart.getLatLng() : userLatLng;
   if (centerPoint) {
-    const distKm = safeDistance(centerPoint.lat, centerPoint.lng, selectedDriver.lat, selectedDriver.lng);
+    const distKm = safeDistance(centerPoint.lat, centerPoint.lng, driver.lat, driver.lng);
     if (distKm > 15) {
       return alert(`⚠️ Tài xế đang ở cách bạn ${distKm.toFixed(1)}km (ngoài bán kính 15km). Hãy chọn tài xế ở gần hơn!`);
     }
   }
 
-  localStorage.setItem(`avyo_unlocked_rating_${selectedDriver.id}`, 'true');
-  await supabaseClient.rpc('increment_driver_zalo', { target_id: selectedDriver.id });
+  localStorage.setItem(`avyo_unlocked_rating_${driver.id}`, 'true');
+  await supabaseClient.rpc('increment_driver_zalo', { target_id: driver.id });
 
-  const typeName = typeNames[selectedDriver.vehicle_type] || 'Tài xế';
+  const typeName = typeNames[driver.vehicle_type] || 'Tài xế';
   let msg = `Chào ${typeName}, tôi muốn sử dụng dịch vụ Avyo:\n`;
 
   if (markerStart) {
@@ -649,20 +650,14 @@ async function openZalo() {
   if (markerEnd) {
     msg += `\n🚩 Điểm đến: https://maps.google.com/?q=${markerEnd.getLatLng().lat.toFixed(5)},${markerEnd.getLatLng().lng.toFixed(5)}`;
     msg += `\n📏 Quãng đường: ${currentDistance} km`;
-    msg += `\n💰 Cước phí: ${selectedDriver.vehicle_type === 'truck' ? 'Thỏa thuận' : currentPrice.toLocaleString('vi-VN') + 'đ'}`;
-  }
-
-  const noteInput = document.getElementById('noteInput');
-  const noteText = noteInput ? noteInput.value.trim() : '';
-  if (noteText) {
-    msg += `\n📝 Ghi chú: ${noteText}`;
+    msg += `\n💰 Cước phí: ${driver.vehicle_type === 'truck' ? 'Thỏa thuận' : currentPrice.toLocaleString('vi-VN') + 'đ'}`;
   }
 
   navigator.clipboard.writeText(msg).then(() => {
-    alert("✅ ĐÃ COPY LỘ TRÌNH VÀ GHI CHÚ!\n\nHệ thống mở Zalo ngay bây giờ. Bạn hãy dán (Paste) nội dung tin nhắn gửi cho tài xế nhé!");
-    window.open(`https://zalo.me/${selectedDriver.phone}`, '_blank');
+    alert("✅ ĐÃ COPY LỘ TRÌNH!\n\nHệ thống mở Zalo ngay bây giờ. Bạn hãy dán (Paste) nội dung tin nhắn gửi cho tài xế nhé!");
+    window.open(`https://zalo.me/${driver.phone}`, '_blank');
   }).catch(() => {
-    window.open(`https://zalo.me/${selectedDriver.phone}?text=${encodeURIComponent(msg)}`, '_blank');
+    window.open(`https://zalo.me/${driver.phone}?text=${encodeURIComponent(msg)}`, '_blank');
   });
 }
 
@@ -865,14 +860,7 @@ async function selectDriver(driver) {
     </div>
   `;
 
-  document.getElementById('phoneBtn').href = `tel:${driver.phone}`;
   updatePrice();
-  
-  document.getElementById('zaloBtn').style.display = 'block';
-  document.getElementById('phoneBtn').style.display = 'block';
-  
-  const noteContainer = document.getElementById('noteContainer');
-  if (noteContainer) noteContainer.style.display = 'block';
 
   renderDriverMarkers();
 
@@ -948,10 +936,9 @@ function renderDriverMarkers() {
 
       const div = document.createElement('div');
       div.className = `top3-item ${isSelected ? 'selected' : ''}`;
-      div.onclick = () => selectDriver(driver);
 
       div.innerHTML = `
-        <div style="display:flex; align-items:center; gap:10px;">
+        <div style="display:flex; align-items:center; gap:10px; flex: 1;" onclick="selectDriver(rawDriversData.find(d => d.id === '${driver.id}'))">
           <img src="${avatarUrl}" class="driver-avatar-img" style="width:40px; height:40px;" onerror="this.src='https://cdn-icons-png.flaticon.com/512/149/149071.png'">
           <div>
             <div style="font-weight:bold; font-size:13px; color:#0f172a;">${driver.name}</div>
@@ -959,9 +946,10 @@ function renderDriverMarkers() {
             <div style="font-size:11px; color:#eab308; font-weight:bold;">⭐ ${rating.score} (${rating.count} lượt)</div>
           </div>
         </div>
-        <button class="btn-select-driver ${isSelected ? 'active' : 'normal'}">
-          ${isSelected ? 'ĐÃ CHỌN' : 'CHỌN XE'}
-        </button>
+        <div style="display:flex; gap:6px; align-items:center;">
+          <button class="btn-action-zalo" onclick="event.stopPropagation(); openZaloById('${driver.id}')" title="Nhắn Zalo">💬 Zalo</button>
+          <button class="btn-action-phone" onclick="event.stopPropagation(); trackCallById(event, '${driver.id}')" title="Gọi điện">📞 Gọi</button>
+        </div>
       `;
       top3List.appendChild(div);
     });
@@ -984,9 +972,20 @@ function renderDriverMarkers() {
   filteredDrivers.slice(0, 15).forEach(driver => {
     currentValidIds.add(driver.id);
     const icon = icons[driver.vehicle_type] || icons['bike'];
-    const typeBadge = typeNames[driver.vehicle_type] || 'Tài xế';
     const rating = calcRating(driver);
     const targetLatLng = [driver.lat, driver.lng];
+
+    const popupHtml = `
+      <div style="text-align:center; padding:2px; min-width:130px;">
+        <b style="font-size:13px; color:#0f172a;">${driver.name}</b><br>
+        <span style="color:#eab308; font-weight:bold; font-size:12px;">⭐ ${rating.score} / 5.0</span>
+        <small style="color:#64748b; font-size:11px;">(${rating.count} lượt)</small>
+        <div style="display:flex; gap:6px; justify-content:center; margin-top:8px;">
+          <button class="btn-action-zalo" onclick="event.stopPropagation(); openZaloById('${driver.id}')" style="padding:5px 8px; font-size:11px;">💬 Zalo</button>
+          <button class="btn-action-phone" onclick="event.stopPropagation(); trackCallById(event, '${driver.id}')" style="padding:5px 8px; font-size:11px;">📞 Gọi</button>
+        </div>
+      </div>
+    `;
 
     if (driverMarkers[driver.id]) {
       const existingMarker = driverMarkers[driver.id];
@@ -997,25 +996,14 @@ function renderDriverMarkers() {
       }
 
       existingMarker.setIcon(icon);
-      existingMarker.setPopupContent(`
-        <div style="text-align:center;">
-          <b>${typeBadge}: ${driver.name}</b><br>
-          <span style="color:#eab308; font-weight:bold;">⭐ ${rating.score} / 5.0</span> 
-          <small style="color:#64748b;">(${rating.count} lượt)</small>
-        </div>
-      `);
+      existingMarker.setPopupContent(popupHtml);
     } else {
       const marker = L.Marker.movingMarker([targetLatLng, targetLatLng], [1000], { icon: icon }).addTo(map);
-      
-      marker.bindPopup(`
-        <div style="text-align:center;">
-          <b>${typeBadge}: ${driver.name}</b><br>
-          <span style="color:#eab308; font-weight:bold;">⭐ ${rating.score} / 5.0</span> 
-          <small style="color:#64748b;">(${rating.count} lượt)</small>
-        </div>
-      `);
+      marker.bindPopup(popupHtml);
      
-      marker.on('click', () => selectDriver(driver));
+      marker.on('click', () => {
+        selectDriver(driver);
+      });
       driverMarkers[driver.id] = marker;
     }
   });
