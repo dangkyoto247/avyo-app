@@ -14,18 +14,19 @@ const map = L.map('map', {
 L.control.zoom({ position: 'topright' }).addTo(map);
 
 // =========================================================
-// QUẢN LÝ GHIM CỐ ĐỊNH TẠI MỐC 1/3 PHÍA TRÊN MÀN HÌNH
+// QUẢN LÝ GHIM CỐ ĐỊNH & TỰ ĐỘNG CHỌN ĐIỂM KHI DỪNG BẢN ĐỒ
 // =========================================================
 let activePinMode = 'pickup'; // 'pickup' hoặc 'dest'
 let mapInteractionTimer = null;
+let reverseGeocodeTimer = null;
 
-// Tính tọa độ địa lý (LatLng) tại vị trí ghim cố định (Mốc 1/3 phía trên)
+// Lấy tọa độ địa lý tại đúng vị trí ghim cố định (Mốc 1/3 phía trên màn hình)
 function getFixedPinLatLng() {
   const point = L.point(window.innerWidth / 2, window.innerHeight / 3);
   return map.containerPointToLatLng(point);
 }
 
-// Căn chỉnh bản đồ đưa vị trí LatLng khớp với mốc ghim 1/3 phía trên
+// Căn bản đồ đưa tọa độ bất kỳ về mốc ghim 1/3 phía trên
 function centerMapOnFixedPin(latlng, zoom = map.getZoom()) {
   const targetPoint = map.project(latlng, zoom);
   const offsetY = (window.innerHeight / 2) - (window.innerHeight / 3);
@@ -34,18 +35,42 @@ function centerMapOnFixedPin(latlng, zoom = map.getZoom()) {
   map.setView(newLatLng, zoom);
 }
 
-// Đổi màu ghim cố định (Đỏ cho điểm đón, Xanh cho điểm đến)
+// Chuyển chế độ ghim ('pickup' hoặc 'dest') và cập nhật màu ghim
 function setActivePinMode(mode) {
   activePinMode = mode;
   const pinSvg = document.querySelector('#fixedCenterPin svg');
   if (pinSvg) {
     if (mode === 'pickup') {
-      pinSvg.setAttribute('fill', '#dc2626');
+      pinSvg.setAttribute('fill', '#dc2626'); // Đỏ: Điểm đón
       if (markerStart) centerMapOnFixedPin(markerStart.getLatLng());
     } else {
-      pinSvg.setAttribute('fill', '#2563eb');
+      pinSvg.setAttribute('fill', '#2563eb'); // Xanh: Điểm đến
       if (markerEnd) centerMapOnFixedPin(markerEnd.getLatLng());
     }
+  }
+}
+
+// Tự động tra cứu tên địa chỉ từ tọa độ ghim và điền vào khung tìm kiếm
+async function reverseGeocodeFixedPin(latlng, type) {
+  if (!MAPBOX_TOKEN) return;
+  try {
+    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${latlng.lng.toFixed(5)},${latlng.lat.toFixed(5)}.json?access_token=${MAPBOX_TOKEN}&country=vn&language=vi&limit=1`;
+    const res = await fetch(url);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.features && data.features.length > 0) {
+        const placeName = cleanAddressText(data.features[0].text || data.features[0].place_name);
+        document.getElementById(type + 'Input').value = placeName;
+        
+        if (type === 'pickup') {
+          saveRecentPickup(placeName, latlng.lat, latlng.lng);
+        } else {
+          saveRecentDest(placeName, latlng.lat, latlng.lng);
+        }
+      }
+    }
+  } catch (e) {
+    console.warn("Lỗi dịch tọa độ sang địa chỉ:", e);
   }
 }
 
@@ -63,7 +88,7 @@ function scheduleEndMapInteraction(delay = 800) {
   }, delay);
 }
 
-// Bắt sự kiện người dùng vuốt/di chuyển bản đồ
+// LẮNG NGHE SỰ KIỆN KHI KÉO / DI CHUYỂN BẢN ĐỒ
 map.on('movestart', () => {
   document.body.classList.add('map-moving');
   startMapInteraction();
@@ -73,33 +98,40 @@ map.on('move', () => {
   startMapInteraction();
   const currentPinLatLng = getFixedPinLatLng();
 
+  // Cập nhật vị trí ghim tức thì trong khi đang di chuyển
   if (activePinMode === 'pickup') {
-    if (markerStart) {
-      markerStart.setLatLng(currentPinLatLng);
-    }
+    if (markerStart) markerStart.setLatLng(currentPinLatLng);
   } else {
-    if (markerEnd) {
-      markerEnd.setLatLng(currentPinLatLng);
-    }
+    if (markerEnd) markerEnd.setLatLng(currentPinLatLng);
   }
 });
 
+// KHI DỪNG THAO TÁC DI CHUYỂN BẢN ĐỒ -> TỰ ĐỘNG CHỌN VÀ CẬP NHẬT ĐIỂM
 map.on('moveend', () => {
   document.body.classList.remove('map-moving');
   const currentPinLatLng = getFixedPinLatLng();
 
   if (activePinMode === 'pickup') {
-    if (!markerStart) {
-      setPickupLocation(currentPinLatLng, false, false);
-    } else {
-      markerStart.setLatLng(currentPinLatLng);
-    }
-  } else {
+    setPickupLocation(currentPinLatLng, false, false);
+    
+    // Tra cứu tên địa chỉ tự động điền vào ô Điểm Đón
+    clearTimeout(reverseGeocodeTimer);
+    reverseGeocodeTimer = setTimeout(() => {
+      reverseGeocodeFixedPin(currentPinLatLng, 'pickup');
+    }, 300);
+
+    // Tự động chuyển sang chế độ chọn điểm đến nếu chưa thiết lập điểm đến
     if (!markerEnd) {
-      setDestLocation(currentPinLatLng, false);
-    } else {
-      markerEnd.setLatLng(currentPinLatLng);
+      setTimeout(() => { setActivePinMode('dest'); }, 1000);
     }
+  } else if (activePinMode === 'dest') {
+    setDestLocation(currentPinLatLng, false);
+    
+    // Tra cứu tên địa chỉ tự động điền vào ô Điểm Đến
+    clearTimeout(reverseGeocodeTimer);
+    reverseGeocodeTimer = setTimeout(() => {
+      reverseGeocodeFixedPin(currentPinLatLng, 'dest');
+    }, 300);
   }
 
   calculateFastRoute();
@@ -107,7 +139,7 @@ map.on('moveend', () => {
   mapboxTimeout = setTimeout(() => {
     calculateMapboxRoute();
     loadDrivers();
-  }, 800);
+  }, 600);
 
   scheduleEndMapInteraction(800);
 });
