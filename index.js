@@ -39,8 +39,17 @@ googleLayer.addTo(map);
 
 setTimeout(() => { if (map) map.invalidateSize(); }, 300);
 
+let mapMoveTimer = null;
 window.addEventListener('resize', () => { if (map) map.invalidateSize(); });
-map.on('moveend resize', () => { if (map) map.invalidateSize(); });
+
+// CƠ CHẾ PULL THÔNG MINH: CHỈ TẢI LẠI XE KHU VỰC MỚI KHU KHI KHÁCH KÉO/THU PHÓNG BẢN ĐỒ (DEBOUNCE 500MS)
+map.on('moveend', () => {
+  if (map) map.invalidateSize();
+  clearTimeout(mapMoveTimer);
+  mapMoveTimer = setTimeout(() => {
+    loadDrivers();
+  }, 500);
+});
 
 const SUPABASE_URL = 'https://yvucyqkglbgxvozrznir.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl2dWN5cWtnbGJneHZvenJ6bmlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkxMzA3ODAsImV4cCI6MjEwNDcwNjc4MH0.Zagl4i2LPmxW3w9ih0h4LRsrm-OOGtPcWgvEs2vHBqo';
@@ -389,17 +398,17 @@ function onSearchInput(type, isDirectCall = false) {
     let features = [];
 
     if (rawCenter && lat && lng) {
-      // BƯỚC 1: Ưu tiên tìm trong bán kính 15km
+      // Ưu tiên 1: Bán kính 15km
       const bbox15 = getBBox(lat, lng, 15);
       features = await fetchGeocoding(bbox15);
 
-      // BƯỚC 2: Nếu không có kết quả -> Mở rộng ra 50km
+      // Ưu tiên 2: Bán kính 50km
       if (features.length === 0) {
         const bbox50 = getBBox(lat, lng, 50);
         features = await fetchGeocoding(bbox50);
       }
 
-      // BƯỚC 3: Nếu vẫn không có -> Mở rộng ra toàn bộ phạm vi
+      // Ưu tiên 3: Toàn quốc
       if (features.length === 0) {
         features = await fetchGeocoding(null);
       }
@@ -1088,12 +1097,6 @@ function renderDriverMarkers() {
 
 loadDrivers();
 updateGuide();
-
-setInterval(() => {
-  if (typeof loadDrivers === 'function') {
-    loadDrivers();
-  }
-}, 12000);
 
 document.addEventListener('gesturestart', function (e) { e.preventDefault(); });
 
