@@ -58,7 +58,7 @@ let rawDriversData = [];
 let searchTimer = null;
 let mapboxTimeout = null;
 
-let currentSelectionMode = 'pickup'; // Mặc định ban đầu chọn điểm đón
+let currentSelectionMode = null; // Mặc định chưa bật chế độ chọn bằng ghim cố định
 
 function safeDistance(lat1, lon1, lat2, lon2) {
   if (typeof getHaversineDistance === 'function') {
@@ -88,13 +88,50 @@ function getPinCenterLatLng() {
   return map.containerPointToLatLng([pinX, pinY]);
 }
 
-/* HÀM ĐẶT BẢN ĐỒ SAO CHO TỌA ĐỘ NẰM ĐÚNG VỊ TRÍ GHIM 1/3 PHÍA TRÊN */
+/* HÀM ĐẶT BẢN ĐỒ SAO CHO TỌA ĐỘ NẰM ĐÚNG VỊ TRÍ GHIM 1/3 PHÍA TRÊN (HIỆU ỨNG TRƯỢT MƯỢT MA) */
 function centerMapOnPin(latlng, zoom = 15) {
-  if (!map) return;
-  map.setView(latlng, zoom);
-  const pinY = map.getSize().y * 0.3333;
-  const centerY = map.getSize().y * 0.5;
-  map.panBy([0, pinY - centerY], { animate: false });
+  if (!map || !latlng) return;
+  if (map.getZoom() !== zoom) {
+    map.setZoom(zoom, { animate: false });
+  }
+  const size = map.getSize();
+  const pinPoint = L.point(size.x / 2, size.y * 0.3333);
+  const currentPoint = map.latLngToContainerPoint(latlng);
+  const delta = currentPoint.subtract(pinPoint);
+  
+  // Dịch chuyển bản đồ mượt mà để điểm latlng trùng khớp hoàn toàn vào đầu ghim cố định
+  map.panBy(delta, { animate: true, duration: 0.4 });
+}
+
+/* KÍCH HOẠT CHẾ ĐỘ CHỌN GHIM PIN VÀ CĂN DỊCH CHUYỂN BẢN ĐỒ VỀ ĐÚNG ĐIỂM CŨ */
+function triggerPinSelection(type) {
+  let targetLatLng = null;
+
+  // Lấy vị trí tọa độ hiện tại của điểm đón/đến trước khi tạm tháo marker
+  if (type === 'pickup') {
+    if (markerStart) targetLatLng = markerStart.getLatLng();
+    else if (userLatLng) targetLatLng = userLatLng;
+    else targetLatLng = map.getCenter();
+  } else if (type === 'dest') {
+    if (markerEnd) targetLatLng = markerEnd.getLatLng();
+    else if (markerStart) targetLatLng = markerStart.getLatLng();
+    else if (userLatLng) targetLatLng = userLatLng;
+    else targetLatLng = map.getCenter();
+  }
+
+  // Tạm xóa tuyến đường đang vẽ (nếu có) để tập trung chọn lại điểm
+  if (routeLine) {
+    map.removeLayer(routeLine);
+    routeLine = null;
+  }
+
+  // Bật giao diện ghim chọn điểm
+  enterSelectionMode(type);
+
+  // Tự động dịch chuyển bản đồ đưa vị trí đó trùng đúng với điểm nhọn ghim 1/3
+  if (targetLatLng) {
+    centerMapOnPin(targetLatLng, 15);
+  }
 }
 
 /* QUẢN LÝ QUY TRÌNH CHỌN ĐIỂM ĐÓN / ĐẾN QUA BẢN ĐỒ CỐ ĐỊNH */
@@ -150,19 +187,10 @@ function confirmAndExitSelection() {
   if (currentSelectionMode === 'pickup') {
     setPickupLocation(pinLatLng);
     fetchAddressForInput('pickup', pinLatLng);
-    
-    // Nếu CHƯA có điểm đến -> Bắt buộc chuyển ngay sang chọn điểm đến
-    if (!markerEnd) {
-      enterSelectionMode('dest');
-    } else {
-      // Đã CÓ điểm đến từ trước -> Hoàn tất & vẽ đường đi
-      exitSelectionMode();
-    }
+    exitSelectionMode();
   } else if (currentSelectionMode === 'dest') {
     setDestLocation(pinLatLng);
     fetchAddressForInput('dest', pinLatLng);
-    
-    // Đã xong cả 2 điểm -> Thoát chế độ chọn điểm
     exitSelectionMode();
   }
 }
@@ -226,9 +254,9 @@ function showRecentPickups() {
       document.getElementById('pickupInput').value = item.label;
       listEl.style.display = 'none';
       const latlng = L.latLng(item.lat, item.lng);
-      enterSelectionMode('pickup');
-      centerMapOnPin(latlng, 15);
+      setPickupLocation(latlng);
       saveRecentPickup(item.label, item.lat, item.lng);
+      exitSelectionMode();
     };
     listEl.appendChild(div);
   });
@@ -273,9 +301,9 @@ function showRecentDests() {
       document.getElementById('destInput').value = item.label;
       listEl.style.display = 'none';
       const latlng = L.latLng(item.lat, item.lng);
-      enterSelectionMode('dest');
-      centerMapOnPin(latlng, 15);
+      setDestLocation(latlng);
       saveRecentDest(item.label, item.lat, item.lng);
+      exitSelectionMode();
     };
     listEl.appendChild(div);
   });
@@ -393,9 +421,10 @@ function setDestLocation(latlng) {
 
 function useCurrentLocationAsPickup() {
   if (userLatLng) {
-    centerMapOnPin(userLatLng, 15);
-
-    if (!currentSelectionMode) {
+    if (currentSelectionMode) {
+      centerMapOnPin(userLatLng, 15);
+    } else {
+      map.setView(userLatLng, 15);
       setPickupLocation(userLatLng, true);
       const labelText = "Vị trí hiện tại của bạn";
       document.getElementById('pickupInput').value = labelText;
@@ -497,12 +526,15 @@ function onSearchInput(type, isDirectCall = false) {
       listEl.style.display = 'none';
       const latlng = L.latLng(resLat, resLng);
 
-      // Chuyển sang chế độ chọn vị trí bằng ghim và căn chỉnh bản đồ
-      enterSelectionMode(type);
-      centerMapOnPin(latlng, 15);
-
-      if (type === 'pickup') saveRecentPickup(placeName, resLat, resLng);
-      else saveRecentDest(placeName, resLat, resLng);
+      if (type === 'pickup') {
+        setPickupLocation(latlng);
+        saveRecentPickup(placeName, resLat, resLng);
+        exitSelectionMode();
+      } else {
+        setDestLocation(latlng);
+        saveRecentDest(placeName, resLat, resLng);
+        exitSelectionMode();
+      }
       return;
     }
 
@@ -529,12 +561,15 @@ function onSearchInput(type, isDirectCall = false) {
         
         const latlng = L.latLng(fLat, fLng);
 
-        // Đưa bản đồ về điểm gợi ý và giữ ở chế độ chọn ghim để khách căn chỉnh tiếp
-        enterSelectionMode(type);
-        centerMapOnPin(latlng, 15);
-
-        if (type === 'pickup') saveRecentPickup(mainTitle, fLat, fLng);
-        else saveRecentDest(mainTitle, fLat, fLng);
+        if (type === 'pickup') {
+          setPickupLocation(latlng);
+          saveRecentPickup(mainTitle, fLat, fLng);
+          exitSelectionMode();
+        } else {
+          setDestLocation(latlng);
+          saveRecentDest(mainTitle, fLat, fLng);
+          exitSelectionMode();
+        }
       };
       listEl.appendChild(div);
     });
@@ -672,9 +707,7 @@ function resetRoute() {
 
   updatePrice();
   loadDrivers();
-  
-  // Reset quy trình chọn lại từ đầu: Điểm Đón -> Điểm Đến
-  enterSelectionMode('pickup');
+  exitSelectionMode();
 }
 
 function deselectDriver() {
@@ -1055,8 +1088,7 @@ function renderDriverMarkers() {
   });
 }
 
-// Khởi chạy chế độ chọn điểm đón mặc định ngay khi tải trang
-enterSelectionMode('pickup');
+// Tải danh sách tài xế ban đầu (chế độ ghim chỉ bật khi bấm nút 📍/🚩)
 loadDrivers();
 updateGuide();
 

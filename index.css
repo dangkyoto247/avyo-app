@@ -111,7 +111,7 @@ body {
   border-top: 1px dashed #cbd5e1;
 }
 
-/* GHIM CỐ ĐỊNH CHÍNH GIỮA TẠI MỐC 1/3 PHÍA TRÊN MÀN HÌNH */
+/* GHIM CỐ ĐỊNH CHÍNH GIỮA TẠI MỐC 1/3 PHÍA TRÊN MÀN HÌNH (MẶC ĐỊNH ẨN) */
 .fixed-center-pin {
   position: fixed;
   top: 33.33vh;
@@ -119,7 +119,7 @@ body {
   transform: translate(-50%, -100%);
   z-index: 999;
   pointer-events: none;
-  display: flex;
+  display: none;
   flex-direction: column;
   align-items: center;
   transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
@@ -147,7 +147,7 @@ body.map-moving .fixed-center-pin .pin-shadow {
   opacity: 0.15;
 }
 
-/* HIỆN GHIM TRUNG TÂM KHI Ở CHẾ ĐỘ CHỌN ĐIỂM */
+/* HIỆN GHIM TRUNG TÂM CHỈ KHI Ở CHẾ ĐỘ CẦN CHỌN ĐIỂM QUA GHIM */
 body.selecting-pickup .fixed-center-pin,
 body.selecting-dest .fixed-center-pin {
   display: flex !important;
@@ -314,7 +314,7 @@ body.selecting-dest .btn-confirm-select {
 
 .search-input-group input { 
   width: 100%; 
-  padding: 10px 12px; 
+  padding: 10px 42px 10px 12px; 
   border: 1.5px solid #cbd5e1; 
   border-radius: 10px; 
   font-size: 14px; 
@@ -326,6 +326,36 @@ body.selecting-dest .btn-confirm-select {
 .search-input-group input:focus { 
   border-color: #00b14f; 
   box-shadow: 0 0 0 3px rgba(0, 177, 79, 0.15); 
+}
+
+/* NÚT GHIM PIN TRONG Ô NHẬP ĐỊA CHỈ */
+.btn-pin-select {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 15px;
+  z-index: 5;
+  transition: all 0.2s ease;
+  padding: 0;
+}
+
+.btn-pin-select:hover {
+  background: #e2e8f0;
+  border-color: #00b14f;
+}
+
+.btn-pin-select:active {
+  transform: translateY(-50%) scale(0.92);
 }
 
 .suggestions-list { 
@@ -554,6 +584,17 @@ body.dark-mode {
 }
 
 .dark-mode .search-input-group input:focus {
+  border-color: #00b14f;
+}
+
+.dark-mode .btn-pin-select {
+  background: #334155;
+  border-color: #475569;
+  color: #f8fafc;
+}
+
+.dark-mode .btn-pin-select:hover {
+  background: #475569;
   border-color: #00b14f;
 }
 
