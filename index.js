@@ -1,5 +1,5 @@
 // MAPBOX ACCESS TOKEN CỦA BẠN
-const MAPBOX_TOKEN = 'pk.eyJ1IjoidHVhbmgzNDE2MjMiLCJhbGciOiJjbXUwcGhlYTExNHV5MnhvdjlyaXE5ZzM2In0.NN6tgrUWAN2tUubAZtTY_Q';
+const MAPBOX_TOKEN = 'pk.eyJ1IjoidHVhbmFuaDM0MTYyMyIsImEiOiJjbXUyazY4dzUwMG9qMnhzNXgwMmNpeDM0In0.tqaiyjHJBAct2XAuhmGFWQ';
 
 // Khởi tạo bản đồ Leaflet
 const map = L.map('map', { 
