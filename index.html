@@ -19,7 +19,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/gh/ewoken/Leaflet.MovingMarker@master/MovingMarker.js"></script>
 
-  <link rel="stylesheet" href="index.css?v=34">
+  <link rel="stylesheet" href="index.css?v=35">
 </head>
 <body>
 
@@ -34,7 +34,12 @@
     <div class="pin-shadow"></div>
   </div>
 
-  <!-- CỤM ĐẦU MÀN HÌNH (TRƯỢT LÊN KHI VUỐT BẢN ĐỒ) -->
+  <!-- NÚT NỔI ĐỊNH VỊ GPS Ở GÓC PHẢI MÀN HÌNH VỪA TẦM TAY -->
+  <button id="gpsFloatBtn" class="btn-gps-float" onclick="useCurrentLocationAsPickup()" title="📍 Vị trí hiện tại của tôi">
+    🎯
+  </button>
+
+  <!-- CỤM ĐẦU MÀN HÌNH -->
   <div class="top-section">
     <div id="guideBox" class="guide-box">
       <span class="brand-badge">AVYO</span>
@@ -50,23 +55,28 @@
       <div class="filter-chip" onclick="selectFilter('other', this)">✨ Khác</div>
     </div>
 
+    <!-- CỤM Ô NHẬP ĐỊA CHỈ -->
     <div class="card search-card">
-      <div class="search-input-group">
-        <input type="text" id="pickupInput" placeholder="📍 Tìm điểm đón (VD: Sân bay Vinh)..." autocomplete="off" oninput="onSearchInput('pickup')" onfocus="setActivePinMode('pickup')">
+      <div class="search-input-group pickup-group">
+        <input type="text" id="pickupInput" placeholder="📍 Tìm điểm đón (VD: Sân bay Vinh)..." autocomplete="off" oninput="onSearchInput('pickup')" onfocus="enterSelectionMode('pickup')">
         <div id="pickupSuggestions" class="suggestions-list"></div>
       </div>
-      <div class="search-input-group" style="margin-bottom: 0px;">
-        <input type="text" id="destInput" placeholder="🚩 Tìm điểm đến (VD: Bến xe Vinh)..." autocomplete="off" oninput="onSearchInput('dest')" onfocus="setActivePinMode('dest')">
+
+      <div class="search-input-group dest-group" style="margin-bottom: 0px;">
+        <input type="text" id="destInput" placeholder="🚩 Tìm điểm đến (VD: Bến xe Vinh)..." autocomplete="off" oninput="onSearchInput('dest')" onfocus="enterSelectionMode('dest')">
         <div id="destSuggestions" class="suggestions-list"></div>
       </div>
+
+      <!-- NÚT XÁC NHẬN KHI Ở CHẾ ĐỘ CHỌN ĐIỂM TOÀN MÀN HÌNH -->
+      <button id="confirmSelectBtn" class="btn-confirm-select" onclick="confirmAndExitSelection()">
+        ✅ XONG - XÁC NHẬN VỊ TRÍ
+      </button>
     </div>
   </div>
 
-  <!-- CỤM ĐÁY MÀN HÌNH (TRƯỢT XUỐNG KHI VUỐT BẢN ĐỒ) -->
+  <!-- CỤM ĐÁY MÀN HÌNH -->
   <div class="bottom-section">
     <div class="card bottom-card">
-      <button id="gpsBtn" class="btn-gps" onclick="useCurrentLocationAsPickup()">📍 Đặt điểm đón tại vị trí của tôi</button>
-     
       <div style="margin: 4px 0 2px 0; font-size: 13px; color: #334155;">
         <b>Quãng đường:</b> <span id="distance" style="font-weight: bold; color: #0f172a;">0</span> km
       </div>
@@ -101,7 +111,7 @@
     </div>
   </div>
 
-  <script src="utils.js?v=34"></script>
-  <script src="index.js?v=34"></script>
+  <script src="utils.js?v=35"></script>
+  <script src="index.js?v=35"></script>
 </body>
 </html>
