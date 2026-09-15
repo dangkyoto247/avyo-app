@@ -13,7 +13,7 @@ const map = L.map('map', {
 
 L.control.zoom({ position: 'topright' }).addTo(map);
 
-// 1. LỚP BẢN ĐỒ CHÍNH: GOOGLE MAPS TILES
+// LỚP BẢN ĐỒ CHÍNH: GOOGLE MAPS TILES
 const googleLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
   subdomains: ['0', '1', '2', '3'],
   maxZoom: 20,
@@ -53,12 +53,12 @@ let markerStart = null, markerEnd = null;
 let routeLine = null;
 let currentDistance = 0, currentPrice = 0;
 let selectedDriver = null;
+let ratingDriverTarget = null;
 let rawDriversData = [];
 let searchTimer = null;
 let mapboxTimeout = null;
 
-let currentDragRating = 0;
-let isStarDragging = false;
+let currentSelectionMode = 'pickup'; // Mặc định chế độ đầu tiên là chọn điểm đón
 
 function safeDistance(lat1, lon1, lat2, lon2) {
   if (typeof getHaversineDistance === 'function') {
@@ -78,6 +78,101 @@ function getBBox(lat, lng, radiusKm) {
   const dLng = radiusKm / (111 * Math.cos(lat * Math.PI / 180));
   return `${(lng - dLng).toFixed(4)},${(lat - dLat).toFixed(4)},${(lng + dLng).toFixed(4)},${(lat + dLat).toFixed(4)}`;
 }
+
+/* HÀM TÍNH CHÍNH XÁC TỌA ĐỘ BẢN ĐỒ TẠI ĐIỂM NHỌN CỦA GHIM (MỐC 1/3 PHÍA TRÊN MÀN HÌNH) */
+function getPinCenterLatLng() {
+  if (!map) return L.latLng(18.7034, 105.6832);
+  const size = map.getSize();
+  const pinX = size.x / 2;
+  const pinY = size.y * 0.3333; // Mốc 1/3 phía trên chiều cao bản đồ
+  return map.containerPointToLatLng([pinX, pinY]);
+}
+
+/* QUẢN LÝ QUY TRÌNH CHỌN ĐIỂM ĐÓN / ĐẾN QUA BẢN ĐỒ CỐ ĐỊNH */
+function enterSelectionMode(mode) {
+  currentSelectionMode = mode;
+  document.body.classList.remove('selecting-pickup', 'selecting-dest');
+  
+  const pinSvg = document.querySelector('.fixed-center-pin .pin-svg');
+  const confirmBtn = document.getElementById('confirmSelectBtn');
+
+  if (mode === 'pickup') {
+    document.body.classList.add('selecting-pickup');
+    if (pinSvg) pinSvg.setAttribute('fill', '#dc2626'); // Đỏ cho Điểm Đón
+    if (confirmBtn) confirmBtn.innerText = "📍 CHỌN ĐIỂM ĐÓN NÀY";
+    if (markerStart) {
+      map.removeLayer(markerStart);
+      markerStart = null;
+    }
+  } else if (mode === 'dest') {
+    document.body.classList.add('selecting-dest');
+    if (pinSvg) pinSvg.setAttribute('fill', '#2563eb'); // Xanh cho Điểm Đến
+    if (confirmBtn) confirmBtn.innerText = "🚩 CHỌN ĐIỂM ĐẾN NÀY";
+    if (markerEnd) {
+      map.removeLayer(markerEnd);
+      markerEnd = null;
+    }
+  }
+}
+
+async function fetchAddressForInput(type, latlng) {
+  if (!MAPBOX_TOKEN) return;
+  try {
+    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${latlng.lng},${latlng.lat}.json?access_token=${MAPBOX_TOKEN}&country=vn&language=vi&limit=1`;
+    const res = await fetch(url);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.features && data.features.length > 0) {
+        const placeName = cleanAddressText(data.features[0].text || data.features[0].place_name);
+        const inputEl = document.getElementById(type + 'Input');
+        if (inputEl) inputEl.value = placeName;
+        if (type === 'pickup') saveRecentPickup(placeName, latlng.lat, latlng.lng);
+        if (type === 'dest') saveRecentDest(placeName, latlng.lat, latlng.lng);
+      }
+    }
+  } catch (e) {
+    console.warn("Lỗi lấy địa chỉ ngược", e);
+  }
+}
+
+function confirmAndExitSelection() {
+  const pinLatLng = getPinCenterLatLng();
+
+  if (currentSelectionMode === 'pickup') {
+    setPickupLocation(pinLatLng);
+    fetchAddressForInput('pickup', pinLatLng);
+    
+    // Tự động chuyển ngay sang chế độ chọn điểm đến màu xanh
+    enterSelectionMode('dest');
+  } else if (currentSelectionMode === 'dest') {
+    setDestLocation(pinLatLng);
+    fetchAddressForInput('dest', pinLatLng);
+    
+    // Đã xong cả 2 điểm -> Thoát chế độ chọn điểm toàn màn hình
+    exitSelectionMode();
+  }
+}
+
+function exitSelectionMode() {
+  currentSelectionMode = null;
+  document.body.classList.remove('selecting-pickup', 'selecting-dest');
+  
+  if (markerStart && markerEnd) {
+    calculateMapboxRoute();
+  }
+}
+
+/* SỰ KIỆN DI CHUYỂN BẢN ĐỒ */
+map.on('movestart', () => {
+  if (currentSelectionMode) {
+    document.body.classList.add('map-moving');
+  }
+});
+
+map.on('moveend', () => {
+  document.body.classList.remove('map-moving');
+  if (map) map.invalidateSize();
+});
 
 function getRecentPickups() {
   try {
@@ -223,13 +318,22 @@ function selectFilter(type, element) {
   }
 
   loadDrivers();
+  updatePrice();
 }
 
 map.locate({ setView: true, maxZoom: 15 });
 
 map.on('locationfound', (e) => {
   userLatLng = e.latlng;
-  setPickupLocation(e.latlng, true);
+  if (currentSelectionMode) {
+    // Đưa bản đồ về vị trí hiện tại sao cho nằm đúng dưới ghim 1/3
+    const pinY = map.getSize().y * 0.3333;
+    const centerY = map.getSize().y * 0.5;
+    map.setView(e.latlng, 15);
+    map.panBy([0, pinY - centerY], { animate: false });
+  } else if (!markerStart) {
+    setPickupLocation(e.latlng, true);
+  }
 });
 
 function setPickupLocation(latlng, isAuto = false) {
@@ -279,23 +383,21 @@ function setDestLocation(latlng) {
 
 function useCurrentLocationAsPickup() {
   if (userLatLng) {
-    setPickupLocation(userLatLng, true);
-    const labelText = "Vị trí hiện tại của bạn";
-    document.getElementById('pickupInput').value = labelText;
+    const pinY = map.getSize().y * 0.3333;
+    const centerY = map.getSize().y * 0.5;
     map.setView(userLatLng, 15);
-    saveRecentPickup(labelText, userLatLng.lat, userLatLng.lng);
+    map.panBy([0, pinY - centerY], { animate: false });
+
+    if (!currentSelectionMode) {
+      setPickupLocation(userLatLng, true);
+      const labelText = "Vị trí hiện tại của bạn";
+      document.getElementById('pickupInput').value = labelText;
+      saveRecentPickup(labelText, userLatLng.lat, userLatLng.lng);
+    }
   } else {
     map.locate({ setView: true, maxZoom: 15 });
   }
 }
-
-map.on('click', function(e) {
-  if (!markerStart) {
-    setPickupLocation(e.latlng, false);
-  } else if (!markerEnd) {
-    setDestLocation(e.latlng);
-  }
-});
 
 function cleanAddressText(text) {
   if (!text) return '';
@@ -320,7 +422,7 @@ function onSearchInput(type, isDirectCall = false) {
   }
 
   const executeSearch = async () => {
-    let rawCenter = markerStart ? markerStart.getLatLng() : (userLatLng || map.getCenter());
+    let rawCenter = markerStart ? markerStart.getLatLng() : (userLatLng || getPinCenterLatLng());
     
     if (rawCenter && typeof rawCenter.wrap === 'function') {
       rawCenter = rawCenter.wrap();
@@ -522,6 +624,7 @@ async function calculateMapboxRoute() {
   updateGuide();
 }
 
+/* CẬP NHẬT LOGIC TÍNH CƯỚC: TỰ ĐỘNG HIỂN THỊ KHI CÓ ĐIỂM ĐÓN & ĐẾN DỰA TRÊN LOẠI XE ĐANG CHỌN */
 function updatePrice() {
   const priceEl = document.getElementById('price');
   const rateLabelEl = document.getElementById('rate-label');
@@ -534,13 +637,7 @@ function updatePrice() {
     return;
   }
 
-  if (!selectedDriver) {
-    priceEl.innerText = '0đ';
-    rateLabelEl.innerText = `(${currentDistance} km)`;
-    return;
-  }
-
-  const type = selectedDriver.vehicle_type;
+  const type = activeFilter;
 
   if (type === 'truck') {
     priceEl.innerText = 'Thỏa thuận';
@@ -573,13 +670,13 @@ function resetRoute() {
 
   updatePrice();
   loadDrivers();
-  updateGuide();
+  
+  // Reset quy trình chọn lại từ đầu: Điểm Đón -> Điểm Đến
+  enterSelectionMode('pickup');
 }
 
 function deselectDriver() {
   selectedDriver = null;
-  document.getElementById('driver-info').innerHTML = '<i>Chạm chọn tài xế từ danh sách hoặc trên bản đồ...</i>';
-
   updatePrice();
   updateGuide();
 }
@@ -600,6 +697,61 @@ const typeNames = {
   'truck': '🚚 Chở hàng (Thỏa thuận)'
 };
 
+function showRatingModal(driver) {
+  if (!driver) return;
+  const todayStr = new Date().toDateString();
+  const ratedKey = `avyo_rated_date_${driver.id}`;
+  if (localStorage.getItem(ratedKey) === todayStr) {
+    return;
+  }
+  ratingDriverTarget = driver;
+  const titleEl = document.getElementById('ratingModalTitle');
+  if (titleEl) titleEl.innerText = `Đánh Giá Tài Xế ${driver.name}`;
+  
+  highlightModalStars(0);
+
+  const overlay = document.getElementById('ratingModalOverlay');
+  if (overlay) overlay.classList.add('active');
+}
+
+function closeRatingModal() {
+  const overlay = document.getElementById('ratingModalOverlay');
+  if (overlay) overlay.classList.remove('active');
+}
+
+function highlightModalStars(count) {
+  const stars = document.querySelectorAll('#modalStarBox .star-btn');
+  stars.forEach((star) => {
+    const starVal = parseInt(star.getAttribute('data-star'), 10);
+    if (starVal <= count) star.classList.add('active');
+    else star.classList.remove('active');
+  });
+}
+
+async function submitModalRating(stars) {
+  if (!ratingDriverTarget) return;
+  const driver = ratingDriverTarget;
+  closeRatingModal();
+
+  const todayStr = new Date().toDateString();
+  const ratedKey = `avyo_rated_date_${driver.id}`;
+
+  const { data: isSuccess, error } = await supabaseClient.rpc('add_driver_rating', { 
+    target_id: driver.id, 
+    stars: stars 
+  });
+
+  if (error || isSuccess === false) {
+    return alert("⚠️ Tài xế này đã đạt giới hạn tối đa 50 lượt đánh giá trong ngày hôm nay!");
+  }
+
+  localStorage.setItem(ratedKey, todayStr);
+  driver.rating_sum = (driver.rating_sum || 25) + stars;
+  driver.rating_count = (driver.rating_count || 5) + 1;
+
+  alert(`🌟 Cảm ơn bạn đã đánh giá ${stars} sao cho tài xế ${driver.name}!`);
+}
+
 async function trackCallById(event, driverId) {
   if (event) event.preventDefault();
   const driver = rawDriversData.find(d => d.id === driverId) || selectedDriver;
@@ -619,6 +771,8 @@ async function trackCallById(event, driverId) {
 
   localStorage.setItem(`avyo_unlocked_rating_${driver.id}`, 'true');
   await supabaseClient.rpc('increment_driver_call', { target_id: driver.id });
+  
+  setTimeout(() => showRatingModal(driver), 1000);
   window.location.href = `tel:${driver.phone}`;
 }
 
@@ -652,6 +806,8 @@ async function openZaloById(driverId) {
     msg += `\n📏 Quãng đường: ${currentDistance} km`;
     msg += `\n💰 Cước phí: ${driver.vehicle_type === 'truck' ? 'Thỏa thuận' : currentPrice.toLocaleString('vi-VN') + 'đ'}`;
   }
+
+  setTimeout(() => showRatingModal(driver), 1000);
 
   navigator.clipboard.writeText(msg).then(() => {
     alert("✅ ĐÃ COPY LỘ TRÌNH!\n\nHệ thống mở Zalo ngay bây giờ. Bạn hãy dán (Paste) nội dung tin nhắn gửi cho tài xế nhé!");
@@ -713,89 +869,6 @@ function calcRating(driver) {
   return { score: (sum / count).toFixed(1), count: count };
 }
 
-function highlightStars(count) {
-  const stars = document.querySelectorAll('.star-btn');
-  stars.forEach((star) => {
-    const starVal = parseInt(star.getAttribute('data-star'), 10);
-    if (starVal <= count) star.classList.add('active');
-    else star.classList.remove('active');
-  });
-}
-
-function updateStarRatingFromEvent(e) {
-  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-  if (!clientX || !clientY) return;
-
-  const target = document.elementFromPoint(clientX, clientY);
-  if (target && target.classList.contains('star-btn')) {
-    const starVal = parseInt(target.getAttribute('data-star'), 10);
-    if (starVal) {
-      currentDragRating = starVal;
-      highlightStars(starVal);
-    }
-  }
-}
-
-function handleStarDragStart(e) {
-  isStarDragging = true;
-  updateStarRatingFromEvent(e);
-}
-
-function handleStarDragMove(e) {
-  if (isStarDragging || e.type === 'mousemove') {
-    updateStarRatingFromEvent(e);
-  }
-}
-
-function handleStarDragEnd(e) {
-  if (isStarDragging) {
-    isStarDragging = false;
-    if (currentDragRating > 0) {
-      submitRating(currentDragRating);
-    }
-  }
-}
-
-function handleStarMouseLeave() {
-  if (!isStarDragging) {
-    currentDragRating = 0;
-    highlightStars(0);
-  }
-}
-
-async function submitRating(stars) {
-  if (!selectedDriver) return;
-
-  const isUnlocked = localStorage.getItem(`avyo_unlocked_rating_${selectedDriver.id}`);
-  if (!isUnlocked) {
-    return alert("⚠️ Bạn cần bấm '📞 Gọi Điện' hoặc '💬 Nhắn Zalo' liên hệ với tài xế để mở quyền đánh giá!");
-  }
-
-  const todayStr = new Date().toDateString();
-  const ratedKey = `avyo_rated_date_${selectedDriver.id}`;
-  if (localStorage.getItem(ratedKey) === todayStr) {
-    return alert("⭐ Hôm nay bạn đã gửi đánh giá cho tài xế này rồi!");
-  }
-
-  const { data: isSuccess, error } = await supabaseClient.rpc('add_driver_rating', { 
-    target_id: selectedDriver.id, 
-    stars: stars 
-  });
-
-  if (error || isSuccess === false) {
-    return alert("⚠️ Tài xế này đã đạt giới hạn tối đa 50 lượt đánh giá trong ngày hôm nay!");
-  }
-
-  localStorage.setItem(ratedKey, todayStr);
-  selectedDriver.rating_sum = (selectedDriver.rating_sum || 25) + stars;
-  selectedDriver.rating_count = (selectedDriver.rating_count || 5) + 1;
-  const rating = calcRating(selectedDriver);
- 
-  document.getElementById('rating-display').innerText = `${rating.score} / 5.0 (${rating.count} lượt)`;
-  alert(`🌟 Cảm ơn bạn đã đánh giá ${stars} sao cho tài xế ${selectedDriver.name}!`);
-}
-
 async function selectDriver(driver) {
   if (selectedDriver && selectedDriver.id === driver.id) {
     deselectDriver();
@@ -825,43 +898,7 @@ async function selectDriver(driver) {
     if (!error) driver.click_count = (driver.click_count || 0) + 1;
   }
 
-  const avatarUrl = getOptimizedAvatar(driver.avatar_url);
-  const typeBadge = typeNames[driver.vehicle_type] || 'Tài xế';
-  const rating = calcRating(driver);
-
-  document.getElementById('driver-info').innerHTML = `
-    <div class="driver-profile-box">
-      <img src="${avatarUrl}" class="driver-avatar-img" alt="${driver.name}" onerror="this.src='https://cdn-icons-png.flaticon.com/512/149/149071.png'">
-      <div>
-        <div style="font-size: 15px; font-weight: bold; color: #0f172a;">${driver.name}</div>
-        <div style="font-size: 13px; color: #00b14f; font-weight: 600;">${typeBadge} • ${driver.vehicle || 'Xe chuẩn'}</div>
-        <div style="font-size: 12px; color: #eab308; font-weight: bold; margin-top: 2px;">
-          ⭐ <span id="rating-display">${rating.score} / 5.0 (${rating.count} lượt)</span>
-        </div>
-      </div>
-    </div>
-   
-    <div style="margin-top: 8px; padding-top: 6px; border-top: 1px dashed #e2e8f0; text-align: center;">
-      <span style="font-size: 11px; color: #64748b; display: block; margin-bottom: 2px;">Chạm hoặc giữ vuốt để chọn số sao:</span>
-      <div id="starBox" class="star-box" 
-           onmousedown="handleStarDragStart(event)" 
-           onmousemove="handleStarDragMove(event)" 
-           onmouseup="handleStarDragEnd(event)"
-           ontouchstart="handleStarDragStart(event)" 
-           ontouchmove="handleStarDragMove(event)" 
-           ontouchend="handleStarDragEnd(event)"
-           onmouseleave="handleStarMouseLeave()">
-        <span class="star-btn" data-star="1">⭐</span>
-        <span class="star-btn" data-star="2">⭐</span>
-        <span class="star-btn" data-star="3">⭐</span>
-        <span class="star-btn" data-star="4">⭐</span>
-        <span class="star-btn" data-star="5">⭐</span>
-      </div>
-    </div>
-  `;
-
   updatePrice();
-
   renderDriverMarkers();
 
   if (driverMarkers[driver.id]) {
@@ -1016,6 +1053,8 @@ function renderDriverMarkers() {
   });
 }
 
+// Khởi chạy chế độ chọn điểm đón mặc định ngay khi tải trang
+enterSelectionMode('pickup');
 loadDrivers();
 updateGuide();
 

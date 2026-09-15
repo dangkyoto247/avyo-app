@@ -52,6 +52,10 @@ body {
     max-width: 480px !important;
   }
 
+  .fixed-center-pin {
+    left: 50% !important;
+  }
+
   body.dark-mode {
     background-color: #0f172a;
   }
@@ -107,7 +111,7 @@ body {
   border-top: 1px dashed #cbd5e1;
 }
 
-/* GHIM CỐ ĐỊNH CHÍNH GIỮA MÀN HÌNH */
+/* GHIM CỐ ĐỊNH CHÍNH GIỮA TẠI MỐC 1/3 PHÍA TRÊN MÀN HÌNH */
 .fixed-center-pin {
   position: fixed;
   top: 33.33vh;
@@ -115,7 +119,7 @@ body {
   transform: translate(-50%, -100%);
   z-index: 999;
   pointer-events: none;
-  display: none;
+  display: flex;
   flex-direction: column;
   align-items: center;
   transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
@@ -127,8 +131,8 @@ body {
 }
 
 .fixed-center-pin .pin-shadow {
-  width: 12px;
-  height: 4px;
+  width: 14px;
+  height: 5px;
   background: rgba(0,0,0,0.3);
   border-radius: 50%;
   margin-top: -2px;
@@ -136,13 +140,14 @@ body {
 }
 
 body.map-moving .fixed-center-pin {
-  transform: translate(-50%, -120%);
+  transform: translate(-50%, -125%);
 }
 body.map-moving .fixed-center-pin .pin-shadow {
-  transform: scale(0.5);
+  transform: scale(0.4);
   opacity: 0.15;
 }
 
+/* HIỆN GHIM TRUNG TÂM KHI Ở CHẾ ĐỘ CHỌN ĐIỂM */
 body.selecting-pickup .fixed-center-pin,
 body.selecting-dest .fixed-center-pin {
   display: flex !important;
@@ -457,8 +462,9 @@ body.selecting-dest .btn-confirm-select {
   background: #e2e8f0; 
 }
 
+/* ĐÁNH GIÁ SAO TRONG POPUP */
 .star-box {
-  font-size: 26px;
+  font-size: 28px;
   user-select: none;
   -webkit-user-select: none;
   touch-action: none;
