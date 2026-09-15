@@ -383,3 +383,52 @@ body.dark-mode {
   -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
 }
+
+/* =========================================================
+   HIỆU ỨNG TỰ ĐỘNG ẨN/HIỆN GIAO DIỆN & PHÓNG TO BẢN ĐỒ
+========================================================= */
+
+.guide-box, 
+.filter-bar, 
+.search-card, 
+.bottom-card, 
+#map {
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), 
+              opacity 0.35s ease, 
+              border-radius 0.3s ease;
+}
+
+body.map-fullscreen {
+  overflow: hidden;
+}
+
+/* Phần trên trượt lên ẩn */
+body.map-fullscreen .guide-box,
+body.map-fullscreen .filter-bar,
+body.map-fullscreen .search-card {
+  transform: translateY(-160%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Phần dưới trượt xuống ẩn */
+body.map-fullscreen .bottom-card {
+  transform: translateY(160%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Bản đồ phóng to tràn toàn màn hình */
+body.map-fullscreen #map {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw !important;
+  height: 100vh !important;
+  max-height: 100vh !important;
+  min-height: 100vh !important;
+  border-radius: 0 !important;
+  z-index: 9999;
+  margin: 0 !important;
+  box-shadow: none !important;
+}

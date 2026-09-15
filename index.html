@@ -13,13 +13,13 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
-  <!-- Thư viện Leaflet & Supabase (Đã gỡ Google Places Script) -->
+  <!-- Thư viện Leaflet & Supabase -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/gh/ewoken/Leaflet.MovingMarker@master/MovingMarker.js"></script>
 
-  <link rel="stylesheet" href="index.css?v=31">
+  <link rel="stylesheet" href="index.css?v=32">
 </head>
 <body>
 
@@ -38,7 +38,7 @@
   </div>
 
   <!-- CỤM TÌM KIẾM TRÊN CÙNG -->
-  <div class="card" style="margin-bottom: 8px; padding: 8px 10px;">
+  <div class="card search-card" style="margin-bottom: 8px; padding: 8px 10px;">
     <div class="search-input-group">
       <input type="text" id="pickupInput" placeholder="📍 Tìm điểm đón (VD: Sân bay Vinh)..." autocomplete="off" oninput="onSearchInput('pickup')" onfocus="showRecentPickups()">
       <div id="pickupSuggestions" class="suggestions-list"></div>
@@ -51,7 +51,7 @@
 
   <div id="map"></div>
  
-  <div class="card">
+  <div class="card bottom-card">
     <button id="gpsBtn" class="btn-gps" onclick="useCurrentLocationAsPickup()">📍 Đặt điểm đón tại vị trí của tôi</button>
    
     <div style="margin: 4px 0 2px 0; font-size: 13px; color: #334155;">
@@ -67,7 +67,7 @@
     <button id="resetBtn" class="btn-reset" onclick="resetRoute()">🔄 ĐẶT LẠI ĐIỂM ĐÓN / ĐẾN</button>
   </div>
 
-  <div id="top3Card" class="card" style="display: none;">
+  <div id="top3Card" class="card bottom-card" style="display: none;">
     <h4 style="margin: 0 0 8px 0; color: #334155; font-size: 13px; display: flex; align-items: center; justify-content: space-between;">
       <span>⚡ 3 Tài Xế Gần Nhất</span>
       <span id="radiusBadge" style="font-size: 11px; color: #64748b; font-weight: normal;">Bán kính 5km</span>
@@ -76,7 +76,7 @@
   </div>
 
   <!-- THẺ TÀI XẾ ĐƯỢC CHỌN -->
-  <div class="card">
+  <div class="card bottom-card">
     <h4 style="margin: 0 0 6px 0; color: #334155; font-size: 14px;">Tài Xế Được Chọn</h4>
     <div id="driver-info" style="color: #64748b; font-size: 13px;"><i>Chạm chọn tài xế từ danh sách hoặc trên bản đồ...</i></div>
    
@@ -88,7 +88,7 @@
     <a id="phoneBtn" href="#" class="btn-phone" style="display:none;" onclick="trackCall(event)">📞 Gọi Điện Trực Tiếp</a>
   </div>
 
-  <script src="utils.js?v=31"></script>
-  <script src="index.js?v=31"></script>
+  <script src="utils.js?v=32"></script>
+  <script src="index.js?v=32"></script>
 </body>
 </html>

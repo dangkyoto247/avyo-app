@@ -1,5 +1,5 @@
 // MAPBOX ACCESS TOKEN CỦA BẠN
-const MAPBOX_TOKEN = 'pk.eyJ1IjoidHVhbmFuaDM0MTYyMyIsImEiOiJjbXUwcGhlYTExNHV5MnhvdjlyaXE5ZzM2In0.NN6tgrUWAN2tUubAZtTY_Q';
+const MAPBOX_TOKEN = 'pk.eyJ1IjoidHVhbmgzNDE2MjMiLCJhbGciOiJjbXUwcGhlYTExNHV5MnhvdjlyaXE5ZzM2In0.NN6tgrUWAN2tUubAZtTY_Q';
 
 // Khởi tạo bản đồ Leaflet
 const map = L.map('map', { 
@@ -13,6 +13,32 @@ const map = L.map('map', {
 
 L.control.zoom({ position: 'topright' }).addTo(map);
 
+// =========================================================
+// CHẾ ĐỘ PHÓNG TO BẢN ĐỒ & TỰ ĐỘNG ẨN GIAO DIỆN
+// =========================================================
+let mapInteractionTimer = null;
+
+function startMapInteraction() {
+  clearTimeout(mapInteractionTimer);
+  if (!document.body.classList.contains('map-fullscreen')) {
+    document.body.classList.add('map-fullscreen');
+    setTimeout(() => { if (map) map.invalidateSize(); }, 50);
+  }
+}
+
+function scheduleEndMapInteraction(delay = 1000) {
+  clearTimeout(mapInteractionTimer);
+  mapInteractionTimer = setTimeout(() => {
+    document.body.classList.remove('map-fullscreen');
+    setTimeout(() => { if (map) map.invalidateSize(); }, 300);
+  }, delay);
+}
+
+// Lắng nghe thao tác cuộn / zoom / kéo trên bản đồ
+map.on('dragstart zoomstart', startMapInteraction);
+map.on('drag zoom', startMapInteraction);
+map.on('dragend zoomend', () => scheduleEndMapInteraction(1000));
+
 // 1. LỚP BẢN ĐỒ CHÍNH: GOOGLE MAPS TILES
 const googleLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
   subdomains: ['0', '1', '2', '3'],
@@ -24,7 +50,6 @@ const googleLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&
   updateWhenZooming: true
 });
 
-// NẾU GOOGLE TILES BỊ HẠN CHẾ HOẶC LỖI -> TỰ ĐỘNG CHUYỂN SANG MAPBOX TILES
 googleLayer.on('tileerror', function() {
   if (map.hasLayer(googleLayer)) {
     map.removeLayer(googleLayer);
@@ -42,7 +67,6 @@ setTimeout(() => { if (map) map.invalidateSize(); }, 300);
 let mapMoveTimer = null;
 window.addEventListener('resize', () => { if (map) map.invalidateSize(); });
 
-// CƠ CHẾ PULL THÔNG MINH: CHỈ TẢI LẠI XE KHU VỰC MỚI KHU KHI KHÁCH KÉO/THU PHÓNG BẢN ĐỒ (DEBOUNCE 500MS)
 map.on('moveend', () => {
   if (map) map.invalidateSize();
   clearTimeout(mapMoveTimer);
@@ -70,7 +94,6 @@ let mapboxTimeout = null;
 let currentDragRating = 0;
 let isStarDragging = false;
 
-// HÀM TÍNH KHOẢNG CÁCH AN TOÀN
 function safeDistance(lat1, lon1, lat2, lon2) {
   if (typeof getHaversineDistance === 'function') {
     return getHaversineDistance(lat1, lon1, lat2, lon2);
@@ -84,7 +107,6 @@ function safeDistance(lat1, lon1, lat2, lon2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-// HÀM TÍNH KHUNG TỌA ĐỘ (BBOX) THEO BÁN KÍNH (KM)
 function getBBox(lat, lng, radiusKm) {
   const dLat = radiusKm / 111;
   const dLng = radiusKm / (111 * Math.cos(lat * Math.PI / 180));
@@ -281,10 +303,15 @@ function setPickupLocation(latlng, isAuto = false) {
   markerStart = L.marker(latlng, { icon: pickupIcon, draggable: true }).addTo(map)
     .bindPopup(isAuto ? "<b style='color:#dc2626;'>📍 Điểm đón của bạn</b><br><small><i>(Nhấn giữ & kéo để đổi vị trí)</i></small>" : "<b style='color:#dc2626;'>📍 Điểm đón</b><br><small><i>(Nhấn giữ & kéo để đổi vị trí)</i></small>")
     .openPopup();
-    
-  markerStart.on('drag', () => { calculateFastRoute(); });
+
+  markerStart.on('dragstart', startMapInteraction);
+  markerStart.on('drag', () => { 
+    startMapInteraction();
+    calculateFastRoute(); 
+  });
 
   markerStart.on('dragend', () => {
+    scheduleEndMapInteraction(1200);
     calculateFastRoute();
     clearTimeout(mapboxTimeout);
     mapboxTimeout = setTimeout(() => {
@@ -306,10 +333,15 @@ function setDestLocation(latlng) {
   markerEnd = L.marker(latlng, { icon: destinationIcon, draggable: true }).addTo(map)
     .bindPopup("<b style='color:#2563eb;'>🚩 Điểm đến</b><br><small><i>(Nhấn giữ & kéo để đổi vị trí)</i></small>")
     .openPopup();
-    
-  markerEnd.on('drag', () => { calculateFastRoute(); });
+
+  markerEnd.on('dragstart', startMapInteraction);
+  markerEnd.on('drag', () => { 
+    startMapInteraction();
+    calculateFastRoute(); 
+  });
 
   markerEnd.on('dragend', () => {
+    scheduleEndMapInteraction(1200);
     calculateFastRoute();
     clearTimeout(mapboxTimeout);
     mapboxTimeout = setTimeout(() => {
@@ -354,7 +386,6 @@ function cleanAddressText(text) {
     .trim();
 }
 
-// 2. TÌM KIẾM ĐỊA CHỈ MAPBOX (ƯU TIÊN 15KM -> 50KM -> TOÀN QUỐC)
 function onSearchInput(type, isDirectCall = false) {
   clearTimeout(searchTimer);
   const query = document.getElementById(type + 'Input').value.trim().substring(0, 200);
@@ -398,17 +429,14 @@ function onSearchInput(type, isDirectCall = false) {
     let features = [];
 
     if (rawCenter && lat && lng) {
-      // Ưu tiên 1: Bán kính 15km
       const bbox15 = getBBox(lat, lng, 15);
       features = await fetchGeocoding(bbox15);
 
-      // Ưu tiên 2: Bán kính 50km
       if (features.length === 0) {
         const bbox50 = getBBox(lat, lng, 50);
         features = await fetchGeocoding(bbox50);
       }
 
-      // Ưu tiên 3: Toàn quốc
       if (features.length === 0) {
         features = await fetchGeocoding(null);
       }
@@ -519,7 +547,6 @@ function calculateFastRoute() {
   updatePrice();
 }
 
-// 3. VẼ ĐƯỜNG & TÍNH KHOẢNG CÁCH CHÍNH XÁC QUA MAPBOX DIRECTIONS API
 async function calculateMapboxRoute() {
   if (!markerStart || !markerEnd) return;
 
