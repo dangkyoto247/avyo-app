@@ -13,6 +13,24 @@ const map = L.map('map', {
 
 L.control.zoom({ position: 'topright' }).addTo(map);
 
+/* QUẢN LÝ PHÓNG TO / THU NHỎ LẤY ĐIỂM MỐC 1/3 PHÍA TRÊN LÀM TÂM ZUM */
+let zoomAnchorLatLng = null;
+
+map.on('zoomstart', () => {
+  zoomAnchorLatLng = getPinCenterLatLng();
+});
+
+map.on('zoomend', () => {
+  if (zoomAnchorLatLng) {
+    const size = map.getSize();
+    const pinPoint = L.point(size.x / 2, size.y * 0.3333);
+    const currentPoint = map.latLngToContainerPoint(zoomAnchorLatLng);
+    const delta = currentPoint.subtract(pinPoint);
+    map.panBy(delta, { animate: false });
+    zoomAnchorLatLng = null;
+  }
+});
+
 // LỚP BẢN ĐỒ CHÍNH: GOOGLE MAPS TILES
 const googleLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
   subdomains: ['0', '1', '2', '3'],
@@ -88,7 +106,7 @@ function getPinCenterLatLng() {
   return map.containerPointToLatLng([pinX, pinY]);
 }
 
-/* HÀM ĐẶT BẢN ĐỒ SAO CHO TỌA ĐỘ NẰM ĐÚNG VỊ TRÍ GHIM 1/3 PHÍA TRÊN (HIỆU ỨNG TRƯỢT MƯỢT MA) */
+/* HÀM ĐẶT BẢN ĐỒ SAO CHO TỌA ĐỘ NẰM ĐÚNG VỊ TRÍ GHIM 1/3 PHÍA TRÊN */
 function centerMapOnPin(latlng, zoom = 15) {
   if (!map || !latlng) return;
   if (map.getZoom() !== zoom) {
@@ -99,7 +117,6 @@ function centerMapOnPin(latlng, zoom = 15) {
   const currentPoint = map.latLngToContainerPoint(latlng);
   const delta = currentPoint.subtract(pinPoint);
   
-  // Dịch chuyển bản đồ mượt mà để điểm latlng trùng khớp hoàn toàn vào đầu ghim cố định
   map.panBy(delta, { animate: true, duration: 0.4 });
 }
 
@@ -107,7 +124,6 @@ function centerMapOnPin(latlng, zoom = 15) {
 function triggerPinSelection(type) {
   let targetLatLng = null;
 
-  // Lấy vị trí tọa độ hiện tại của điểm đón/đến trước khi tạm tháo marker
   if (type === 'pickup') {
     if (markerStart) targetLatLng = markerStart.getLatLng();
     else if (userLatLng) targetLatLng = userLatLng;
@@ -119,16 +135,13 @@ function triggerPinSelection(type) {
     else targetLatLng = map.getCenter();
   }
 
-  // Tạm xóa tuyến đường đang vẽ (nếu có) để tập trung chọn lại điểm
   if (routeLine) {
     map.removeLayer(routeLine);
     routeLine = null;
   }
 
-  // Bật giao diện ghim chọn điểm
   enterSelectionMode(type);
 
-  // Tự động dịch chuyển bản đồ đưa vị trí đó trùng đúng với điểm nhọn ghim 1/3
   if (targetLatLng) {
     centerMapOnPin(targetLatLng, 15);
   }
