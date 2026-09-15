@@ -1,5 +1,5 @@
 // MAPBOX ACCESS TOKEN CỦA BẠN
-const MAPBOX_TOKEN = 'pk.eyJ1IjoidHVhbmFuaDM0MTYyMyIsImEiOiJjbXUyazY4dzUwMG9qMnhzNXgwMmNpeDM0In0.tqaiyjHJBAct2XAuhmGFWQ';
+const MAPBOX_TOKEN = 'pk.eyJ1IjoidHVhbmgzNDE2MjMiLCJhbGciOiJjbXUwcGhlYTExNHV5MnhvdjlyaXE5ZzM2In0.NN6tgrUWAN2tUubAZtTY_Q';
 
 // Khởi tạo bản đồ Leaflet
 const map = L.map('map', { 
@@ -32,7 +32,18 @@ function centerMapOnFixedPin(latlng, zoom = map.getZoom()) {
   const offsetY = (window.innerHeight / 2) - (window.innerHeight / 3);
   const newPoint = L.point(targetPoint.x, targetPoint.y + offsetY);
   const newLatLng = map.unproject(newPoint, zoom);
-  map.setView(newLatLng, zoom);
+  map.setView(newLatLng, zoom, { animate: false });
+}
+
+// Ẩn/hiện ghim Leaflet tương ứng để tránh trùng lặp ghim
+function syncMarkerVisibility() {
+  if (activePinMode === 'pickup') {
+    if (markerStart && map.hasLayer(markerStart)) map.removeLayer(markerStart);
+    if (markerEnd && !map.hasLayer(markerEnd)) markerEnd.addTo(map);
+  } else if (activePinMode === 'dest') {
+    if (markerStart && !map.hasLayer(markerStart)) markerStart.addTo(map);
+    if (markerEnd && map.hasLayer(markerEnd)) map.removeLayer(markerEnd);
+  }
 }
 
 // Chuyển chế độ ghim ('pickup' hoặc 'dest') và cập nhật màu ghim
@@ -48,9 +59,10 @@ function setActivePinMode(mode) {
       if (markerEnd) centerMapOnFixedPin(markerEnd.getLatLng());
     }
   }
+  syncMarkerVisibility();
 }
 
-// Tự động tra cứu tên địa chỉ từ tọa độ ghim và điền vào khung tìm kiếm
+// Tra cứu tên địa chỉ từ tọa độ ghim và điền vào khung tìm kiếm
 async function reverseGeocodeFixedPin(latlng, type) {
   if (!MAPBOX_TOKEN) return;
   try {
@@ -92,13 +104,19 @@ function scheduleEndMapInteraction(delay = 800) {
 map.on('movestart', () => {
   document.body.classList.add('map-moving');
   startMapInteraction();
+
+  // Tự động kiểm tra: Nếu đã có điểm đón -> Mặc định di chuyển bản đồ để chọn điểm đến
+  if (markerStart) {
+    setActivePinMode('dest');
+  } else {
+    setActivePinMode('pickup');
+  }
 });
 
 map.on('move', () => {
   startMapInteraction();
   const currentPinLatLng = getFixedPinLatLng();
 
-  // Cập nhật vị trí ghim tức thì trong khi đang di chuyển
   if (activePinMode === 'pickup') {
     if (markerStart) markerStart.setLatLng(currentPinLatLng);
   } else {
@@ -106,32 +124,37 @@ map.on('move', () => {
   }
 });
 
-// KHI DỪNG THAO TÁC DI CHUYỂN BẢN ĐỒ -> TỰ ĐỘNG CHỌN VÀ CẬP NHẬT ĐIỂM
+// KHI DỪNG THAO TÁC DI CHUYỂN BẢN ĐỒ -> TỰ ĐỘNG CHỌN ĐIỂM
 map.on('moveend', () => {
   document.body.classList.remove('map-moving');
   const currentPinLatLng = getFixedPinLatLng();
 
-  if (activePinMode === 'pickup') {
+  if (!markerStart) {
+    // LẦN 1: Chưa có điểm đón -> Chọn điểm đón tại vị trí ghim dừng
+    setActivePinMode('pickup');
     setPickupLocation(currentPinLatLng, false, false);
-    
-    // Tra cứu tên địa chỉ tự động điền vào ô Điểm Đón
+
     clearTimeout(reverseGeocodeTimer);
     reverseGeocodeTimer = setTimeout(() => {
       reverseGeocodeFixedPin(currentPinLatLng, 'pickup');
     }, 300);
 
-    // Tự động chuyển sang chế độ chọn điểm đến nếu chưa thiết lập điểm đến
-    if (!markerEnd) {
-      setTimeout(() => { setActivePinMode('dest'); }, 1000);
-    }
-  } else if (activePinMode === 'dest') {
+    // Tự động chuyển chế độ ghim sang Điểm Đến cho lần kéo tiếp theo
+    setActivePinMode('dest');
+    scheduleEndMapInteraction(800);
+
+  } else {
+    // LẦN 2 (Hoặc khi đã có điểm đón) -> Chọn điểm đến
+    setActivePinMode('dest');
     setDestLocation(currentPinLatLng, false);
-    
-    // Tra cứu tên địa chỉ tự động điền vào ô Điểm Đến
+
     clearTimeout(reverseGeocodeTimer);
     reverseGeocodeTimer = setTimeout(() => {
       reverseGeocodeFixedPin(currentPinLatLng, 'dest');
     }, 300);
+
+    // Chọn xong điểm đến -> Thu nhỏ bản đồ & hiện lại các phần giao diện lập tức
+    scheduleEndMapInteraction(100);
   }
 
   calculateFastRoute();
@@ -140,8 +163,6 @@ map.on('moveend', () => {
     calculateMapboxRoute();
     loadDrivers();
   }, 600);
-
-  scheduleEndMapInteraction(800);
 });
 
 // 1. LỚP BẢN ĐỒ CHÍNH: GOOGLE MAPS TILES
@@ -171,14 +192,6 @@ setTimeout(() => { if (map) map.invalidateSize(); }, 300);
 
 let mapMoveTimer = null;
 window.addEventListener('resize', () => { if (map) map.invalidateSize(); });
-
-map.on('moveend', () => {
-  if (map) map.invalidateSize();
-  clearTimeout(mapMoveTimer);
-  mapMoveTimer = setTimeout(() => {
-    loadDrivers();
-  }, 500);
-});
 
 const SUPABASE_URL = 'https://yvucyqkglbgxvozrznir.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl2dWN5cWtnbGJneHZvenJ6bmlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkxMzA3ODAsImV4cCI6MjEwNDcwNjc4MH0.Zagl4i2LPmxW3w9ih0h4LRsrm-OOGtPcWgvEs2vHBqo';
@@ -408,8 +421,9 @@ map.on('locationfound', (e) => {
 function setPickupLocation(latlng, isAuto = false, doCenter = true) {
   if (markerStart) map.removeLayer(markerStart);
  
-  markerStart = L.marker(latlng, { icon: pickupIcon, draggable: false }).addTo(map)
-    .bindPopup(isAuto ? "<b style='color:#dc2626;'>📍 Điểm đón của bạn</b>" : "<b style='color:#dc2626;'>📍 Điểm đón</b>");
+  markerStart = L.marker(latlng, { icon: pickupIcon, draggable: false });
+  if (activePinMode !== 'pickup') markerStart.addTo(map);
+  markerStart.bindPopup(isAuto ? "<b style='color:#dc2626;'>📍 Điểm đón của bạn</b>" : "<b style='color:#dc2626;'>📍 Điểm đón</b>");
     
   if (doCenter) centerMapOnFixedPin(latlng);
 
@@ -418,13 +432,15 @@ function setPickupLocation(latlng, isAuto = false, doCenter = true) {
 
   loadDrivers();
   updateGuide();
+  syncMarkerVisibility();
 }
 
 function setDestLocation(latlng, doCenter = true) {
   if (markerEnd) map.removeLayer(markerEnd);
 
-  markerEnd = L.marker(latlng, { icon: destinationIcon, draggable: false }).addTo(map)
-    .bindPopup("<b style='color:#2563eb;'>🚩 Điểm đến</b>");
+  markerEnd = L.marker(latlng, { icon: destinationIcon, draggable: false });
+  if (activePinMode !== 'dest') markerEnd.addTo(map);
+  markerEnd.bindPopup("<b style='color:#2563eb;'>🚩 Điểm đến</b>");
     
   if (doCenter) centerMapOnFixedPin(latlng);
 
@@ -432,6 +448,7 @@ function setDestLocation(latlng, doCenter = true) {
   calculateMapboxRoute();
   loadDrivers();
   updateGuide();
+  syncMarkerVisibility();
 }
 
 function useCurrentLocationAsPickup() {
@@ -664,7 +681,6 @@ async function calculateMapboxRoute() {
     }).addTo(map);
   }
 
-  map.fitBounds(routeLine.getBounds(), { padding: [50, 50] });
   document.getElementById('distance').innerText = currentDistance;
   updatePrice();
   updateGuide();
