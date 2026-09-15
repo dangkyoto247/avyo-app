@@ -19,11 +19,14 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/gh/ewoken/Leaflet.MovingMarker@master/MovingMarker.js"></script>
 
-  <link rel="stylesheet" href="index.css?v=33">
+  <link rel="stylesheet" href="index.css?v=34">
 </head>
 <body>
 
-  <!-- GHIM CỐ ĐỊNH TẠI MỐC 1/3 MÀN HÌNH -->
+  <!-- BẢN ĐỒ CỐ ĐỊNH NỀN -->
+  <div id="map"></div>
+
+  <!-- GHIM CỐ ĐỊNH CHÍNH GIỮA TẠI MỐC 1/3 PHÍA TRÊN MÀN HÌNH -->
   <div id="fixedCenterPin" class="fixed-center-pin">
     <svg width="38" height="38" viewBox="0 0 24 24" fill="#dc2626" stroke="#ffffff" stroke-width="1.5" class="pin-svg">
       <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
@@ -31,72 +34,74 @@
     <div class="pin-shadow"></div>
   </div>
 
-  <div id="guideBox" class="guide-box">
-    <span class="brand-badge">AVYO</span>
-    💡 <span id="guideText" style="flex: 1;">Đang tải hướng dẫn...</span>
-    <button id="themeToggle" class="btn-theme-toggle" onclick="toggleDarkMode()" title="Giao diện Tối/Sáng">🌙</button>
-  </div>
-
-  <div class="filter-bar">
-    <div class="filter-chip active" onclick="selectFilter('bike', this)">🛵 Xe máy</div>
-    <div class="filter-chip" onclick="selectFilter('car', this)">🚕 Ô tô</div>
-    <div class="filter-chip" onclick="selectFilter('driver', this)">👤 Lái xe hộ</div>
-    <div class="filter-chip" onclick="selectFilter('truck', this)">🚚 Chở hàng</div>
-    <div class="filter-chip" onclick="selectFilter('other', this)">✨ Khác</div>
-  </div>
-
-  <!-- CỤM TÌM KIẾM TRÊN CÙNG -->
-  <div class="card search-card" style="margin-bottom: 8px; padding: 8px 10px;">
-    <div class="search-input-group">
-      <input type="text" id="pickupInput" placeholder="📍 Tìm điểm đón (VD: Sân bay Vinh)..." autocomplete="off" oninput="onSearchInput('pickup')" onfocus="setActivePinMode('pickup')">
-      <div id="pickupSuggestions" class="suggestions-list"></div>
-    </div>
-    <div class="search-input-group" style="margin-bottom: 0px;">
-      <input type="text" id="destInput" placeholder="🚩 Tìm điểm đến (VD: Bến xe Vinh)..." autocomplete="off" oninput="onSearchInput('dest')" onfocus="setActivePinMode('dest')">
-      <div id="destSuggestions" class="suggestions-list"></div>
-    </div>
-  </div>
-
-  <div id="map"></div>
- 
-  <div class="card bottom-card">
-    <button id="gpsBtn" class="btn-gps" onclick="useCurrentLocationAsPickup()">📍 Đặt điểm đón tại vị trí của tôi</button>
-   
-    <div style="margin: 4px 0 2px 0; font-size: 13px; color: #334155;">
-      <b>Quãng đường:</b> <span id="distance" style="font-weight: bold; color: #0f172a;">0</span> km
+  <!-- CỤM ĐẦU MÀN HÌNH (TRƯỢT LÊN KHI VUỐT BẢN ĐỒ) -->
+  <div class="top-section">
+    <div id="guideBox" class="guide-box">
+      <span class="brand-badge">AVYO</span>
+      💡 <span id="guideText" style="flex: 1;">Đang tải hướng dẫn...</span>
+      <button id="themeToggle" class="btn-theme-toggle" onclick="toggleDarkMode()" title="Giao diện Tối/Sáng">🌙</button>
     </div>
 
-    <div class="price-container">
-      <div style="font-size: 11px; color: #166534; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;">Ước Tính Cước Chuyến</div>
-      <div id="price" class="price">0 VNĐ</div>
-      <small id="rate-label" style="font-size: 11px; color: #15803d; font-weight: 600; line-height: 1.3;"></small>
+    <div class="filter-bar">
+      <div class="filter-chip active" onclick="selectFilter('bike', this)">🛵 Xe máy</div>
+      <div class="filter-chip" onclick="selectFilter('car', this)">🚕 Ô tô</div>
+      <div class="filter-chip" onclick="selectFilter('driver', this)">👤 Lái xe hộ</div>
+      <div class="filter-chip" onclick="selectFilter('truck', this)">🚚 Chở hàng</div>
+      <div class="filter-chip" onclick="selectFilter('other', this)">✨ Khác</div>
     </div>
 
-    <button id="resetBtn" class="btn-reset" onclick="resetRoute()">🔄 ĐẶT LẠI ĐIỂM ĐÓN / ĐẾN</button>
+    <div class="card search-card">
+      <div class="search-input-group">
+        <input type="text" id="pickupInput" placeholder="📍 Tìm điểm đón (VD: Sân bay Vinh)..." autocomplete="off" oninput="onSearchInput('pickup')" onfocus="setActivePinMode('pickup')">
+        <div id="pickupSuggestions" class="suggestions-list"></div>
+      </div>
+      <div class="search-input-group" style="margin-bottom: 0px;">
+        <input type="text" id="destInput" placeholder="🚩 Tìm điểm đến (VD: Bến xe Vinh)..." autocomplete="off" oninput="onSearchInput('dest')" onfocus="setActivePinMode('dest')">
+        <div id="destSuggestions" class="suggestions-list"></div>
+      </div>
+    </div>
   </div>
 
-  <div id="top3Card" class="card bottom-card" style="display: none;">
-    <h4 style="margin: 0 0 8px 0; color: #334155; font-size: 13px; display: flex; align-items: center; justify-content: space-between;">
-      <span>⚡ 3 Tài Xế Gần Nhất</span>
-      <span id="radiusBadge" style="font-size: 11px; color: #64748b; font-weight: normal;">Bán kính 5km</span>
-    </h4>
-    <div id="top3List"></div>
-  </div>
+  <!-- CỤM ĐÁY MÀN HÌNH (TRƯỢT XUỐNG KHI VUỐT BẢN ĐỒ) -->
+  <div class="bottom-section">
+    <div class="card bottom-card">
+      <button id="gpsBtn" class="btn-gps" onclick="useCurrentLocationAsPickup()">📍 Đặt điểm đón tại vị trí của tôi</button>
+     
+      <div style="margin: 4px 0 2px 0; font-size: 13px; color: #334155;">
+        <b>Quãng đường:</b> <span id="distance" style="font-weight: bold; color: #0f172a;">0</span> km
+      </div>
 
-  <!-- THẺ TÀI XẾ ĐƯỢC CHỌN -->
-  <div class="card bottom-card">
-    <h4 style="margin: 0 0 6px 0; color: #334155; font-size: 14px;">Tài Xế Được Chọn</h4>
-    <div id="driver-info" style="color: #64748b; font-size: 13px;"><i>Chạm chọn tài xế từ danh sách hoặc trên bản đồ...</i></div>
-   
-    <div id="noteContainer" style="display: none; margin-top: 12px; margin-bottom: 4px;">
-      <input type="text" id="noteInput" placeholder="📝 Thêm số nhà, ngõ, ghi chú cho tài xế..." autocomplete="off" style="width: 100%; box-sizing: border-box; padding: 10px 12px; font-size: 13px; background-color: #f0fdf4; border: 1px dashed #22c55e; border-radius: 8px; outline: none; color: #0f172a;">
+      <div class="price-container">
+        <div style="font-size: 11px; color: #166534; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;">Ước Tính Cước Chuyến</div>
+        <div id="price" class="price">0 VNĐ</div>
+        <small id="rate-label" style="font-size: 11px; color: #15803d; font-weight: 600; line-height: 1.3;"></small>
+      </div>
+
+      <button id="resetBtn" class="btn-reset" onclick="resetRoute()">🔄 ĐẶT LẠI ĐIỂM ĐÓN / ĐẾN</button>
     </div>
 
-    <button id="zaloBtn" class="btn-zalo" style="display:none; margin-top: 8px;" onclick="openZalo()">💬 Nhắn Zalo (Tự động Copy)</button>
-    <a id="phoneBtn" href="#" class="btn-phone" style="display:none;" onclick="trackCall(event)">📞 Gọi Điện Trực Tiếp</a>
+    <div id="top3Card" class="card bottom-card" style="display: none;">
+      <h4 style="margin: 0 0 8px 0; color: #334155; font-size: 13px; display: flex; align-items: center; justify-content: space-between;">
+        <span>⚡ 3 Tài Xế Gần Nhất</span>
+        <span id="radiusBadge" style="font-size: 11px; color: #64748b; font-weight: normal;">Bán kính 5km</span>
+      </h4>
+      <div id="top3List"></div>
+    </div>
+
+    <div class="card bottom-card">
+      <h4 style="margin: 0 0 6px 0; color: #334155; font-size: 14px;">Tài Xế Được Chọn</h4>
+      <div id="driver-info" style="color: #64748b; font-size: 13px;"><i>Chạm chọn tài xế từ danh sách hoặc trên bản đồ...</i></div>
+     
+      <div id="noteContainer" style="display: none; margin-top: 12px; margin-bottom: 4px;">
+        <input type="text" id="noteInput" placeholder="📝 Thêm số nhà, ngõ, ghi chú cho tài xế..." autocomplete="off" style="width: 100%; box-sizing: border-box; padding: 10px 12px; font-size: 13px; background-color: #f0fdf4; border: 1px dashed #22c55e; border-radius: 8px; outline: none; color: #0f172a;">
+      </div>
+
+      <button id="zaloBtn" class="btn-zalo" style="display:none; margin-top: 8px;" onclick="openZalo()">💬 Nhắn Zalo (Tự động Copy)</button>
+      <a id="phoneBtn" href="#" class="btn-phone" style="display:none;" onclick="trackCall(event)">📞 Gọi Điện Trực Tiếp</a>
+    </div>
   </div>
 
-  <script src="utils.js?v=33"></script>
-  <script src="index.js?v=33"></script>
+  <script src="utils.js?v=34"></script>
+  <script src="index.js?v=34"></script>
 </body>
 </html>

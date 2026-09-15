@@ -6,6 +6,12 @@ body {
   background: #f8fafc; 
   touch-action: manipulation;
   -webkit-text-size-adjust: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 100vh;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 /* BẢN ĐỒ CỐ ĐỊNH NỀN TOÀN MÀN HÌNH */
@@ -18,6 +24,7 @@ body {
   z-index: 1;
   margin: 0;
   overflow: hidden;
+  transform: translateZ(0); /* Kích hoạt GPU Hardware Acceleration */
 }
 
 /* GHIM CỐ ĐỊNH CHÍNH GIỮA MÀN HÌNH TẠI MỐC 1/3 PHÍA TRÊN */
@@ -57,13 +64,29 @@ body.map-moving .fixed-center-pin .pin-shadow {
   opacity: 0.15;
 }
 
-/* LỚP PHỦ NỘI DUNG NẰM TRÊN BẢN ĐỒ */
-.guide-box,
-.filter-bar,
-.card {
+/* NHÓM GIAO DIỆN TRÊN & DƯỚI */
+.top-section,
+.bottom-section {
   position: relative;
   z-index: 10;
-  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s ease;
+}
+
+.bottom-section {
+  margin-top: auto;
+}
+
+/* HIỆU ỨNG TRƯỢT ẨN KHỎI MÀN HÌNH KHI KÉO/ZOOM BẢN ĐỒ */
+body.map-fullscreen .top-section {
+  transform: translateY(-160%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+body.map-fullscreen .bottom-section {
+  transform: translateY(160%);
+  opacity: 0;
+  pointer-events: none;
 }
 
 /* ẨN BẢN QUYỀN LEAFLET & CARTO DƯỚI GÓC BẢN ĐỒ */
@@ -434,24 +457,4 @@ body.dark-mode {
   outline: 1px solid transparent; /* Loại bỏ rãnh viền subpixel gây ra sọc trắng */
   -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
-}
-
-/* =========================================================
-   HIỆU ỨNG TRƯỢT ẨN GIAO DIỆN KHI THAO TÁC BẢN ĐỒ
-========================================================= */
-
-/* Các phần trên trượt lên trên */
-body.map-fullscreen .guide-box,
-body.map-fullscreen .filter-bar,
-body.map-fullscreen .search-card {
-  transform: translateY(-200%);
-  opacity: 0;
-  pointer-events: none;
-}
-
-/* Các thẻ thông tin phía dưới trượt xuống dưới */
-body.map-fullscreen .bottom-card {
-  transform: translateY(200%);
-  opacity: 0;
-  pointer-events: none;
 }
