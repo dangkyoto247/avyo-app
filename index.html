@@ -13,12 +13,13 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
+  <!-- Thư viện Leaflet & Supabase (Không cần Google Script) -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/gh/ewoken/Leaflet.MovingMarker@master/MovingMarker.js"></script>
 
-  <link rel="stylesheet" href="index.css?v=28">
+  <link rel="stylesheet" href="index.css?v=29">
 </head>
 <body>
 
@@ -79,7 +80,6 @@
     <h4 style="margin: 0 0 6px 0; color: #334155; font-size: 14px;">Tài Xế Được Chọn</h4>
     <div id="driver-info" style="color: #64748b; font-size: 13px;"><i>Chạm chọn tài xế từ danh sách hoặc trên bản đồ...</i></div>
    
-    <!-- Ô Ghi chú ẩn mặc định, chỉ hiện khi đã chọn tài xế -->
     <div id="noteContainer" style="display: none; margin-top: 12px; margin-bottom: 4px;">
       <input type="text" id="noteInput" placeholder="📝 Thêm số nhà, ngõ, ghi chú cho tài xế..." autocomplete="off" style="width: 100%; box-sizing: border-box; padding: 10px 12px; font-size: 13px; background-color: #f0fdf4; border: 1px dashed #22c55e; border-radius: 8px; outline: none; color: #0f172a;">
     </div>
@@ -88,9 +88,7 @@
     <a id="phoneBtn" href="#" class="btn-phone" style="display:none;" onclick="trackCall(event)">📞 Gọi Điện Trực Tiếp</a>
   </div>
 
-  <!-- Google Maps & Places API Script -->
-  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAmB-HLxek1CD-7ttQ4wtP1qZFc-2BODCM&libraries=places"></script>
-  <script src="utils.js?v=28"></script>
-  <script src="index.js?v=28"></script>
+  <script src="utils.js?v=29"></script>
+  <script src="index.js?v=29"></script>
 </body>
 </html>
