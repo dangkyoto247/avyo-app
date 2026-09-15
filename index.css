@@ -35,7 +35,7 @@ body {
   transform: translate(-50%, -100%);
   z-index: 999;
   pointer-events: none; /* Vuốt bản đồ xuyên qua ghim */
-  display: flex;
+  display: none; /* Mặc định ẩn ở màn hình chính */
   flex-direction: column;
   align-items: center;
   transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
@@ -55,13 +55,19 @@ body {
   transition: transform 0.2s ease, opacity 0.2s ease;
 }
 
-/* Hiệu ứng nảy nhấc ghim lên khi đang di chuyển bản đồ */
+/* HIỆU ỨNG NẢY GHIM KHI DI CHUYỂN BẢN ĐỒ */
 body.map-moving .fixed-center-pin {
   transform: translate(-50%, -120%);
 }
 body.map-moving .fixed-center-pin .pin-shadow {
   transform: scale(0.5);
   opacity: 0.15;
+}
+
+/* HIỆN GHIM TRUNG TÂM KHI Ở CHẾ ĐỘ CHỌN ĐIỂM */
+body.selecting-pickup .fixed-center-pin,
+body.selecting-dest .fixed-center-pin {
+  display: flex !important;
 }
 
 /* NÚT NỔI ĐỊNH VỊ GPS NẰM Ở GÓC PHẢI VỪA TẦM TAY VUỐT */
@@ -168,6 +174,7 @@ body.selecting-dest .btn-gps-float {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); 
   transition: all 0.3s ease; 
 }
+
 .guide-box.success { 
   background: #f0fdf4; 
   border-color: #86efac; 

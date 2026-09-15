@@ -14,13 +14,13 @@ const map = L.map('map', {
 L.control.zoom({ position: 'topright' }).addTo(map);
 
 // =========================================================
-// QUẢN LÝ LUỒNG CHỌN ĐIỂM
+// QUẢN LÝ LUỒNG CHỌN ĐIỂM & GHIM CỐ ĐỊNH TỌA ĐỘ
 // =========================================================
 let activePinMode = 'pickup'; // 'pickup' (Đỏ) hoặc 'dest' (Xanh)
 let isSelectionMode = false;  // Trạng thái chọn toàn màn hình
 let reverseGeocodeTimer = null;
 
-// Lấy tọa độ địa lý tại đúng vị trí ghim cố định (Mốc 1/3 phía trên màn hình)
+// Lấy tọa độ địa lý tại vị trí ghim cố định (Mốc 1/3 phía trên màn hình)
 function getFixedPinLatLng() {
   const point = L.point(window.innerWidth / 2, window.innerHeight / 3);
   return map.containerPointToLatLng(point);
@@ -36,8 +36,15 @@ function centerMapOnFixedPin(latlng, zoom = map.getZoom()) {
   map.setView(newLatLng, zoom, { animate: false });
 }
 
-// Ẩn/hiện ghim Leaflet tĩnh tương ứng
+// Cập nhật ghim tĩnh trên bản đồ Leaflet
 function syncMarkerVisibility() {
+  if (!isSelectionMode) {
+    // Màn hình chính: Hiển thị cả 2 ghim điểm đón & điểm đến ghim chặt vào bản đồ
+    if (markerStart && !map.hasLayer(markerStart)) markerStart.addTo(map);
+    if (markerEnd && !map.hasLayer(markerEnd)) markerEnd.addTo(map);
+    return;
+  }
+
   if (activePinMode === 'pickup') {
     if (markerStart && map.hasLayer(markerStart)) map.removeLayer(markerStart);
     if (markerEnd && !map.hasLayer(markerEnd)) markerEnd.addTo(map);
@@ -74,7 +81,7 @@ function enterSelectionMode(mode) {
   updateGuide();
 }
 
-// BẤM NÚT 'XONG' -> LƯU VỊ TRÍ VÀ THOÁT TOÀN MÀN HÌNH
+// BẤM NÚT 'XONG' -> GHIM CHẶT VÀO BẢN ĐỒ VÀ VẼ ĐƯỜNG ĐI
 function confirmAndExitSelection() {
   isSelectionMode = false;
   const currentPinLatLng = getFixedPinLatLng();
@@ -89,16 +96,20 @@ function confirmAndExitSelection() {
 
   document.body.classList.remove('selecting-pickup', 'selecting-dest');
 
-  // Đảm bảo cả 2 ghim điểm đón & điểm đến hiện trên bản đồ sau khi chọn xong
+  // Đảm bảo cả 2 ghim điểm đón & điểm đến được ghim cố định trên Leaflet
   if (markerStart && !map.hasLayer(markerStart)) markerStart.addTo(map);
   if (markerEnd && !map.hasLayer(markerEnd)) markerEnd.addTo(map);
 
-  calculateFastRoute();
-  calculateMapboxRoute();
+  // Khi có đủ 2 điểm -> Tự động tính cước và vẽ đường đi Mapbox
+  if (markerStart && markerEnd) {
+    calculateFastRoute();
+    calculateMapboxRoute();
+  }
+
   loadDrivers();
 }
 
-// Tự động tra cứu tên địa chỉ từ tọa độ ghim và điền vào ô tìm kiếm
+// Tra cứu tên địa chỉ từ tọa độ ghim và điền vào ô tìm kiếm
 async function reverseGeocodeFixedPin(latlng, type) {
   if (!MAPBOX_TOKEN || !latlng) return;
   try {
@@ -125,12 +136,15 @@ async function reverseGeocodeFixedPin(latlng, type) {
 
 // LẮNG NGHE SỰ KIỆN DI CHUYỂN BẢN ĐỒ
 map.on('movestart', () => {
-  document.body.classList.add('map-moving');
+  if (isSelectionMode) {
+    document.body.classList.add('map-moving');
+  }
 });
 
 map.on('move', () => {
+  if (!isSelectionMode) return; // Màn hình chính: Không làm di chuyển ghim!
+  
   const currentPinLatLng = getFixedPinLatLng();
-
   if (activePinMode === 'pickup') {
     if (markerStart) markerStart.setLatLng(currentPinLatLng);
   } else {
@@ -140,6 +154,8 @@ map.on('move', () => {
 
 map.on('moveend', () => {
   document.body.classList.remove('map-moving');
+  if (!isSelectionMode) return; // Màn hình chính: Không tác động ghim!
+
   const currentPinLatLng = getFixedPinLatLng();
 
   if (activePinMode === 'pickup') {
@@ -154,15 +170,6 @@ map.on('moveend', () => {
     reverseGeocodeTimer = setTimeout(() => {
       reverseGeocodeFixedPin(currentPinLatLng, 'dest');
     }, 250);
-  }
-
-  if (!isSelectionMode) {
-    calculateFastRoute();
-    clearTimeout(mapboxTimeout);
-    mapboxTimeout = setTimeout(() => {
-      calculateMapboxRoute();
-      loadDrivers();
-    }, 500);
   }
 });
 
@@ -355,9 +362,9 @@ function updateGuide() {
   guideBox.classList.remove('success');
 
   if (!hasPickup && !hasDest && !hasDriver) {
-    guideText.innerHTML = "📍 <b>Bước 1:</b> Di chuyển bản đồ chọn <b>Điểm đón</b>.";
+    guideText.innerHTML = "📍 <b>Bước 1:</b> Chọn <b>Điểm đón</b>.";
   } else if (hasPickup && !hasDest && !hasDriver) {
-    guideText.innerHTML = "🚩 <b>Bước 2:</b> Di chuyển bản đồ chọn <b>Điểm đến</b> hoặc <b>Tài xế</b>.";
+    guideText.innerHTML = "🚩 <b>Bước 2:</b> Chọn <b>Điểm đến</b> hoặc chọn <b>Tài xế</b>.";
   } else if (hasPickup && hasDest && !hasDriver) {
     guideText.innerHTML = "🚕 <b>Bước 3:</b> Chọn <b>Tài xế</b> bên dưới để xem giá & liên hệ.";
   } else if (hasDriver && !hasPickup && !hasDest) {
@@ -437,14 +444,16 @@ map.on('locationfound', (e) => {
 function setPickupLocation(latlng, isAuto = false, doCenter = true) {
   if (markerStart) map.removeLayer(markerStart);
  
-  markerStart = L.marker(latlng, { icon: pickupIcon, draggable: false });
-  if (activePinMode !== 'pickup') markerStart.addTo(map);
-  markerStart.bindPopup(isAuto ? "<b style='color:#dc2626;'>📍 Điểm đón của bạn</b>" : "<b style='color:#dc2626;'>📍 Điểm đón</b>");
+  markerStart = L.marker(latlng, { icon: pickupIcon, draggable: false }).addTo(map)
+    .bindPopup(isAuto ? "<b style='color:#dc2626;'>📍 Điểm đón của bạn</b>" : "<b style='color:#dc2626;'>📍 Điểm đón</b>");
     
   if (doCenter) centerMapOnFixedPin(latlng);
 
   document.getElementById('resetBtn').style.display = 'block';
-  if (markerEnd) calculateMapboxRoute();
+  if (markerEnd) {
+    calculateFastRoute();
+    calculateMapboxRoute();
+  }
 
   loadDrivers();
   updateGuide();
@@ -454,14 +463,17 @@ function setPickupLocation(latlng, isAuto = false, doCenter = true) {
 function setDestLocation(latlng, doCenter = true) {
   if (markerEnd) map.removeLayer(markerEnd);
 
-  markerEnd = L.marker(latlng, { icon: destinationIcon, draggable: false });
-  if (activePinMode !== 'dest') markerEnd.addTo(map);
-  markerEnd.bindPopup("<b style='color:#2563eb;'>🚩 Điểm đến</b>");
+  markerEnd = L.marker(latlng, { icon: destinationIcon, draggable: false }).addTo(map)
+    .bindPopup("<b style='color:#2563eb;'>🚩 Điểm đến</b>");
     
   if (doCenter) centerMapOnFixedPin(latlng);
 
   document.getElementById('resetBtn').style.display = 'block';
-  calculateMapboxRoute();
+  if (markerStart) {
+    calculateFastRoute();
+    calculateMapboxRoute();
+  }
+
   loadDrivers();
   updateGuide();
   syncMarkerVisibility();
@@ -640,6 +652,7 @@ function calculateFastRoute() {
   updatePrice();
 }
 
+// VẼ ĐƯỜNG ĐI CHÍNH XÁC QUA MAPBOX DIRECTIONS API VÀ TỰ ĐỘNG CĂN KHUNG HÌNH
 async function calculateMapboxRoute() {
   if (!markerStart || !markerEnd) return;
 
@@ -683,6 +696,11 @@ async function calculateMapboxRoute() {
       dashArray: '8, 8', 
       opacity: 0.85 
     }).addTo(map);
+  }
+
+  // Tự động thu phóng căn vừa khung hình lộ trình giữa điểm đón và điểm đến
+  if (routeLine && !isSelectionMode) {
+    map.fitBounds(routeLine.getBounds(), { padding: [80, 80] });
   }
 
   document.getElementById('distance').innerText = currentDistance;
