@@ -56,7 +56,9 @@ body {
     background-color: #0f172a;
   }
 
-  .btn-gps-float {
+  .btn-gps-float,
+  .btn-vehicle-float,
+  .vehicle-menu-popover {
     right: calc(50vw - 240px + 16px) !important;
   }
 }
@@ -133,7 +135,6 @@ body {
   transition: transform 0.2s ease, opacity 0.2s ease;
 }
 
-/* HIỆU ỨNG NẢY GHIM KHI DI CHUYỂN BẢN ĐỒ */
 body.map-moving .fixed-center-pin {
   transform: translate(-50%, -120%);
 }
@@ -142,13 +143,12 @@ body.map-moving .fixed-center-pin .pin-shadow {
   opacity: 0.15;
 }
 
-/* HIỆN GHIM TRUNG TÂM KHI Ở CHẾ ĐỘ CHỌN ĐIỂM */
 body.selecting-pickup .fixed-center-pin,
 body.selecting-dest .fixed-center-pin {
   display: flex !important;
 }
 
-/* NÚT ĐỊNH VỊ GPS LỒNG GÓC PHẢI DƯỚI BẢN ĐỒ */
+/* NÚT NỔI GPS KHU VỰC BẢN ĐỒ */
 .btn-gps-float {
   position: fixed;
   right: 16px;
@@ -156,11 +156,11 @@ body.selecting-dest .fixed-center-pin {
   z-index: 1000;
   width: 40px;
   height: 40px;
-  border-radius: 8px;
+  border-radius: 10px;
   background: rgba(255, 255, 255, 0.95);
   color: #334155;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -181,9 +181,89 @@ body.selecting-dest .fixed-center-pin {
   background: #f8fafc;
 }
 
+/* NÚT NỔI CHỌN XE */
+.btn-vehicle-float {
+  position: fixed;
+  right: 16px;
+  bottom: 210px;
+  z-index: 1000;
+  height: 40px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.95);
+  color: #0f172a;
+  border: 1.5px solid #00b14f;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 12px;
+  font-size: 13px;
+  font-weight: 700;
+  transition: all 0.2s ease;
+}
+
+.btn-vehicle-float:hover {
+  background: #ffffff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.btn-vehicle-float:active {
+  transform: translateY(0) scale(0.95);
+}
+
+/* MENU CHỌN LOẠI XE POPUP */
+.vehicle-menu-popover {
+  position: fixed;
+  right: 16px;
+  bottom: 258px;
+  z-index: 1001;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 14px;
+  padding: 6px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+  display: none;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 190px;
+}
+
+.vehicle-option {
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.vehicle-option:hover {
+  background: #f0fdf4;
+  color: #16a34a;
+}
+
+.vehicle-option.active {
+  background: #00b14f;
+  color: #ffffff;
+}
+
 body.selecting-pickup .btn-gps-float,
 body.selecting-dest .btn-gps-float {
   bottom: 85px;
+}
+
+body.selecting-pickup .btn-vehicle-float,
+body.selecting-dest .btn-vehicle-float {
+  bottom: 135px;
+}
+
+body.selecting-pickup .vehicle-menu-popover,
+body.selecting-dest .vehicle-menu-popover {
+  bottom: 183px;
 }
 
 .btn-confirm-select {
@@ -206,11 +286,8 @@ body.selecting-dest .btn-gps-float {
   transform: scale(0.98);
 }
 
-/* CHẾ ĐỘ ẨN BẢNG DƯỚI KHI DÙNG CON TRỎ CHỌN ĐIỂM TOÀN MÀN HÌNH */
-body.selecting-pickup .filter-bar,
 body.selecting-pickup .dest-group,
 body.selecting-pickup .bottom-section,
-body.selecting-dest .filter-bar,
 body.selecting-dest .pickup-group,
 body.selecting-dest .bottom-section {
   display: none !important;
@@ -284,7 +361,7 @@ body.selecting-dest .btn-confirm-select {
   border: 1.5px solid #86efac; 
   border-radius: 14px; 
   padding: 10px 12px; 
-  margin-top: 6px; 
+  margin-top: 2px; 
   display: flex; 
   flex-direction: column; 
   align-items: center; 
@@ -349,36 +426,6 @@ body.selecting-dest .btn-confirm-select {
   text-align: center; 
   line-height: 1; 
   filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3)); 
-}
-
-.filter-bar { 
-  display: flex; 
-  gap: 6px; 
-  overflow-x: auto; 
-  padding-bottom: 8px; 
-  margin-bottom: 8px; 
-  align-items: center;
-}
-
-.filter-chip { 
-  background: #e2e8f0; 
-  color: #475569; 
-  padding: 5px 12px; 
-  border-radius: 20px; 
-  font-size: 13px; 
-  font-weight: 600; 
-  cursor: pointer; 
-  white-space: nowrap; 
-  user-select: none; 
-  transition: all 0.2s; 
-  border: 1px solid #cbd5e1; 
-}
-
-.filter-chip.active { 
-  background: #00b14f; 
-  color: white; 
-  border-color: #00b14f; 
-  box-shadow: 0 2px 6px rgba(0,177,79,0.3); 
 }
 
 .driver-profile-box { 
@@ -540,49 +587,41 @@ body.dark-mode {
   color: #86efac !important; 
 }
 
-.dark-mode .filter-chip {
-  background: #334155;
-  color: #cbd5e1;
-  border-color: #475569;
-}
-
-.dark-mode .filter-chip.active {
-  background: #00b14f;
-  color: white;
-  border-color: #00b14f;
-}
-
-.dark-mode .top3-item {
-  background: #2d2d2d;
-  border-color: #404040;
-}
-
-.dark-mode .top3-item.selected {
-  background: #064e3b;
-  border-color: #059669;
-}
-
-.dark-mode .btn-select-driver.normal {
-  background: #334155;
-  color: #e2e8f0;
-}
-
 .dark-mode .btn-theme-toggle {
   background: #334155;
   border-color: #475569;
   color: #e2e8f0;
 }
 
-.dark-mode .btn-gps-float {
+.dark-mode .btn-gps-float,
+.dark-mode .btn-vehicle-float {
   background: rgba(30, 41, 59, 0.95);
   color: #cbd5e1;
   border-color: rgba(255, 255, 255, 0.1);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
 }
 
-.dark-mode .btn-gps-float:hover {
-  background: #334155;
-  color: #10b981;
+.dark-mode .btn-vehicle-float {
+  border-color: #00b14f;
+}
+
+.dark-mode .vehicle-menu-popover {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+.dark-mode .vehicle-option {
+  color: #cbd5e1;
+}
+
+.dark-mode .vehicle-option:hover {
+  background: #064e3b;
+  color: #6ee7b7;
+}
+
+.dark-mode .vehicle-option.active {
+  background: #00b14f;
+  color: #ffffff;
 }
 
 .dark-mode .leaflet-tile-pane {

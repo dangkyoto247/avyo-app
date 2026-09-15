@@ -24,7 +24,6 @@ const googleLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&
   updateWhenZooming: true
 });
 
-// NẾU GOOGLE TILES BỊ HẠN CHẾ HOẶC LỖI -> TỰ ĐỘNG CHUYỂN SANG MAPBOX TILES
 googleLayer.on('tileerror', function() {
   if (map.hasLayer(googleLayer)) {
     map.removeLayer(googleLayer);
@@ -61,7 +60,6 @@ let mapboxTimeout = null;
 let currentDragRating = 0;
 let isStarDragging = false;
 
-// HÀM TÍNH KHOẢNG CÁCH AN TOÀN
 function safeDistance(lat1, lon1, lat2, lon2) {
   if (typeof getHaversineDistance === 'function') {
     return getHaversineDistance(lat1, lon1, lat2, lon2);
@@ -75,7 +73,6 @@ function safeDistance(lat1, lon1, lat2, lon2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-// HÀM TÍNH KHUNG TỌA ĐỘ (BBOX) THEO BÁN KÍNH (KM)
 function getBBox(lat, lng, radiusKm) {
   const dLat = radiusKm / 111;
   const dLng = radiusKm / (111 * Math.cos(lat * Math.PI / 180));
@@ -176,9 +173,7 @@ function showRecentDests() {
   listEl.style.display = 'block';
 }
 
-function updateGuide() {
-  // Đã xóa nội dung hướng dẫn Bước 1, Bước 2 để ẩn khung
-}
+function updateGuide() {}
 
 const pickupIcon = L.divIcon({
   html: `<svg width="34" height="34" viewBox="0 0 24 24" fill="#dc2626" stroke="#ffffff" stroke-width="1.5" style="filter: drop-shadow(0 3px 6px rgba(0,0,0,0.4));">
@@ -186,8 +181,7 @@ const pickupIcon = L.divIcon({
          </svg>`,
   className: 'custom-pin-icon',
   iconSize: [34, 34],
-  iconAnchor: [17, 34],
-  popupAnchor: [0, -34]
+  iconAnchor: [17, 34]
 });
 
 const destinationIcon = L.divIcon({
@@ -196,39 +190,36 @@ const destinationIcon = L.divIcon({
          </svg>`,
   className: 'custom-pin-icon',
   iconSize: [34, 34],
-  iconAnchor: [17, 34],
-  popupAnchor: [0, -34]
+  iconAnchor: [17, 34]
 });
 
 let activeFilter = 'bike';
 
+function toggleVehicleMenu() {
+  const menu = document.getElementById('vehicleMenu');
+  if (menu) {
+    const isVisible = menu.style.display === 'flex' || menu.style.display === 'block';
+    menu.style.display = isVisible ? 'none' : 'flex';
+  }
+}
+
 function selectFilter(type, element) {
+  const menu = document.getElementById('vehicleMenu');
+  if (menu) menu.style.display = 'none';
+
   if (activeFilter === type) return;
   
   activeFilter = type;
-  document.querySelectorAll('.filter-bar .filter-chip').forEach(chip => chip.classList.remove('active'));
-  element.classList.add('active');
+  document.querySelectorAll('.vehicle-option').forEach(opt => opt.classList.remove('active'));
+  if (element) element.classList.add('active');
+
+  const activeLabel = document.getElementById('activeVehicleLabel');
+  if (activeLabel && typeNames[type]) {
+    activeLabel.innerText = typeNames[type];
+  }
 
   if (selectedDriver && selectedDriver.vehicle_type !== activeFilter) {
     deselectDriver();
-  }
-
-  if (type === 'other') {
-    deselectDriver();
-    alert("🚌 Xe tiện chuyến\n\n⚠️ Dịch vụ đang trong quá trình phát triển, sẽ sớm ra mắt!");
-    
-    const top3Card = document.getElementById('top3Card');
-    const top3List = document.getElementById('top3List');
-    const radiusBadge = document.getElementById('radiusBadge');
-    
-    top3Card.style.display = 'block';
-    radiusBadge.innerText = 'Đang phát triển';
-    top3List.innerHTML = `
-      <div style="font-size:13px; color:#0369a1; text-align:center; padding:16px 12px; background:#f0f9ff; border-radius:12px; border:1.5px solid #bae6fd;">
-        🚌 <b>Dịch vụ Xe Tiện Chuyến</b><br>
-        <span style="font-size:12px; color:#0284c7; display:block; margin-top:4px;">(Đang phát triển - Sẽ sớm ra mắt quý khách!)</span>
-      </div>`;
-    return;
   }
 
   loadDrivers();
@@ -244,9 +235,7 @@ map.on('locationfound', (e) => {
 function setPickupLocation(latlng, isAuto = false) {
   if (markerStart) map.removeLayer(markerStart);
  
-  markerStart = L.marker(latlng, { icon: pickupIcon, draggable: true }).addTo(map)
-    .bindPopup(isAuto ? "<b style='color:#dc2626;'>📍 Điểm đón của bạn</b><br><small><i>(Nhấn giữ & kéo để đổi vị trí)</i></small>" : "<b style='color:#dc2626;'>📍 Điểm đón</b><br><small><i>(Nhấn giữ & kéo để đổi vị trí)</i></small>")
-    .openPopup();
+  markerStart = L.marker(latlng, { icon: pickupIcon, draggable: true }).addTo(map);
     
   markerStart.on('drag', () => { calculateFastRoute(); });
 
@@ -269,9 +258,7 @@ function setPickupLocation(latlng, isAuto = false) {
 function setDestLocation(latlng) {
   if (markerEnd) map.removeLayer(markerEnd);
 
-  markerEnd = L.marker(latlng, { icon: destinationIcon, draggable: true }).addTo(map)
-    .bindPopup("<b style='color:#2563eb;'>🚩 Điểm đến</b><br><small><i>(Nhấn giữ & kéo để đổi vị trí)</i></small>")
-    .openPopup();
+  markerEnd = L.marker(latlng, { icon: destinationIcon, draggable: true }).addTo(map);
     
   markerEnd.on('drag', () => { calculateFastRoute(); });
 
@@ -320,7 +307,6 @@ function cleanAddressText(text) {
     .trim();
 }
 
-// 2. TÌM KIẾM ĐỊA CHỈ MAPBOX (ƯU TIÊN 15KM -> 50KM -> TOÀN QUỐC)
 function onSearchInput(type, isDirectCall = false) {
   clearTimeout(searchTimer);
   const query = document.getElementById(type + 'Input').value.trim().substring(0, 200);
@@ -364,17 +350,14 @@ function onSearchInput(type, isDirectCall = false) {
     let features = [];
 
     if (rawCenter && lat && lng) {
-      // BƯỚC 1: Ưu tiên tìm trong bán kính 15km
       const bbox15 = getBBox(lat, lng, 15);
       features = await fetchGeocoding(bbox15);
 
-      // BƯỚC 2: Nếu không có kết quả -> Mở rộng ra 50km
       if (features.length === 0) {
         const bbox50 = getBBox(lat, lng, 50);
         features = await fetchGeocoding(bbox50);
       }
 
-      // BƯỚC 3: Nếu vẫn không có -> Mở rộng ra toàn bộ phạm vi
       if (features.length === 0) {
         features = await fetchGeocoding(null);
       }
@@ -458,6 +441,11 @@ function onSearchInput(type, isDirectCall = false) {
 }
 
 document.addEventListener('click', (e) => {
+  if (!e.target.closest('#vehicleFloatBtn') && !e.target.closest('#vehicleMenu')) {
+    const menu = document.getElementById('vehicleMenu');
+    if (menu) menu.style.display = 'none';
+  }
+
   if (!e.target.closest('.search-input-group')) {
     document.getElementById('pickupSuggestions').style.display = 'none';
     document.getElementById('destSuggestions').style.display = 'none';
@@ -481,11 +469,11 @@ function calculateFastRoute() {
     opacity: 0.8 
   }).addTo(map);
 
-  document.getElementById('distance').innerText = currentDistance;
+  const distEl = document.getElementById('distance');
+  if (distEl) distEl.innerText = currentDistance;
   updatePrice();
 }
 
-// 3. VẼ ĐƯỜNG & TÍNH KHOẢNG CÁCH CHÍNH XÁC QUA MAPBOX DIRECTIONS API
 async function calculateMapboxRoute() {
   if (!markerStart || !markerEnd) return;
 
@@ -532,7 +520,8 @@ async function calculateMapboxRoute() {
   }
 
   map.fitBounds(routeLine.getBounds(), { padding: [50, 50] });
-  document.getElementById('distance').innerText = currentDistance;
+  const distEl = document.getElementById('distance');
+  if (distEl) distEl.innerText = currentDistance;
   updatePrice();
   updateGuide();
 }
@@ -541,49 +530,38 @@ function updatePrice() {
   const priceEl = document.getElementById('price');
   const rateLabelEl = document.getElementById('rate-label');
 
+  if (!priceEl || !rateLabelEl) return;
+
   if (!selectedDriver) {
-    priceEl.innerText = '0 VNĐ';
-    rateLabelEl.innerText = currentDistance > 0 ? '(Vui lòng chọn tài xế)' : '';
+    priceEl.innerText = '0đ';
+    rateLabelEl.innerText = currentDistance > 0 ? `(${currentDistance} Km)` : '';
     return;
   }
 
   const type = selectedDriver.vehicle_type;
-  let rateText = '';
-  let rateVal = 0;
 
   if (type === 'truck') {
-    rateText = 'Thỏa thuận với tài xế';
-  } else if (type === 'car') {
-    rateVal = 11000;
-    rateText = 'Đơn giá: 11.000 VNĐ/km (Ô tô)';
-  } else if (type === 'driver') {
-    rateVal = 11000;
-    rateText = 'Đơn giá: 11.000 VNĐ/km (Lái xe hộ)';
-  } else {
-    rateVal = 6000;
-    rateText = 'Đơn giá: 6.000 VNĐ/km (Xe máy)';
+    priceEl.innerText = 'Thỏa thuận';
+    rateLabelEl.innerText = currentDistance > 0 ? `(${currentDistance} Km)` : '';
+    return;
   }
 
+  let rateVal = (type === 'car' || type === 'driver') ? 11000 : 6000;
+
   if (!markerStart || !markerEnd || currentDistance == 0) {
-    priceEl.innerText = type === 'truck' ? 'Thỏa thuận' : '0 VNĐ';
-    rateLabelEl.innerText = rateText;
+    priceEl.innerText = '0đ';
+    rateLabelEl.innerText = '';
   } else {
-    if (type === 'truck') {
-      priceEl.innerText = 'Thỏa thuận';
-      rateLabelEl.innerText = '(Xe chở hàng)';
-      currentPrice = 'Thỏa thuận';
+    const isMinFare = parseFloat(currentDistance) < 3.0;
+    const calcDistance = isMinFare ? 3.0 : parseFloat(currentDistance);
+
+    currentPrice = Math.round(calcDistance * rateVal);
+    priceEl.innerText = currentPrice.toLocaleString('vi-VN') + 'đ';
+
+    if (isMinFare) {
+      rateLabelEl.innerText = `(Cước tối thiểu 3km • ${currentDistance} Km)`;
     } else {
-      const isMinFare = parseFloat(currentDistance) < 3.0;
-      const calcDistance = isMinFare ? 3.0 : parseFloat(currentDistance);
-
-      currentPrice = Math.round(calcDistance * rateVal);
-      priceEl.innerText = currentPrice.toLocaleString('vi-VN') + ' VNĐ';
-
-      if (isMinFare) {
-        rateLabelEl.innerText = `⚠️ Cước tối thiểu 3km (${currentDistance} km)`;
-      } else {
-        rateLabelEl.innerText = `(${rateText} • ${currentDistance} km)`;
-      }
+      rateLabelEl.innerText = `(${currentDistance} Km)`;
     }
   }
 }
@@ -598,7 +576,8 @@ function resetRoute() {
   routeLine = null;
   currentDistance = 0;
   currentPrice = 0;
-  document.getElementById('distance').innerText = '0';
+  const distEl = document.getElementById('distance');
+  if (distEl) distEl.innerText = '0';
   document.getElementById('resetBtn').style.display = 'none';
   document.getElementById('pickupInput').value = '';
   document.getElementById('destInput').value = '';
@@ -635,11 +614,10 @@ const icons = {
 };
 
 const typeNames = { 
-  'bike': '🛵 Xe máy', 
-  'car': '🚕 Ô tô', 
-  'driver': '👤 Lái xe hộ', 
-  'truck': '🚚 Xe chở hàng',
-  'other': '✨ Khác'
+  'bike': '🛵 Xe máy (6.000đ/km)', 
+  'car': '🚕 Ô tô (11.000đ/km)', 
+  'driver': '👤 Lái xe hộ (11.000đ/km)', 
+  'truck': '🚚 Chở hàng (Thỏa thuận)'
 };
 
 async function trackCall(event) {
@@ -682,7 +660,7 @@ async function openZalo() {
   if (markerEnd) {
     msg += `\n🚩 Điểm đến: https://maps.google.com/?q=${markerEnd.getLatLng().lat.toFixed(5)},${markerEnd.getLatLng().lng.toFixed(5)}`;
     msg += `\n📏 Quãng đường: ${currentDistance} km`;
-    msg += `\n💰 Cước phí: ${selectedDriver.vehicle_type === 'truck' ? 'Thỏa thuận' : currentPrice.toLocaleString('vi-VN') + ' VNĐ'}`;
+    msg += `\n💰 Cước phí: ${selectedDriver.vehicle_type === 'truck' ? 'Thỏa thuận' : currentPrice.toLocaleString('vi-VN') + 'đ'}`;
   }
 
   const noteInput = document.getElementById('noteInput');
