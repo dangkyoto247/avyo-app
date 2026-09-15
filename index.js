@@ -1,5 +1,5 @@
 // MAPBOX ACCESS TOKEN CỦA BẠN
-const MAPBOX_TOKEN = 'pk.eyJ1IjoidHVhbmgzNDE2MjMiLCJhbGciOiJjbXUwcGhlYTExNHV5MnhvdjlyaXE5ZzM2In0.NN6tgrUWAN2tUubAZtTY_Q';
+const MAPBOX_TOKEN = 'pk.eyJ1IjoidHVhbmFuaDM0MTYyMyIsImEiOiJjbXUycmMxa2UwMjd4MnlxeWZ2ZDV5NGF5In0.o10B_hdnfqOIn1jNfbpY2w';
 
 // Khởi tạo bản đồ Leaflet
 const map = L.map('map', { 
@@ -13,181 +13,6 @@ const map = L.map('map', {
 
 L.control.zoom({ position: 'topright' }).addTo(map);
 
-// =========================================================
-// QUẢN LÝ LUỒNG CHỌN ĐIỂM & GHIM CỐ ĐỊNH TỌA ĐỘ
-// =========================================================
-let activePinMode = 'pickup'; // 'pickup' (Đỏ) hoặc 'dest' (Xanh)
-let isSelectionMode = false;  // Trạng thái chọn toàn màn hình
-let reverseGeocodeTimer = null;
-
-// Lấy tọa độ địa lý tại vị trí ghim cố định (Mốc 1/3 phía trên màn hình)
-function getFixedPinLatLng() {
-  const point = L.point(window.innerWidth / 2, window.innerHeight / 3);
-  return map.containerPointToLatLng(point);
-}
-
-// Căn chỉnh bản đồ đưa vị trí LatLng khớp với mốc ghim 1/3 phía trên
-function centerMapOnFixedPin(latlng, zoom = map.getZoom()) {
-  if (!latlng) return;
-  const targetPoint = map.project(latlng, zoom);
-  const offsetY = (window.innerHeight / 2) - (window.innerHeight / 3);
-  const newPoint = L.point(targetPoint.x, targetPoint.y + offsetY);
-  const newLatLng = map.unproject(newPoint, zoom);
-  map.setView(newLatLng, zoom, { animate: false });
-}
-
-// Cập nhật ghim tĩnh trên bản đồ Leaflet
-function syncMarkerVisibility() {
-  if (!isSelectionMode) {
-    // Màn hình chính: Hiển thị cả 2 ghim điểm đón & điểm đến ghim chặt vào bản đồ
-    if (markerStart && !map.hasLayer(markerStart)) markerStart.addTo(map);
-    if (markerEnd && !map.hasLayer(markerEnd)) markerEnd.addTo(map);
-    return;
-  }
-
-  if (activePinMode === 'pickup') {
-    if (markerStart && map.hasLayer(markerStart)) map.removeLayer(markerStart);
-    if (markerEnd && !map.hasLayer(markerEnd)) markerEnd.addTo(map);
-  } else if (activePinMode === 'dest') {
-    if (markerStart && !map.hasLayer(markerStart)) markerStart.addTo(map);
-    if (markerEnd && map.hasLayer(markerEnd)) map.removeLayer(markerEnd);
-  }
-}
-
-// MỞ CHẾ ĐỘ CHỌN ĐIỂM TOÀN MÀN HÌNH
-function enterSelectionMode(mode) {
-  isSelectionMode = true;
-  activePinMode = mode;
-
-  document.body.classList.remove('selecting-pickup', 'selecting-dest');
-  document.body.classList.add(mode === 'pickup' ? 'selecting-pickup' : 'selecting-dest');
-
-  const pinSvg = document.querySelector('#fixedCenterPin svg');
-  const confirmBtn = document.getElementById('confirmSelectBtn');
-
-  if (pinSvg) {
-    if (mode === 'pickup') {
-      pinSvg.setAttribute('fill', '#dc2626'); // Đỏ
-      if (confirmBtn) confirmBtn.innerText = '✅ XONG - XÁC NHẬN ĐIỂM ĐÓN';
-      if (markerStart) centerMapOnFixedPin(markerStart.getLatLng());
-    } else {
-      pinSvg.setAttribute('fill', '#2563eb'); // Xanh
-      if (confirmBtn) confirmBtn.innerText = '✅ XONG - XÁC NHẬN ĐIỂM ĐẾN';
-      if (markerEnd) centerMapOnFixedPin(markerEnd.getLatLng());
-    }
-  }
-
-  syncMarkerVisibility();
-  updateGuide();
-}
-
-// BẤM NÚT 'XONG' -> GHIM CHẶT VÀO BẢN ĐỒ VÀ VẼ ĐƯỜNG ĐI
-function confirmAndExitSelection() {
-  isSelectionMode = false;
-  const currentPinLatLng = getFixedPinLatLng();
-
-  if (activePinMode === 'pickup') {
-    setPickupLocation(currentPinLatLng, false, false);
-    reverseGeocodeFixedPin(currentPinLatLng, 'pickup');
-  } else {
-    setDestLocation(currentPinLatLng, false);
-    reverseGeocodeFixedPin(currentPinLatLng, 'dest');
-  }
-
-  document.body.classList.remove('selecting-pickup', 'selecting-dest');
-
-  // Đảm bảo cả 2 ghim điểm đón & điểm đến được ghim cố định trên Leaflet
-  if (markerStart && !map.hasLayer(markerStart)) markerStart.addTo(map);
-  if (markerEnd && !map.hasLayer(markerEnd)) markerEnd.addTo(map);
-
-  // Khi có đủ 2 điểm -> Tự động tính cước và vẽ đường đi Mapbox
-  if (markerStart && markerEnd) {
-    calculateFastRoute();
-    calculateMapboxRoute();
-  }
-
-  loadDrivers();
-}
-
-// Tra cứu tên địa chỉ từ tọa độ ghim và điền vào ô tìm kiếm
-async function reverseGeocodeFixedPin(latlng, type) {
-  if (!MAPBOX_TOKEN || !latlng) return;
-  try {
-    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${latlng.lng.toFixed(5)},${latlng.lat.toFixed(5)}.json?access_token=${MAPBOX_TOKEN}&country=vn&language=vi&limit=1`;
-    const res = await fetch(url);
-    if (res.ok) {
-      const data = await res.json();
-      if (data.features && data.features.length > 0) {
-        const placeName = cleanAddressText(data.features[0].text || data.features[0].place_name);
-        const inputEl = document.getElementById(type + 'Input');
-        if (inputEl) inputEl.value = placeName;
-        
-        if (type === 'pickup') {
-          saveRecentPickup(placeName, latlng.lat, latlng.lng);
-        } else {
-          saveRecentDest(placeName, latlng.lat, latlng.lng);
-        }
-      }
-    }
-  } catch (e) {
-    console.warn("Lỗi tra cứu địa chỉ:", e);
-  }
-}
-
-// LẮNG NGHE SỰ KIỆN DI CHUYỂN BẢN ĐỒ
-map.on('movestart', () => {
-  if (isSelectionMode) {
-    document.body.classList.add('map-moving');
-  }
-});
-
-map.on('move', () => {
-  if (!isSelectionMode) return; // Màn hình chính: Không làm di chuyển ghim!
-  
-  const currentPinLatLng = getFixedPinLatLng();
-  if (activePinMode === 'pickup') {
-    if (markerStart) markerStart.setLatLng(currentPinLatLng);
-  } else {
-    if (markerEnd) markerEnd.setLatLng(currentPinLatLng);
-  }
-});
-
-map.on('moveend', () => {
-  document.body.classList.remove('map-moving');
-  if (!isSelectionMode) return; // Màn hình chính: Không tác động ghim!
-
-  const currentPinLatLng = getFixedPinLatLng();
-
-  if (activePinMode === 'pickup') {
-    setPickupLocation(currentPinLatLng, false, false);
-    clearTimeout(reverseGeocodeTimer);
-    reverseGeocodeTimer = setTimeout(() => {
-      reverseGeocodeFixedPin(currentPinLatLng, 'pickup');
-    }, 250);
-  } else if (activePinMode === 'dest') {
-    setDestLocation(currentPinLatLng, false);
-    clearTimeout(reverseGeocodeTimer);
-    reverseGeocodeTimer = setTimeout(() => {
-      reverseGeocodeFixedPin(currentPinLatLng, 'dest');
-    }, 250);
-  }
-});
-
-// NÚT ĐỊNH VỊ GPS VỪA TẦM TAY DƯỚI GÓC PHẢI
-function useCurrentLocationAsPickup() {
-  if (userLatLng) {
-    enterSelectionMode('pickup');
-    centerMapOnFixedPin(userLatLng, 15);
-    setPickupLocation(userLatLng, true, false);
-    
-    const labelText = "Vị trí hiện tại của bạn";
-    document.getElementById('pickupInput').value = labelText;
-    saveRecentPickup(labelText, userLatLng.lat, userLatLng.lng);
-  } else {
-    map.locate({ setView: false, maxZoom: 15 });
-  }
-}
-
 // 1. LỚP BẢN ĐỒ CHÍNH: GOOGLE MAPS TILES
 const googleLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
   subdomains: ['0', '1', '2', '3'],
@@ -199,6 +24,7 @@ const googleLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&
   updateWhenZooming: true
 });
 
+// NẾU GOOGLE TILES BỊ HẠN CHẾ HOẶC LỖI -> TỰ ĐỘNG CHUYỂN SANG MAPBOX TILES
 googleLayer.on('tileerror', function() {
   if (map.hasLayer(googleLayer)) {
     map.removeLayer(googleLayer);
@@ -213,8 +39,8 @@ googleLayer.addTo(map);
 
 setTimeout(() => { if (map) map.invalidateSize(); }, 300);
 
-let mapMoveTimer = null;
 window.addEventListener('resize', () => { if (map) map.invalidateSize(); });
+map.on('moveend resize', () => { if (map) map.invalidateSize(); });
 
 const SUPABASE_URL = 'https://yvucyqkglbgxvozrznir.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl2dWN5cWtnbGJneHZvenJ6bmlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkxMzA3ODAsImV4cCI6MjEwNDcwNjc4MH0.Zagl4i2LPmxW3w9ih0h4LRsrm-OOGtPcWgvEs2vHBqo';
@@ -235,6 +61,7 @@ let mapboxTimeout = null;
 let currentDragRating = 0;
 let isStarDragging = false;
 
+// HÀM TÍNH KHOẢNG CÁCH AN TOÀN
 function safeDistance(lat1, lon1, lat2, lon2) {
   if (typeof getHaversineDistance === 'function') {
     return getHaversineDistance(lat1, lon1, lat2, lon2);
@@ -248,6 +75,7 @@ function safeDistance(lat1, lon1, lat2, lon2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+// HÀM TÍNH KHUNG TỌA ĐỘ (BBOX) THEO BÁN KÍNH (KM)
 function getBBox(lat, lng, radiusKm) {
   const dLat = radiusKm / 111;
   const dLng = radiusKm / (111 * Math.cos(lat * Math.PI / 180));
@@ -271,7 +99,6 @@ function saveRecentPickup(label, lat, lng) {
 }
 
 function showRecentPickups() {
-  enterSelectionMode('pickup');
   const inputVal = document.getElementById('pickupInput').value.trim();
   if (inputVal.length >= 2) return;
 
@@ -293,7 +120,7 @@ function showRecentPickups() {
       document.getElementById('pickupInput').value = item.label;
       listEl.style.display = 'none';
       const latlng = L.latLng(item.lat, item.lng);
-      centerMapOnFixedPin(latlng, 15);
+      map.setView(latlng, 15);
       setPickupLocation(latlng);
       saveRecentPickup(item.label, item.lat, item.lng);
     };
@@ -319,7 +146,6 @@ function saveRecentDest(label, lat, lng) {
 }
 
 function showRecentDests() {
-  enterSelectionMode('dest');
   const inputVal = document.getElementById('destInput').value.trim();
   if (inputVal.length >= 2) return;
 
@@ -341,7 +167,7 @@ function showRecentDests() {
       document.getElementById('destInput').value = item.label;
       listEl.style.display = 'none';
       const latlng = L.latLng(item.lat, item.lng);
-      centerMapOnFixedPin(latlng, 15);
+      map.setView(latlng, 15);
       setDestLocation(latlng);
       saveRecentDest(item.label, item.lat, item.lng);
     };
@@ -362,9 +188,9 @@ function updateGuide() {
   guideBox.classList.remove('success');
 
   if (!hasPickup && !hasDest && !hasDriver) {
-    guideText.innerHTML = "📍 <b>Bước 1:</b> Chọn <b>Điểm đón</b>.";
+    guideText.innerHTML = "📍 <b>Bước 1:</b> Nhập địa chỉ hoặc chạm bản đồ chọn <b>Điểm đón</b>.";
   } else if (hasPickup && !hasDest && !hasDriver) {
-    guideText.innerHTML = "🚩 <b>Bước 2:</b> Chọn <b>Điểm đến</b> hoặc chọn <b>Tài xế</b>.";
+    guideText.innerHTML = "🚩 <b>Bước 2:</b> Nhập điểm đến hoặc chọn <b>Tài xế gần nhất</b>.";
   } else if (hasPickup && hasDest && !hasDriver) {
     guideText.innerHTML = "🚕 <b>Bước 3:</b> Chọn <b>Tài xế</b> bên dưới để xem giá & liên hệ.";
   } else if (hasDriver && !hasPickup && !hasDest) {
@@ -433,51 +259,81 @@ function selectFilter(type, element) {
   loadDrivers();
 }
 
-map.locate({ setView: false, maxZoom: 15 });
+map.locate({ setView: true, maxZoom: 15 });
 
 map.on('locationfound', (e) => {
   userLatLng = e.latlng;
-  centerMapOnFixedPin(e.latlng, 15);
-  setPickupLocation(e.latlng, true, false);
+  setPickupLocation(e.latlng, true);
 });
 
-function setPickupLocation(latlng, isAuto = false, doCenter = true) {
+function setPickupLocation(latlng, isAuto = false) {
   if (markerStart) map.removeLayer(markerStart);
  
-  markerStart = L.marker(latlng, { icon: pickupIcon, draggable: false }).addTo(map)
-    .bindPopup(isAuto ? "<b style='color:#dc2626;'>📍 Điểm đón của bạn</b>" : "<b style='color:#dc2626;'>📍 Điểm đón</b>");
+  markerStart = L.marker(latlng, { icon: pickupIcon, draggable: true }).addTo(map)
+    .bindPopup(isAuto ? "<b style='color:#dc2626;'>📍 Điểm đón của bạn</b><br><small><i>(Nhấn giữ & kéo để đổi vị trí)</i></small>" : "<b style='color:#dc2626;'>📍 Điểm đón</b><br><small><i>(Nhấn giữ & kéo để đổi vị trí)</i></small>")
+    .openPopup();
     
-  if (doCenter) centerMapOnFixedPin(latlng);
+  markerStart.on('drag', () => { calculateFastRoute(); });
 
-  document.getElementById('resetBtn').style.display = 'block';
-  if (markerEnd) {
+  markerStart.on('dragend', () => {
     calculateFastRoute();
-    calculateMapboxRoute();
-  }
+    clearTimeout(mapboxTimeout);
+    mapboxTimeout = setTimeout(() => {
+      calculateMapboxRoute();
+      loadDrivers();
+    }, 1200);
+  });
+    
+  document.getElementById('resetBtn').style.display = 'block';
+  if (markerEnd) calculateMapboxRoute();
 
   loadDrivers();
   updateGuide();
-  syncMarkerVisibility();
 }
 
-function setDestLocation(latlng, doCenter = true) {
+function setDestLocation(latlng) {
   if (markerEnd) map.removeLayer(markerEnd);
 
-  markerEnd = L.marker(latlng, { icon: destinationIcon, draggable: false }).addTo(map)
-    .bindPopup("<b style='color:#2563eb;'>🚩 Điểm đến</b>");
+  markerEnd = L.marker(latlng, { icon: destinationIcon, draggable: true }).addTo(map)
+    .bindPopup("<b style='color:#2563eb;'>🚩 Điểm đến</b><br><small><i>(Nhấn giữ & kéo để đổi vị trí)</i></small>")
+    .openPopup();
     
-  if (doCenter) centerMapOnFixedPin(latlng);
+  markerEnd.on('drag', () => { calculateFastRoute(); });
 
-  document.getElementById('resetBtn').style.display = 'block';
-  if (markerStart) {
+  markerEnd.on('dragend', () => {
     calculateFastRoute();
-    calculateMapboxRoute();
-  }
-
+    clearTimeout(mapboxTimeout);
+    mapboxTimeout = setTimeout(() => {
+      calculateMapboxRoute();
+      loadDrivers();
+    }, 1200);
+  });
+    
+  document.getElementById('resetBtn').style.display = 'block';
+  calculateMapboxRoute();
   loadDrivers();
   updateGuide();
-  syncMarkerVisibility();
 }
+
+function useCurrentLocationAsPickup() {
+  if (userLatLng) {
+    setPickupLocation(userLatLng, true);
+    const labelText = "Vị trí hiện tại của bạn";
+    document.getElementById('pickupInput').value = labelText;
+    map.setView(userLatLng, 15);
+    saveRecentPickup(labelText, userLatLng.lat, userLatLng.lng);
+  } else {
+    map.locate({ setView: true, maxZoom: 15 });
+  }
+}
+
+map.on('click', function(e) {
+  if (!markerStart) {
+    setPickupLocation(e.latlng, false);
+  } else if (!markerEnd) {
+    setDestLocation(e.latlng);
+  }
+});
 
 function cleanAddressText(text) {
   if (!text) return '';
@@ -489,6 +345,7 @@ function cleanAddressText(text) {
     .trim();
 }
 
+// 2. TÌM KIẾM ĐỊA CHỈ MAPBOX (ƯU TIÊN 15KM -> 50KM -> TOÀN QUỐC)
 function onSearchInput(type, isDirectCall = false) {
   clearTimeout(searchTimer);
   const query = document.getElementById(type + 'Input').value.trim().substring(0, 200);
@@ -502,7 +359,7 @@ function onSearchInput(type, isDirectCall = false) {
   }
 
   const executeSearch = async () => {
-    let rawCenter = markerStart ? markerStart.getLatLng() : (userLatLng || getFixedPinLatLng());
+    let rawCenter = markerStart ? markerStart.getLatLng() : (userLatLng || map.getCenter());
     
     if (rawCenter && typeof rawCenter.wrap === 'function') {
       rawCenter = rawCenter.wrap();
@@ -532,14 +389,17 @@ function onSearchInput(type, isDirectCall = false) {
     let features = [];
 
     if (rawCenter && lat && lng) {
+      // BƯỚC 1: Ưu tiên tìm trong bán kính 15km
       const bbox15 = getBBox(lat, lng, 15);
       features = await fetchGeocoding(bbox15);
 
+      // BƯỚC 2: Nếu không có kết quả -> Mở rộng ra 50km
       if (features.length === 0) {
         const bbox50 = getBBox(lat, lng, 50);
         features = await fetchGeocoding(bbox50);
       }
 
+      // BƯỚC 3: Nếu vẫn không có -> Mở rộng ra toàn bộ phạm vi
       if (features.length === 0) {
         features = await fetchGeocoding(null);
       }
@@ -569,14 +429,13 @@ function onSearchInput(type, isDirectCall = false) {
       document.getElementById(type + 'Input').value = placeName;
       listEl.style.display = 'none';
       const latlng = L.latLng(resLat, resLng);
+      map.setView(latlng, 15);
 
       if (type === 'pickup') {
-        enterSelectionMode('pickup');
-        setPickupLocation(latlng, false, true);
+        setPickupLocation(latlng);
         saveRecentPickup(placeName, resLat, resLng);
       } else {
-        enterSelectionMode('dest');
-        setDestLocation(latlng, true);
+        setDestLocation(latlng);
         saveRecentDest(placeName, resLat, resLng);
       }
       return;
@@ -604,14 +463,13 @@ function onSearchInput(type, isDirectCall = false) {
         listEl.style.display = 'none';
         
         const latlng = L.latLng(fLat, fLng);
+        map.setView(latlng, 15);
 
         if (type === 'pickup') {
-          enterSelectionMode('pickup');
-          setPickupLocation(latlng, false, true);
+          setPickupLocation(latlng);
           saveRecentPickup(mainTitle, fLat, fLng);
         } else {
-          enterSelectionMode('dest');
-          setDestLocation(latlng, true);
+          setDestLocation(latlng);
           saveRecentDest(mainTitle, fLat, fLng);
         }
       };
@@ -652,7 +510,7 @@ function calculateFastRoute() {
   updatePrice();
 }
 
-// VẼ ĐƯỜNG ĐI CHÍNH XÁC QUA MAPBOX DIRECTIONS API VÀ TỰ ĐỘNG CĂN KHUNG HÌNH
+// 3. VẼ ĐƯỜNG & TÍNH KHOẢNG CÁCH CHÍNH XÁC QUA MAPBOX DIRECTIONS API
 async function calculateMapboxRoute() {
   if (!markerStart || !markerEnd) return;
 
@@ -698,11 +556,7 @@ async function calculateMapboxRoute() {
     }).addTo(map);
   }
 
-  // Tự động thu phóng căn vừa khung hình lộ trình giữa điểm đón và điểm đến
-  if (routeLine && !isSelectionMode) {
-    map.fitBounds(routeLine.getBounds(), { padding: [80, 80] });
-  }
-
+  map.fitBounds(routeLine.getBounds(), { padding: [50, 50] });
   document.getElementById('distance').innerText = currentDistance;
   updatePrice();
   updateGuide();
@@ -769,7 +623,6 @@ function resetRoute() {
   routeLine = null;
   currentDistance = 0;
   currentPrice = 0;
-  enterSelectionMode('pickup');
   document.getElementById('distance').innerText = '0';
   document.getElementById('resetBtn').style.display = 'none';
   document.getElementById('pickupInput').value = '';
@@ -1082,7 +935,7 @@ async function selectDriver(driver) {
   renderDriverMarkers();
 
   if (driverMarkers[driver.id]) {
-    centerMapOnFixedPin([driver.lat, driver.lng]);
+    map.panTo([driver.lat, driver.lng]);
     driverMarkers[driver.id].openPopup();
   }
 }
@@ -1235,6 +1088,12 @@ function renderDriverMarkers() {
 
 loadDrivers();
 updateGuide();
+
+setInterval(() => {
+  if (typeof loadDrivers === 'function') {
+    loadDrivers();
+  }
+}, 12000);
 
 document.addEventListener('gesturestart', function (e) { e.preventDefault(); });
 

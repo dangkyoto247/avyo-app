@@ -24,7 +24,7 @@ body {
   z-index: 1;
   margin: 0;
   overflow: hidden;
-  transform: translateZ(0); /* Kích hoạt GPU Hardware Acceleration */
+  transform: translateZ(0);
 }
 
 /* GHIM CỐ ĐỊNH CHÍNH GIỮA MÀN HÌNH TẠI MỐC 1/3 PHÍA TRÊN */
@@ -34,8 +34,8 @@ body {
   left: 50vw;
   transform: translate(-50%, -100%);
   z-index: 999;
-  pointer-events: none; /* Vuốt bản đồ xuyên qua ghim */
-  display: none; /* Mặc định ẩn ở màn hình chính */
+  pointer-events: none;
+  display: none;
   flex-direction: column;
   align-items: center;
   transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
@@ -70,30 +70,50 @@ body.selecting-dest .fixed-center-pin {
   display: flex !important;
 }
 
-/* NÚT NỔI ĐỊNH VỊ GPS NẰM Ở GÓC PHẢI VỪA TẦM TAY VUỐT */
+/* NÚT ĐỊNH VỊ GPS LỒNG GÓC PHẢI DƯỚI CÙNG BẢN ĐỒ */
 .btn-gps-float {
   position: fixed;
-  right: 18px;
-  bottom: 180px;
+  right: 16px;
+  bottom: 25vh;
   z-index: 1000;
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
-  background: white;
-  color: #00b14f;
-  border: 2px solid #00b14f;
-  font-size: 24px;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.95);
+  color: #334155;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.25s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  padding: 0;
+}
+
+/* GIỚI HẠN VỊ TRÍ NÚT KHI MỞ TRÊN MÁY TÍNH (MÀN HÌNH RỘNG > 480PX) */
+@media (min-width: 481px) {
+  .btn-gps-float {
+    right: calc(50vw - 240px + 16px);
+  }
+}
+
+.btn-gps-float:hover {
+  background: #ffffff;
+  color: #00b14f;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .btn-gps-float:active {
-  transform: scale(0.9);
-  background: #f0fdf4;
+  transform: translateY(0) scale(0.95);
+  background: #f8fafc;
+}
+
+/* ĐIỀU CHỈNH VỊ TRÍ KHI ẨN GIAO DIỆN (CHỌN ĐIỂM TOÀN MÀN HÌNH) */
+body.selecting-pickup .btn-gps-float,
+body.selecting-dest .btn-gps-float {
+  bottom: 85px;
 }
 
 /* NHÓM GIAO DIỆN TRÊN & DƯỚI */
@@ -143,11 +163,6 @@ body.selecting-dest .bottom-section {
 body.selecting-pickup .btn-confirm-select,
 body.selecting-dest .btn-confirm-select {
   display: block !important;
-}
-
-body.selecting-pickup .btn-gps-float,
-body.selecting-dest .btn-gps-float {
-  bottom: 80px;
 }
 
 /* ẨN BẢN QUYỀN LEAFLET & CARTO DƯỚI GÓC BẢN ĐỒ */
@@ -402,7 +417,7 @@ body.selecting-dest .btn-gps-float {
   font-size: 26px;
   user-select: none;
   -webkit-user-select: none;
-  touch-action: none; /* Ngăn cuộn trang khi vuốt chọn sao */
+  touch-action: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -580,10 +595,17 @@ body.dark-mode {
   color: #e2e8f0;
 }
 
-.dark-mode .btn-gps-float { 
-  background: #1e1e1e; 
-  color: #00b14f; 
-  border-color: #00b14f; 
+/* DARK MODE CHO NÚT GPS */
+.dark-mode .btn-gps-float {
+  background: rgba(30, 41, 59, 0.95);
+  color: #cbd5e1;
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+.dark-mode .btn-gps-float:hover {
+  background: #334155;
+  color: #10b981;
 }
 
 /* ĐẢO MÀN BẢN ĐỒ LEAFLET TRANG SANG NỀN TỐI */
@@ -744,7 +766,7 @@ body.dark-mode {
 
 /* KHẮC PHỤC LỖI SỌC TRẮNG VÀ VÙNG XÁM BẢN ĐỒ */
 .leaflet-container {
-  background-color: #e5e3df !important; /* Phủ màu nền chuẩn của Google Maps */
+  background-color: #e5e3df !important;
 }
 
 .dark-mode .leaflet-container {
@@ -752,7 +774,7 @@ body.dark-mode {
 }
 
 .leaflet-tile {
-  outline: 1px solid transparent; /* Loại bỏ rãnh viền subpixel gây ra sọc trắng */
+  outline: 1px solid transparent;
   -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
 }

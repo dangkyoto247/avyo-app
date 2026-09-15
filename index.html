@@ -19,7 +19,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/gh/ewoken/Leaflet.MovingMarker@master/MovingMarker.js"></script>
 
-  <link rel="stylesheet" href="index.css?v=35">
+  <link rel="stylesheet" href="index.css?v=38">
 </head>
 <body>
 
@@ -34,9 +34,11 @@
     <div class="pin-shadow"></div>
   </div>
 
-  <!-- NÚT NỔI ĐỊNH VỊ GPS Ở GÓC PHẢI MÀN HÌNH VỪA TẦM TAY -->
-  <button id="gpsFloatBtn" class="btn-gps-float" onclick="useCurrentLocationAsPickup()" title="📍 Vị trí hiện tại của tôi">
-    🎯
+  <!-- NÚT NỔI ĐỊNH VỊ GPS LỒNG BÊN TRONG BẢN ĐỒ -->
+  <button id="gpsFloatBtn" class="btn-gps-float" onclick="useCurrentLocationAsPickup()" title="Vị trí hiện tại">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="3 11 22 2 13 21 11 13 3 11"></polygon>
+    </svg>
   </button>
 
   <!-- CỤM ĐẦU MÀN HÌNH -->
@@ -111,7 +113,7 @@
     </div>
   </div>
 
-  <script src="utils.js?v=35"></script>
-  <script src="index.js?v=35"></script>
+  <script src="utils.js?v=38"></script>
+  <script src="index.js?v=38"></script>
 </body>
 </html>
