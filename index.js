@@ -13,7 +13,7 @@ const map = L.map('map', {
 
 L.control.zoom({ position: 'topright' }).addTo(map);
 
-// 1. NỀN BẢN ĐỒ GOOGLE MAPS TILES
+// 1. LỚP BẢN ĐỒ CHÍNH: GOOGLE MAPS TILES
 const googleLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
   subdomains: ['0', '1', '2', '3'],
   maxZoom: 20,
@@ -24,11 +24,14 @@ const googleLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&
   updateWhenZooming: true
 });
 
+// NẾU GOOGLE TILES BỊ HẠN CHẾ HOẶC LỖI -> TỰ ĐỘNG CHUYỂN SANG MAPBOX TILES
 googleLayer.on('tileerror', function() {
   if (map.hasLayer(googleLayer)) {
     map.removeLayer(googleLayer);
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
-      maxZoom: 19
+    L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/{z}/{x}/{y}?access_token=${MAPBOX_TOKEN}`, {
+      maxZoom: 19,
+      tileSize: 512,
+      zoomOffset: -1
     }).addTo(map);
   }
 });
@@ -57,6 +60,27 @@ let mapboxTimeout = null;
 
 let currentDragRating = 0;
 let isStarDragging = false;
+
+// HÀM TÍNH KHOẢNG CÁCH AN TOÀN
+function safeDistance(lat1, lon1, lat2, lon2) {
+  if (typeof getHaversineDistance === 'function') {
+    return getHaversineDistance(lat1, lon1, lat2, lon2);
+  }
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+// HÀM TÍNH KHUNG TỌA ĐỘ (BBOX) THEO BÁN KÍNH (KM)
+function getBBox(lat, lng, radiusKm) {
+  const dLat = radiusKm / 111;
+  const dLng = radiusKm / (111 * Math.cos(lat * Math.PI / 180));
+  return `${(lng - dLng).toFixed(4)},${(lat - dLat).toFixed(4)},${(lng + dLng).toFixed(4)},${(lat + dLat).toFixed(4)}`;
+}
 
 function getRecentPickups() {
   try {
@@ -311,70 +335,20 @@ map.on('click', function(e) {
   }
 });
 
-function quickSelectPreset(placeName) {
-  const targetType = !markerStart ? 'pickup' : 'dest';
-  document.getElementById(targetType + 'Input').value = placeName;
-  onSearchInput(targetType, true);
-}
-
-// HÀM LÀM SẠCH CHUỖI ĐỊA CHỈ (XÓA MÃ BƯU ĐIỆN VÀ TỪ THỪA)
 function cleanAddressText(text) {
   if (!text) return '';
   return text
-    .replace(/\b\d{5,6}\b,?\s*/g, '')          // Xóa mã bưu điện 5-6 số (VD: 43100, 32100...)
-    .replace(/,?\s*(Việt Nam|Vietnam)$/gi, '') // Xóa chữ Việt Nam ở cuối
-    .replace(/\s*,\s*,/g, ', ')                 // Dọn dẹp phẩy thừa
+    .replace(/\b\d{5,6}\b,?\s*/g, '')
+    .replace(/,?\s*(Việt Nam|Vietnam)$/gi, '')
+    .replace(/\s*,\s*,/g, ', ')
     .replace(/^,\s*/, '')
     .trim();
 }
 
-// HÀM GỬI YÊU CẦU TÌM KIẾM MAPBOX VÀ TỰ ĐỘNG SẮP XẾP THEO KHOẢNG CÁCH GẦN NHẤT
-async function queryMapboxAPI(query, centerPoint, radiusKm = null) {
-  let locationParams = '&country=vn&language=vi&autocomplete=true&fuzzyMatch=true&types=poi,address,neighborhood,locality,street';
-  
-  if (centerPoint) {
-    locationParams += `&proximity=${centerPoint.lng},${centerPoint.lat}`;
-    if (radiusKm) {
-      const deltaLat = radiusKm / 111.0;
-      const deltaLng = radiusKm / (111.0 * Math.cos(centerPoint.lat * Math.PI / 180));
-      
-      const minLng = (centerPoint.lng - deltaLng).toFixed(4);
-      const minLat = (centerPoint.lat - deltaLat).toFixed(4);
-      const maxLng = (centerPoint.lng + deltaLng).toFixed(4);
-      const maxLat = (centerPoint.lat + deltaLat).toFixed(4);
-      
-      locationParams += `&bbox=${minLng},${minLat},${maxLng},${maxLat}`;
-    }
-  }
-
-  // Tăng limit lên 10 để Mapbox trả về nhiều kết quả hơn trong khu vực
-  const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${MAPBOX_TOKEN}&limit=10${locationParams}`;
-
-  try {
-    const res = await fetch(url);
-    if (!res.ok) return null;
-    const data = await res.json();
-    let features = data.features || [];
-
-    // TỰ ĐỘNG SẮP XẾP ĐỊA ĐIỂM THEO KHOẢNG CÁCH TỪ GẦN ĐẾN XA
-    if (features.length > 0 && centerPoint) {
-      features.sort((a, b) => {
-        const distA = getHaversineDistance(centerPoint.lat, centerPoint.lng, a.geometry.coordinates[1], a.geometry.coordinates[0]);
-        const distB = getHaversineDistance(centerPoint.lat, centerPoint.lng, b.geometry.coordinates[1], b.geometry.coordinates[0]);
-        return distA - distB;
-      });
-    }
-
-    return features;
-  } catch (e) {
-    return null;
-  }
-}
-
-// XỬ LÝ TÌM KIẾM VỚI 3 TẦNG BÁN KÍNH VÀ ƯU TIÊN KHOẢNG CÁCH GẦN
+// 2. TÌM KIẾM ĐỊA CHỈ MAPBOX (ƯU TIÊN 15KM -> 50KM -> TOÀN QUỐC)
 function onSearchInput(type, isDirectCall = false) {
   clearTimeout(searchTimer);
-  const query = document.getElementById(type + 'Input').value.trim();
+  const query = document.getElementById(type + 'Input').value.trim().substring(0, 200);
   const listEl = document.getElementById(type + 'Suggestions');
  
   if (query.length < 2) {
@@ -385,57 +359,98 @@ function onSearchInput(type, isDirectCall = false) {
   }
 
   const executeSearch = async () => {
-    const centerPoint = markerStart ? markerStart.getLatLng() : (userLatLng || map.getCenter());
-
-    // TẦNG 1: Bán kính 15km quanh tâm
-    let features = await queryMapboxAPI(query, centerPoint, 15);
-
-    // TẦNG 2: Mở rộng 50km
-    if (!features || features.length === 0) {
-      features = await queryMapboxAPI(query, centerPoint, 50);
+    let rawCenter = markerStart ? markerStart.getLatLng() : (userLatLng || map.getCenter());
+    
+    if (rawCenter && typeof rawCenter.wrap === 'function') {
+      rawCenter = rawCenter.wrap();
     }
 
-    // TẦNG 3: Toàn quốc
-    if (!features || features.length === 0) {
-      features = await queryMapboxAPI(query, centerPoint, null);
+    const lat = Number(rawCenter.lat);
+    const lng = Number(rawCenter.lng);
+
+    const fetchGeocoding = async (bboxStr) => {
+      let url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${MAPBOX_TOKEN}&country=vn&language=vi&limit=8`;
+      if (rawCenter && lat && lng) {
+        url += `&proximity=${lng.toFixed(4)},${lat.toFixed(4)}`;
+      }
+      if (bboxStr) {
+        url += `&bbox=${bboxStr}`;
+      }
+      try {
+        const res = await fetch(url);
+        if (!res.ok) return [];
+        const data = await res.json();
+        return data.features || [];
+      } catch (e) {
+        return [];
+      }
+    };
+
+    let features = [];
+
+    if (rawCenter && lat && lng) {
+      // BƯỚC 1: Ưu tiên tìm trong bán kính 15km
+      const bbox15 = getBBox(lat, lng, 15);
+      features = await fetchGeocoding(bbox15);
+
+      // BƯỚC 2: Nếu không có kết quả -> Mở rộng ra 50km
+      if (features.length === 0) {
+        const bbox50 = getBBox(lat, lng, 50);
+        features = await fetchGeocoding(bbox50);
+      }
+
+      // BƯỚC 3: Nếu vẫn không có -> Mở rộng ra toàn bộ phạm vi
+      if (features.length === 0) {
+        features = await fetchGeocoding(null);
+      }
+    } else {
+      features = await fetchGeocoding(null);
     }
 
-    listEl.innerHTML = '';
-    if (!features || features.length === 0) {
+    if (features.length === 0) {
       listEl.style.display = 'none';
       return;
+    }
+
+    if (rawCenter && lat && lng) {
+      features.sort((a, b) => {
+        if (!a.geometry || !b.geometry) return 0;
+        const distA = safeDistance(lat, lng, a.geometry.coordinates[1], a.geometry.coordinates[0]);
+        const distB = safeDistance(lat, lng, b.geometry.coordinates[1], b.geometry.coordinates[0]);
+        return distA - distB;
+      });
     }
 
     if (isDirectCall && features.length > 0) {
       const topResult = features[0];
       const placeName = cleanAddressText(topResult.text || topResult.place_name);
-      const [lng, lat] = topResult.geometry.coordinates;
+      const [resLng, resLat] = topResult.geometry.coordinates;
       
       document.getElementById(type + 'Input').value = placeName;
       listEl.style.display = 'none';
-      const latlng = L.latLng(lat, lng);
+      const latlng = L.latLng(resLat, resLng);
       map.setView(latlng, 15);
 
       if (type === 'pickup') {
         setPickupLocation(latlng);
-        saveRecentPickup(placeName, lat, lng);
+        saveRecentPickup(placeName, resLat, resLng);
       } else {
         setDestLocation(latlng);
-        saveRecentDest(placeName, lat, lng);
+        saveRecentDest(placeName, resLat, resLng);
       }
       return;
     }
 
-    // Chỉ lấy 5 kết quả ĐÃ ĐƯỢC SẮP XẾP GẦN NHẤT
-    features.slice(0, 5).forEach(f => {
+    listEl.innerHTML = '';
+    features.forEach(f => {
+      if (!f.geometry || !f.geometry.coordinates) return;
       const mainTitle = cleanAddressText(f.text || f.place_name);
       const addressSub = cleanAddressText(f.place_name || '');
-      const [lng, lat] = f.geometry.coordinates;
+      const [fLng, fLat] = f.geometry.coordinates;
 
-      // Tính khoảng cách đến người dùng để hiển thị rõ
       let distTag = '';
-      if (centerPoint) {
-        const d = getHaversineDistance(centerPoint.lat, centerPoint.lng, lat, lng);
+      if (rawCenter && lat && lng) {
+        const d = safeDistance(lat, lng, fLat, fLng);
         distTag = ` • Cách ${d < 1 ? Math.round(d * 1000) + 'm' : d.toFixed(1) + 'km'}`;
       }
 
@@ -447,15 +462,15 @@ function onSearchInput(type, isDirectCall = false) {
         document.getElementById(type + 'Input').value = mainTitle;
         listEl.style.display = 'none';
         
-        const latlng = L.latLng(lat, lng);
+        const latlng = L.latLng(fLat, fLng);
         map.setView(latlng, 15);
 
         if (type === 'pickup') {
           setPickupLocation(latlng);
-          saveRecentPickup(mainTitle, lat, lng);
+          saveRecentPickup(mainTitle, fLat, fLng);
         } else {
           setDestLocation(latlng);
-          saveRecentDest(mainTitle, lat, lng);
+          saveRecentDest(mainTitle, fLat, fLng);
         }
       };
       listEl.appendChild(div);
@@ -481,7 +496,7 @@ function calculateFastRoute() {
 
   if (routeLine) map.removeLayer(routeLine);
 
-  const straightKm = getHaversineDistance(start.lat, start.lng, end.lat, end.lng);
+  const straightKm = safeDistance(start.lat, start.lng, end.lat, end.lng);
   currentDistance = (straightKm * 1.3).toFixed(1);
 
   routeLine = L.polyline([start, end], { 
@@ -495,7 +510,7 @@ function calculateFastRoute() {
   updatePrice();
 }
 
-// VẼ ĐƯỜNG & TÍNH KHOẢNG CÁCH CHÍNH XÁC QUA MAPBOX DIRECTIONS
+// 3. VẼ ĐƯỜNG & TÍNH KHOẢNG CÁCH CHÍNH XÁC QUA MAPBOX DIRECTIONS API
 async function calculateMapboxRoute() {
   if (!markerStart || !markerEnd) return;
 
@@ -531,7 +546,7 @@ async function calculateMapboxRoute() {
       smoothFactor: 1 
     }).addTo(map);
   } else {
-    const straightKm = getHaversineDistance(start.lat, start.lng, end.lat, end.lng);
+    const straightKm = safeDistance(start.lat, start.lng, end.lat, end.lng);
     currentDistance = (straightKm * 1.3).toFixed(1);
     routeLine = L.polyline([start, end], { 
       color: '#00b14f', 
@@ -658,7 +673,7 @@ async function trackCall(event) {
 
   const centerPoint = markerStart ? markerStart.getLatLng() : userLatLng;
   if (centerPoint) {
-    const distKm = getHaversineDistance(centerPoint.lat, centerPoint.lng, selectedDriver.lat, selectedDriver.lng);
+    const distKm = safeDistance(centerPoint.lat, centerPoint.lng, selectedDriver.lat, selectedDriver.lng);
     if (distKm > 15) {
       return alert(`⚠️ Tài xế đang ở cách bạn ${distKm.toFixed(1)}km (ngoài bán kính 15km). Hãy chọn tài xế ở gần hơn!`);
     }
@@ -674,7 +689,7 @@ async function openZalo() {
 
   const centerPoint = markerStart ? markerStart.getLatLng() : userLatLng;
   if (centerPoint) {
-    const distKm = getHaversineDistance(centerPoint.lat, centerPoint.lng, selectedDriver.lat, selectedDriver.lng);
+    const distKm = safeDistance(centerPoint.lat, centerPoint.lng, selectedDriver.lat, selectedDriver.lng);
     if (distKm > 15) {
       return alert(`⚠️ Tài xế đang ở cách bạn ${distKm.toFixed(1)}km (ngoài bán kính 15km). Hãy chọn tài xế ở gần hơn!`);
     }
@@ -856,7 +871,7 @@ async function selectDriver(driver) {
 
   const centerPoint = markerStart ? markerStart.getLatLng() : userLatLng;
   if (centerPoint) {
-    const distKm = getHaversineDistance(centerPoint.lat, centerPoint.lng, driver.lat, driver.lng);
+    const distKm = safeDistance(centerPoint.lat, centerPoint.lng, driver.lat, driver.lng);
     if (distKm <= 0.1) {
       localStorage.setItem(`avyo_unlocked_rating_${driver.id}`, 'true');
     }
@@ -948,18 +963,18 @@ function renderDriverMarkers() {
 
   if (centerPoint) {
     baseFiltered.sort((a, b) => {
-      const distA = getHaversineDistance(centerPoint.lat, centerPoint.lng, a.lat, a.lng);
-      const distB = getHaversineDistance(centerPoint.lat, centerPoint.lng, b.lat, b.lng);
+      const distA = safeDistance(centerPoint.lat, centerPoint.lng, a.lat, a.lng);
+      const distB = safeDistance(centerPoint.lat, centerPoint.lng, b.lat, b.lng);
       return distA - distB;
     });
 
     filteredDrivers = baseFiltered.filter(driver => {
-      return getHaversineDistance(centerPoint.lat, centerPoint.lng, driver.lat, driver.lng) <= 5;
+      return safeDistance(centerPoint.lat, centerPoint.lng, driver.lat, driver.lng) <= 5;
     });
 
     if (filteredDrivers.length === 0) {
       filteredDrivers = baseFiltered.filter(driver => {
-        return getHaversineDistance(centerPoint.lat, centerPoint.lng, driver.lat, driver.lng) <= 15;
+        return safeDistance(centerPoint.lat, centerPoint.lng, driver.lat, driver.lng) <= 15;
       });
       if (filteredDrivers.length > 0) isFallback = true;
     }
@@ -984,7 +999,7 @@ function renderDriverMarkers() {
     const top3 = filteredDrivers.slice(0, 3);
     top3.forEach(driver => {
       const isSelected = selectedDriver && selectedDriver.id === driver.id;
-      const distKm = getHaversineDistance(centerPoint.lat, centerPoint.lng, driver.lat, driver.lng);
+      const distKm = safeDistance(centerPoint.lat, centerPoint.lng, driver.lat, driver.lng);
       const rating = calcRating(driver);
       const avatarUrl = getOptimizedAvatar(driver.avatar_url);
       const typeBadge = typeNames[driver.vehicle_type] || 'Tài xế';
