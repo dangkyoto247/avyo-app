@@ -1,11 +1,10 @@
 const TILE_CACHE_NAME = 'map-tiles-v2';
-const STATIC_CACHE_NAME = 'avyo-static-v13';
+const STATIC_CACHE_NAME = 'avyo-static-v14';
 
 const STATIC_ASSETS = [
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',
-  'https://cdn.jsdelivr.net/npm/sweetalert2@11',
   'utils.js',
   'index.css',
   'index.js',
@@ -67,6 +66,11 @@ self.addEventListener('fetch', (event) => {
 
   if (event.request.method !== 'GET') return;
 
+  // BỎ QUA KHÔNG BẮT REQUEST ẢNH BÊN THỨ 3 ĐỂ TRÁNH LỖI NETWORK CONSOLE
+  if (requestUrl.includes('weserv.nl') || requestUrl.includes('flaticon.com')) {
+    return;
+  }
+
   if (STATIC_ASSETS.some(url => requestUrl.includes(url))) {
     event.respondWith(
       caches.open(STATIC_CACHE_NAME).then(async (cache) => {
@@ -88,7 +92,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  if (requestUrl.includes('google.com/vt') || requestUrl.includes('arcgisonline.com')) {
+  if (requestUrl.includes('google.com/vt') || requestUrl.includes('mapbox.com') || requestUrl.includes('arcgisonline.com')) {
     event.respondWith(
       caches.open(TILE_CACHE_NAME).then(async (cache) => {
         const cachedResponse = await cache.match(event.request);

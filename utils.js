@@ -13,8 +13,8 @@ function getHaversineDistance(lat1, lon1, lat2, lon2) {
 function getOptimizedAvatar(url) {
   const defaultAvatar = 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
   if (!url) return defaultAvatar;
-  if (url.startsWith('data:image')) return url;
-  return `https://images.weserv.nl/?url=${encodeURIComponent(url)}&w=200&h=200&fit=cover&q=80&output=jpg`;
+  if (url.startsWith('data:image') || url.startsWith('blob:')) return url;
+  return url;
 }
 
 function formatTime(minutes) {
