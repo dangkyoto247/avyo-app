@@ -1,4 +1,4 @@
-// MAPBOX ACCESS TOKEN CỦA BẠN (Dùng vẽ đường & dự phòng)
+// MAPBOX ACCESS TOKEN CỦA BẠN
 const MAPBOX_TOKEN = 'pk.eyJ1IjoidHVhbmFuaDM0MTYyMyIsImEiOiJjbXUwcGhlYTExNHV5MnhvdjlyaXE5ZzM2In0.NN6tgrUWAN2tUubAZtTY_Q';
 
 // Khởi tạo bản đồ Leaflet
@@ -13,13 +13,12 @@ const map = L.map('map', {
 
 L.control.zoom({ position: 'topright' }).addTo(map);
 
-// Nền bản đồ Google Maps Tiles
+// 1. ƯU TIÊN NỀN BẢN ĐỒ GOOGLE MAPS TILES (Nếu lỗi tự chuyển sang ArcGIS/Mapbox)
 const googleLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
   subdomains: ['0', '1', '2', '3'],
   maxZoom: 20,
   tileSize: 256,
   zoomOffset: 0,
-  attribution: '&copy; Google Maps',
   keepBuffer: 15,
   updateWhenIdle: false,
   updateWhenZooming: true
@@ -58,28 +57,6 @@ let mapboxTimeout = null;
 
 let currentDragRating = 0;
 let isStarDragging = false;
-
-// QUẢN LÝ GOOGLE PLACES SESSION TOKENS (TIẾT KIỆM 70% PHÍ APIS)
-let pickupSessionToken = null;
-let destSessionToken = null;
-
-function getSessionToken(type) {
-  if (typeof google !== 'undefined' && google.maps && google.maps.places) {
-    if (type === 'pickup') {
-      if (!pickupSessionToken) pickupSessionToken = new google.maps.places.AutocompleteSessionToken();
-      return pickupSessionToken;
-    } else {
-      if (!destSessionToken) destSessionToken = new google.maps.places.AutocompleteSessionToken();
-      return destSessionToken;
-    }
-  }
-  return null;
-}
-
-function resetSessionToken(type) {
-  if (type === 'pickup') pickupSessionToken = null;
-  else destSessionToken = null;
-}
 
 function getRecentPickups() {
   try {
@@ -340,7 +317,7 @@ function quickSelectPreset(placeName) {
   onSearchInput(targetType, true);
 }
 
-// TÌM KIẾM TỐI ƯU GOOGLE PLACES (SESSION TOKENS + PLACE DETAILS LAT/LNG) & DỰ PHÒNG MAPBOX
+// 2. TÌM KIẾM ĐỊA CHỈ & LẤY TỌA ĐỘ 100% QUA MAPBOX GEOCODING
 function onSearchInput(type, isDirectCall = false) {
   clearTimeout(searchTimer);
   const query = document.getElementById(type + 'Input').value.trim();
@@ -353,96 +330,17 @@ function onSearchInput(type, isDirectCall = false) {
     return;
   }
 
-  const executeSearch = async () => {
+  const executeSearch = () => {
     const centerPoint = markerStart ? markerStart.getLatLng() : (userLatLng || map.getCenter());
-
-    // 1. TÌM GỢI Ý ĐỊA CHỈ BẰNG GOOGLE PLACES AUTOCOMPLETE + SESSION TOKEN
-    if (typeof google !== 'undefined' && google.maps && google.maps.places) {
-      try {
-        const service = new google.maps.places.AutocompleteService();
-        const token = getSessionToken(type);
-        const request = { 
-          input: query, 
-          componentRestrictions: { country: 'vn' },
-          sessionToken: token
-        };
-
-        if (centerPoint) {
-          request.location = new google.maps.LatLng(centerPoint.lat, centerPoint.lng);
-          request.radius = 20000;
-        }
-
-        service.getPlacePredictions(request, (predictions, status) => {
-          if (status === google.maps.places.PlacesServiceStatus.OK && predictions && predictions.length > 0) {
-            listEl.innerHTML = '';
-
-            predictions.forEach(p => {
-              const mainText = p.structured_formatting ? p.structured_formatting.main_text : p.description;
-              const secondaryText = p.structured_formatting ? p.structured_formatting.secondary_text : '';
-
-              const div = document.createElement('div');
-              div.className = 'suggestion-item';
-              div.innerHTML = `📍 <b>${mainText}</b> <small style="color:#64748b; font-size:11px;">(${secondaryText})</small>`;
-              
-              // KHI BẤM CHỌN: LẤY TỌA ĐỘ TRỰC TIẾP QUA GOOGLE PLACE DETAILS (TÍNH PHÍ THEO SESSION)
-              div.onclick = () => {
-                document.getElementById(type + 'Input').value = mainText;
-                listEl.style.display = 'none';
-
-                const dummyDiv = document.createElement('div');
-                const placesService = new google.maps.places.PlacesService(dummyDiv);
-
-                placesService.getDetails({
-                  placeId: p.place_id,
-                  fields: ['geometry', 'name'],
-                  sessionToken: token
-                }, (placeResult, detailsStatus) => {
-                  // Đóng phiên Session Token hiện tại sau khi lấy chi tiết thành công
-                  resetSessionToken(type);
-
-                  if (detailsStatus === google.maps.places.PlacesServiceStatus.OK && placeResult && placeResult.geometry) {
-                    const lat = placeResult.geometry.location.lat();
-                    const lng = placeResult.geometry.location.lng();
-                    const latlng = L.latLng(lat, lng);
-
-                    map.setView(latlng, 15);
-                    if (type === 'pickup') {
-                      setPickupLocation(latlng);
-                      saveRecentPickup(mainText, lat, lng);
-                    } else {
-                      setDestLocation(latlng);
-                      saveRecentDest(mainText, lat, lng);
-                    }
-                  } else {
-                    // Dự phòng lấy tọa độ Mapbox nếu Place Details bị chặn
-                    fetchMapboxSingleLocation(mainText + ', ' + secondaryText, type, mainText);
-                  }
-                });
-              };
-              listEl.appendChild(div);
-            });
-            listEl.style.display = 'block';
-          } else {
-            fetchMapboxOptimized(query, centerPoint, type, listEl, isDirectCall);
-          }
-        });
-        return;
-      } catch (err) {
-        console.warn("Dịch chuyển sang luồng dự phòng Mapbox...", err);
-      }
-    }
-
-    // 2. DỰ PHÒNG CHUẨN KHI GOOGLE LỖI MẠNG HẶC CHƯA LOAD XONG
-    fetchMapboxOptimized(query, centerPoint, type, listEl, isDirectCall);
+    fetchMapboxSearch(query, centerPoint, type, listEl, isDirectCall);
   };
 
   if (isDirectCall) executeSearch();
   else searchTimer = setTimeout(executeSearch, 300);
 }
 
-// HÀM DỰ PHÒNG TÌM ĐỊA CHỈ BẰNG MAPBOX
-async function fetchMapboxOptimized(query, centerPoint, type, listEl, isDirectCall = false) {
-  let locationParams = '&country=vn&language=vi&types=address,poi,neighborhood,locality,street&autocomplete=true&fuzzyMatch=true';
+async function fetchMapboxSearch(query, centerPoint, type, listEl, isDirectCall = false) {
+  let locationParams = '&country=vn&language=vi&autocomplete=true&fuzzyMatch=true';
   if (centerPoint) locationParams += `&proximity=${centerPoint.lng},${centerPoint.lat}`;
   
   const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${MAPBOX_TOKEN}&limit=6${locationParams}`;
@@ -460,7 +358,7 @@ async function fetchMapboxOptimized(query, centerPoint, type, listEl, isDirectCa
 
     if (isDirectCall && data.features.length > 0) {
       const topResult = data.features[0];
-      const placeName = topResult.text || topResult.text_vi || topResult.place_name;
+      const placeName = topResult.text || topResult.place_name;
       const [lng, lat] = topResult.geometry.coordinates;
       
       document.getElementById(type + 'Input').value = placeName;
@@ -479,8 +377,8 @@ async function fetchMapboxOptimized(query, centerPoint, type, listEl, isDirectCa
     }
 
     data.features.forEach(f => {
-      const mainTitle = f.text || f.text_vi || f.place_name;
-      let addressSub = (f.place_name_vi || f.place_name).replace(', Việt Nam', '').replace(', Vietnam', '');
+      const mainTitle = f.text || f.place_name;
+      let addressSub = (f.place_name || '').replace(', Việt Nam', '').replace(', Vietnam', '');
       const [lng, lat] = f.geometry.coordinates;
 
       const div = document.createElement('div');
@@ -507,31 +405,6 @@ async function fetchMapboxOptimized(query, centerPoint, type, listEl, isDirectCa
     listEl.style.display = 'block';
   } catch (e) {
     listEl.style.display = 'none';
-  }
-}
-
-// HÀM LẤY TỌA ĐỘ 1 ĐỊA CHỈ DUY NHẤT QUA MAPBOX
-async function fetchMapboxSingleLocation(searchQuery, type, mainTitle) {
-  try {
-    const mbUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(searchQuery)}.json?access_token=${MAPBOX_TOKEN}&country=vn&limit=1`;
-    const res = await fetch(mbUrl);
-    const data = await res.json();
-
-    if (data.features && data.features.length > 0) {
-      const [lng, lat] = data.features[0].geometry.coordinates;
-      const latlng = L.latLng(lat, lng);
-      map.setView(latlng, 15);
-
-      if (type === 'pickup') {
-        setPickupLocation(latlng);
-        saveRecentPickup(mainTitle, lat, lng);
-      } else {
-        setDestLocation(latlng);
-        saveRecentDest(mainTitle, lat, lng);
-      }
-    }
-  } catch (err) {
-    console.error("Lỗi lấy tọa độ dự phòng:", err);
   }
 }
 
@@ -563,7 +436,7 @@ function calculateFastRoute() {
   updatePrice();
 }
 
-// XỬ LÝ VẼ ĐƯỜNG ĐỊNH HUYẾT QUA MAPBOX DIRECTIONS API
+// 3. VẼ ĐƯỜNG & TÍNH KHOẢNG CÁCH QUA MAPBOX DIRECTIONS API
 async function calculateMapboxRoute() {
   if (!markerStart || !markerEnd) return;
 
