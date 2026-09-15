@@ -1,17 +1,20 @@
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
 body { 
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
-  padding: 8px 10px; 
   max-width: 480px; 
   margin: auto; 
-  background: #f8fafc; 
+  background: #cbd5e1; 
   touch-action: manipulation;
   -webkit-text-size-adjust: 100%;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  min-height: 100vh;
   box-sizing: border-box;
-  overflow-x: hidden;
+  position: relative;
 }
 
 /* BẢN ĐỒ CỐ ĐỊNH NỀN */
@@ -27,7 +30,7 @@ body {
   transform: translateZ(0);
 }
 
-/* GIỚI HẠN KHUNG BẢN ĐỒ TRÊN MÁY TÍNH (MÀN HÌNH > 480PX) */
+/* KHUNG PC CHUẨN TỐI ĐA 480PX KHI XEM TRÊN MÁY TÍNH */
 @media (min-width: 481px) {
   html {
     background-color: #cbd5e1;
@@ -41,16 +44,68 @@ body {
     box-shadow: 0 0 25px rgba(0, 0, 0, 0.25);
   }
 
+  .top-section, 
+  .bottom-section {
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    width: 100% !important;
+    max-width: 480px !important;
+  }
+
   body.dark-mode {
     background-color: #0f172a;
   }
 
   .btn-gps-float {
-    right: calc(50vw - 240px + 16px);
+    right: calc(50vw - 240px + 16px) !important;
   }
 }
 
-/* GHIM CỐ ĐỊNH CHÍNH GIỮA MÀN HÌNH TẠI MỐC 1/3 PHÍA TRÊN */
+/* CỤM KHUNG TRÊN CHE KÍN 100% VIỀN TRÊN MÀN HÌNH */
+.top-section {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  z-index: 100;
+  background: #ffffff;
+  padding: 12px;
+  border-radius: 0 0 16px 16px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  box-sizing: border-box;
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+}
+
+/* CỤM KHUNG DƯỚI CHE KÍN 100% VIỀN DƯỚI MÀN HÌNH */
+.bottom-section {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  z-index: 100;
+  background: #ffffff;
+  padding: 12px;
+  border-radius: 16px 16px 0 0;
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.15);
+  box-sizing: border-box;
+  max-height: 55vh;
+  overflow-y: auto;
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+}
+
+.section-block.divider-top {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed #cbd5e1;
+}
+
+/* GHIM CỐ ĐỊNH CHÍNH GIỮA MÀN HÌNH */
 .fixed-center-pin {
   position: fixed;
   top: 33.33vh;
@@ -93,11 +148,11 @@ body.selecting-dest .fixed-center-pin {
   display: flex !important;
 }
 
-/* NÚT ĐỊNH VỊ GPS LỒNG GÓC PHẢI DƯỚI CÙNG BẢN ĐỒ */
+/* NÚT ĐỊNH VỊ GPS LỒNG GÓC PHẢI DƯỚI BẢN ĐỒ */
 .btn-gps-float {
   position: fixed;
   right: 16px;
-  bottom: 25vh;
+  bottom: 260px;
   z-index: 1000;
   width: 40px;
   height: 40px;
@@ -126,22 +181,9 @@ body.selecting-dest .fixed-center-pin {
   background: #f8fafc;
 }
 
-/* ĐIỀU CHỈNH VỊ TRÍ KHI ẨN GIAO DIỆN (CHỌN ĐIỂM TOÀN MÀN HÌNH) */
 body.selecting-pickup .btn-gps-float,
 body.selecting-dest .btn-gps-float {
   bottom: 85px;
-}
-
-/* NHÓM GIAO DIỆN TRÊN & DƯỚI */
-.top-section,
-.bottom-section {
-  position: relative;
-  z-index: 10;
-  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
-}
-
-.bottom-section {
-  margin-top: auto;
 }
 
 .btn-confirm-select {
@@ -164,12 +206,10 @@ body.selecting-dest .btn-gps-float {
   transform: scale(0.98);
 }
 
-/* CHẾ ĐỘ TỰ ĐỘNG ẨN GIAO DIỆN KHI CHỌN ĐIỂM TOÀN MÀN HÌNH */
-body.selecting-pickup .guide-box,
+/* CHẾ ĐỘ ẨN BẢNG DƯỚI KHI DÙNG CON TRỎ CHỌN ĐIỂM TOÀN MÀN HÌNH */
 body.selecting-pickup .filter-bar,
 body.selecting-pickup .dest-group,
 body.selecting-pickup .bottom-section,
-body.selecting-dest .guide-box,
 body.selecting-dest .filter-bar,
 body.selecting-dest .pickup-group,
 body.selecting-dest .bottom-section {
@@ -181,17 +221,8 @@ body.selecting-dest .btn-confirm-select {
   display: block !important;
 }
 
-/* ẨN BẢN QUYỀN LEAFLET & CARTO DƯỚI GÓC BẢN ĐỒ */
 .leaflet-control-attribution {
   display: none !important;
-}
-
-.card { 
-  background: white; 
-  padding: 12px; 
-  border-radius: 16px; 
-  margin-bottom: 8px; 
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08); 
 }
 
 .search-input-group { 
@@ -324,8 +355,8 @@ body.selecting-dest .btn-confirm-select {
   display: flex; 
   gap: 6px; 
   overflow-x: auto; 
-  padding-bottom: 6px; 
-  margin-bottom: 6px; 
+  padding-bottom: 8px; 
+  margin-bottom: 8px; 
   align-items: center;
 }
 
@@ -367,7 +398,6 @@ body.selecting-dest .btn-confirm-select {
   background: #e2e8f0; 
 }
 
-/* KHU VỰC ĐÁNH GIÁ SAO VÀ CỬ CHỈ VUỐT */
 .star-box {
   font-size: 26px;
   user-select: none;
@@ -438,7 +468,6 @@ body.selecting-dest .btn-confirm-select {
   color: #334155; 
 }
 
-/* NÚT TỐI/SÁNG */
 .btn-theme-toggle {
   background: rgba(255, 255, 255, 0.9);
   border: 1px solid #cbd5e1;
@@ -462,9 +491,15 @@ body.dark-mode {
   color: #e2e8f0;
 }
 
-.dark-mode .card {
+.dark-mode .top-section,
+.dark-mode .bottom-section {
   background: #1e1e1e;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+  color: #e2e8f0;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+.dark-mode .section-block.divider-top {
+  border-top-color: #334155;
 }
 
 .dark-mode .search-input-group input {
@@ -538,7 +573,6 @@ body.dark-mode {
   color: #e2e8f0;
 }
 
-/* DARK MODE CHO NÚT GPS */
 .dark-mode .btn-gps-float {
   background: rgba(30, 41, 59, 0.95);
   color: #cbd5e1;
@@ -551,7 +585,6 @@ body.dark-mode {
   color: #10b981;
 }
 
-/* ĐẢO MÀN BẢN ĐỒ LEAFLET TRANG SANG NỀN TỐI */
 .dark-mode .leaflet-tile-pane {
   filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
 }
@@ -563,7 +596,6 @@ body.dark-mode {
   box-shadow: 0 3px 14px rgba(0,0,0,0.6);
 }
 
-/* HỆ THỐNG THÔNG BÁO CAO CẤP */
 .custom-alert-overlay {
   position: fixed;
   top: 0; 
@@ -673,7 +705,6 @@ body.dark-mode {
   color: #cbd5e1;
 }
 
-/* KHẮC PHỤC LỖI SỌC TRẮNG VÀ VÙNG XÁM BẢN ĐỒ */
 .leaflet-container {
   background-color: #e5e3df !important;
 }

@@ -19,7 +19,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/gh/ewoken/Leaflet.MovingMarker@master/MovingMarker.js"></script>
 
-  <link rel="stylesheet" href="index.css?v=38">
+  <link rel="stylesheet" href="index.css?v=39">
 </head>
 <body>
 
@@ -41,42 +41,37 @@
     </svg>
   </button>
 
-  <!-- CỤM ĐẦU MÀN HÌNH -->
+  <!-- CỤM ĐẦU MÀN HÌNH (CHE KÍN PHÍA TRÊN) -->
   <div class="top-section">
     <div class="filter-bar">
-      <!-- NÚT GIAO DIỆN TỐI/SÁNG ĐƯỢC CHUYỂN XUỐNG ĐÂY -->
       <button id="themeToggle" class="btn-theme-toggle" onclick="toggleDarkMode()" title="Giao diện Tối/Sáng">🌙</button>
-      
       <div class="filter-chip active" onclick="selectFilter('bike', this)">🛵 Xe máy</div>
       <div class="filter-chip" onclick="selectFilter('car', this)">🚕 Ô tô</div>
       <div class="filter-chip" onclick="selectFilter('driver', this)">👤 Lái xe hộ</div>
       <div class="filter-chip" onclick="selectFilter('truck', this)">🚚 Chở hàng</div>
-      <div class="filter-chip" onclick="selectFilter('other', this)">✨ Khác</div>
     </div>
 
-    <!-- CỤM Ô NHẬP ĐỊA CHỈ -->
-    <div class="card search-card">
-      <div class="search-input-group pickup-group">
-        <input type="text" id="pickupInput" placeholder="📍 Tìm điểm đón (VD: Sân bay Vinh)..." autocomplete="off" oninput="onSearchInput('pickup')" onfocus="enterSelectionMode('pickup')">
-        <div id="pickupSuggestions" class="suggestions-list"></div>
-      </div>
-
-      <div class="search-input-group dest-group" style="margin-bottom: 0px;">
-        <input type="text" id="destInput" placeholder="🚩 Tìm điểm đến (VD: Bến xe Vinh)..." autocomplete="off" oninput="onSearchInput('dest')" onfocus="enterSelectionMode('dest')">
-        <div id="destSuggestions" class="suggestions-list"></div>
-      </div>
-
-      <!-- NÚT XÁC NHẬN KHI Ở CHẾ ĐỘ CHỌN ĐIỂM TOÀN MÀN HÌNH -->
-      <button id="confirmSelectBtn" class="btn-confirm-select" onclick="confirmAndExitSelection()">
-        ✅ XONG - XÁC NHẬN VỊ TRÍ
-      </button>
+    <div class="search-input-group pickup-group">
+      <input type="text" id="pickupInput" placeholder="📍 Tìm điểm đón (VD: Sân bay Vinh)..." autocomplete="off" oninput="onSearchInput('pickup')" onfocus="enterSelectionMode('pickup')">
+      <div id="pickupSuggestions" class="suggestions-list"></div>
     </div>
+
+    <div class="search-input-group dest-group" style="margin-bottom: 0px;">
+      <input type="text" id="destInput" placeholder="🚩 Tìm điểm đến (VD: Bến xe Vinh)..." autocomplete="off" oninput="onSearchInput('dest')" onfocus="enterSelectionMode('dest')">
+      <div id="destSuggestions" class="suggestions-list"></div>
+    </div>
+
+    <!-- NÚT XÁC NHẬN KHI Ở CHẾ ĐỘ CHỌN ĐIỂM TOÀN MÀN HÌNH -->
+    <button id="confirmSelectBtn" class="btn-confirm-select" onclick="confirmAndExitSelection()">
+      ✅ XONG - XÁC NHẬN VỊ TRÍ
+    </button>
   </div>
 
-  <!-- CỤM ĐÁY MÀN HÌNH -->
+  <!-- CỤM ĐÁY MÀN HÌNH (CHE KÍN PHÍA DƯỚI) -->
   <div class="bottom-section">
-    <div class="card bottom-card">
-      <div style="margin: 4px 0 2px 0; font-size: 13px; color: #334155;">
+    <!-- Khối 1: Quãng đường & Cước phí -->
+    <div class="section-block">
+      <div style="margin: 0 0 4px 0; font-size: 13px; color: #334155;">
         <b>Quãng đường:</b> <span id="distance" style="font-weight: bold; color: #0f172a;">0</span> km
       </div>
 
@@ -89,7 +84,8 @@
       <button id="resetBtn" class="btn-reset" onclick="resetRoute()">🔄 ĐẶT LẠI ĐIỂM ĐÓN / ĐẾN</button>
     </div>
 
-    <div id="top3Card" class="card bottom-card" style="display: none;">
+    <!-- Khối 2: 3 Tài xế gần nhất -->
+    <div id="top3Card" class="section-block divider-top" style="display: none;">
       <h4 style="margin: 0 0 8px 0; color: #334155; font-size: 13px; display: flex; align-items: center; justify-content: space-between;">
         <span>⚡ 3 Tài Xế Gần Nhất</span>
         <span id="radiusBadge" style="font-size: 11px; color: #64748b; font-weight: normal;">Bán kính 5km</span>
@@ -97,7 +93,8 @@
       <div id="top3List"></div>
     </div>
 
-    <div class="card bottom-card">
+    <!-- Khối 3: Tài xế được chọn -->
+    <div class="section-block divider-top">
       <h4 style="margin: 0 0 6px 0; color: #334155; font-size: 14px;">Tài Xế Được Chọn</h4>
       <div id="driver-info" style="color: #64748b; font-size: 13px;"><i>Chạm chọn tài xế từ danh sách hoặc trên bản đồ...</i></div>
      
@@ -110,7 +107,7 @@
     </div>
   </div>
 
-  <script src="utils.js?v=38"></script>
-  <script src="index.js?v=38"></script>
+  <script src="utils.js?v=39"></script>
+  <script src="index.js?v=39"></script>
 </body>
 </html>
