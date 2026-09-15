@@ -13,7 +13,7 @@ const map = L.map('map', {
 
 L.control.zoom({ position: 'topright' }).addTo(map);
 
-// 1. ƯU TIÊN NỀN BẢN ĐỒ GOOGLE MAPS TILES (Nếu lỗi tự chuyển sang ArcGIS/Mapbox)
+// 1. NỀN BẢN ĐỒ GOOGLE MAPS TILES
 const googleLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
   subdomains: ['0', '1', '2', '3'],
   maxZoom: 20,
@@ -317,7 +317,61 @@ function quickSelectPreset(placeName) {
   onSearchInput(targetType, true);
 }
 
-// 2. TÌM KIẾM ĐỊA CHỈ & LẤY TỌA ĐỘ 100% QUA MAPBOX GEOCODING
+// HÀM LÀM SẠCH CHUỖI ĐỊA CHỈ (XÓA MÃ BƯU ĐIỆN VÀ TỪ THỪA)
+function cleanAddressText(text) {
+  if (!text) return '';
+  return text
+    .replace(/\b\d{5,6}\b,?\s*/g, '')          // Xóa mã bưu điện 5-6 số (VD: 43100, 32100...)
+    .replace(/,?\s*(Việt Nam|Vietnam)$/gi, '') // Xóa chữ Việt Nam ở cuối
+    .replace(/\s*,\s*,/g, ', ')                 // Dọn dẹp phẩy thừa
+    .replace(/^,\s*/, '')
+    .trim();
+}
+
+// HÀM GỬI YÊU CẦU TÌM KIẾM MAPBOX VÀ TỰ ĐỘNG SẮP XẾP THEO KHOẢNG CÁCH GẦN NHẤT
+async function queryMapboxAPI(query, centerPoint, radiusKm = null) {
+  let locationParams = '&country=vn&language=vi&autocomplete=true&fuzzyMatch=true&types=poi,address,neighborhood,locality,street';
+  
+  if (centerPoint) {
+    locationParams += `&proximity=${centerPoint.lng},${centerPoint.lat}`;
+    if (radiusKm) {
+      const deltaLat = radiusKm / 111.0;
+      const deltaLng = radiusKm / (111.0 * Math.cos(centerPoint.lat * Math.PI / 180));
+      
+      const minLng = (centerPoint.lng - deltaLng).toFixed(4);
+      const minLat = (centerPoint.lat - deltaLat).toFixed(4);
+      const maxLng = (centerPoint.lng + deltaLng).toFixed(4);
+      const maxLat = (centerPoint.lat + deltaLat).toFixed(4);
+      
+      locationParams += `&bbox=${minLng},${minLat},${maxLng},${maxLat}`;
+    }
+  }
+
+  // Tăng limit lên 10 để Mapbox trả về nhiều kết quả hơn trong khu vực
+  const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${MAPBOX_TOKEN}&limit=10${locationParams}`;
+
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const data = await res.json();
+    let features = data.features || [];
+
+    // TỰ ĐỘNG SẮP XẾP ĐỊA ĐIỂM THEO KHOẢNG CÁCH TỪ GẦN ĐẾN XA
+    if (features.length > 0 && centerPoint) {
+      features.sort((a, b) => {
+        const distA = getHaversineDistance(centerPoint.lat, centerPoint.lng, a.geometry.coordinates[1], a.geometry.coordinates[0]);
+        const distB = getHaversineDistance(centerPoint.lat, centerPoint.lng, b.geometry.coordinates[1], b.geometry.coordinates[0]);
+        return distA - distB;
+      });
+    }
+
+    return features;
+  } catch (e) {
+    return null;
+  }
+}
+
+// XỬ LÝ TÌM KIẾM VỚI 3 TẦNG BÁN KÍNH VÀ ƯU TIÊN KHOẢNG CÁCH GẦN
 function onSearchInput(type, isDirectCall = false) {
   clearTimeout(searchTimer);
   const query = document.getElementById(type + 'Input').value.trim();
@@ -330,35 +384,31 @@ function onSearchInput(type, isDirectCall = false) {
     return;
   }
 
-  const executeSearch = () => {
+  const executeSearch = async () => {
     const centerPoint = markerStart ? markerStart.getLatLng() : (userLatLng || map.getCenter());
-    fetchMapboxSearch(query, centerPoint, type, listEl, isDirectCall);
-  };
 
-  if (isDirectCall) executeSearch();
-  else searchTimer = setTimeout(executeSearch, 300);
-}
+    // TẦNG 1: Bán kính 15km quanh tâm
+    let features = await queryMapboxAPI(query, centerPoint, 15);
 
-async function fetchMapboxSearch(query, centerPoint, type, listEl, isDirectCall = false) {
-  let locationParams = '&country=vn&language=vi&autocomplete=true&fuzzyMatch=true';
-  if (centerPoint) locationParams += `&proximity=${centerPoint.lng},${centerPoint.lat}`;
-  
-  const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${MAPBOX_TOKEN}&limit=6${locationParams}`;
+    // TẦNG 2: Mở rộng 50km
+    if (!features || features.length === 0) {
+      features = await queryMapboxAPI(query, centerPoint, 50);
+    }
 
-  try {
-    const res = await fetch(url);
-    if (!res.ok) return;
-    const data = await res.json();
+    // TẦNG 3: Toàn quốc
+    if (!features || features.length === 0) {
+      features = await queryMapboxAPI(query, centerPoint, null);
+    }
 
     listEl.innerHTML = '';
-    if (!data.features || data.features.length === 0) {
+    if (!features || features.length === 0) {
       listEl.style.display = 'none';
       return;
     }
 
-    if (isDirectCall && data.features.length > 0) {
-      const topResult = data.features[0];
-      const placeName = topResult.text || topResult.place_name;
+    if (isDirectCall && features.length > 0) {
+      const topResult = features[0];
+      const placeName = cleanAddressText(topResult.text || topResult.place_name);
       const [lng, lat] = topResult.geometry.coordinates;
       
       document.getElementById(type + 'Input').value = placeName;
@@ -376,14 +426,22 @@ async function fetchMapboxSearch(query, centerPoint, type, listEl, isDirectCall 
       return;
     }
 
-    data.features.forEach(f => {
-      const mainTitle = f.text || f.place_name;
-      let addressSub = (f.place_name || '').replace(', Việt Nam', '').replace(', Vietnam', '');
+    // Chỉ lấy 5 kết quả ĐÃ ĐƯỢC SẮP XẾP GẦN NHẤT
+    features.slice(0, 5).forEach(f => {
+      const mainTitle = cleanAddressText(f.text || f.place_name);
+      const addressSub = cleanAddressText(f.place_name || '');
       const [lng, lat] = f.geometry.coordinates;
+
+      // Tính khoảng cách đến người dùng để hiển thị rõ
+      let distTag = '';
+      if (centerPoint) {
+        const d = getHaversineDistance(centerPoint.lat, centerPoint.lng, lat, lng);
+        distTag = ` • Cách ${d < 1 ? Math.round(d * 1000) + 'm' : d.toFixed(1) + 'km'}`;
+      }
 
       const div = document.createElement('div');
       div.className = 'suggestion-item';
-      div.innerHTML = `📍 <b>${mainTitle}</b> <small style="color:#64748b; font-size:11px;">(${addressSub})</small>`;
+      div.innerHTML = `📍 <b>${mainTitle}</b> <small style="color:#64748b; font-size:11px;">(${addressSub}<b style="color:#00b14f;">${distTag}</b>)</small>`;
       
       div.onclick = () => {
         document.getElementById(type + 'Input').value = mainTitle;
@@ -403,9 +461,10 @@ async function fetchMapboxSearch(query, centerPoint, type, listEl, isDirectCall 
       listEl.appendChild(div);
     });
     listEl.style.display = 'block';
-  } catch (e) {
-    listEl.style.display = 'none';
-  }
+  };
+
+  if (isDirectCall) executeSearch();
+  else searchTimer = setTimeout(executeSearch, 300);
 }
 
 document.addEventListener('click', (e) => {
@@ -436,7 +495,7 @@ function calculateFastRoute() {
   updatePrice();
 }
 
-// 3. VẼ ĐƯỜNG & TÍNH KHOẢNG CÁCH QUA MAPBOX DIRECTIONS API
+// VẼ ĐƯỜNG & TÍNH KHOẢNG CÁCH CHÍNH XÁC QUA MAPBOX DIRECTIONS
 async function calculateMapboxRoute() {
   if (!markerStart || !markerEnd) return;
 
