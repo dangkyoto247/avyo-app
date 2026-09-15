@@ -469,8 +469,6 @@ function calculateFastRoute() {
     opacity: 0.8 
   }).addTo(map);
 
-  const distEl = document.getElementById('distance');
-  if (distEl) distEl.innerText = currentDistance;
   updatePrice();
 }
 
@@ -520,8 +518,6 @@ async function calculateMapboxRoute() {
   }
 
   map.fitBounds(routeLine.getBounds(), { padding: [50, 50] });
-  const distEl = document.getElementById('distance');
-  if (distEl) distEl.innerText = currentDistance;
   updatePrice();
   updateGuide();
 }
@@ -532,9 +528,15 @@ function updatePrice() {
 
   if (!priceEl || !rateLabelEl) return;
 
+  if (!markerStart || !markerEnd || currentDistance == 0) {
+    priceEl.innerText = '0đ';
+    rateLabelEl.innerText = '';
+    return;
+  }
+
   if (!selectedDriver) {
     priceEl.innerText = '0đ';
-    rateLabelEl.innerText = currentDistance > 0 ? `(${currentDistance} Km)` : '';
+    rateLabelEl.innerText = `(${currentDistance} km)`;
     return;
   }
 
@@ -542,28 +544,17 @@ function updatePrice() {
 
   if (type === 'truck') {
     priceEl.innerText = 'Thỏa thuận';
-    rateLabelEl.innerText = currentDistance > 0 ? `(${currentDistance} Km)` : '';
+    rateLabelEl.innerText = `(${currentDistance} km)`;
     return;
   }
 
   let rateVal = (type === 'car' || type === 'driver') ? 11000 : 6000;
+  const isMinFare = parseFloat(currentDistance) < 3.0;
+  const calcDistance = isMinFare ? 3.0 : parseFloat(currentDistance);
 
-  if (!markerStart || !markerEnd || currentDistance == 0) {
-    priceEl.innerText = '0đ';
-    rateLabelEl.innerText = '';
-  } else {
-    const isMinFare = parseFloat(currentDistance) < 3.0;
-    const calcDistance = isMinFare ? 3.0 : parseFloat(currentDistance);
-
-    currentPrice = Math.round(calcDistance * rateVal);
-    priceEl.innerText = currentPrice.toLocaleString('vi-VN') + 'đ';
-
-    if (isMinFare) {
-      rateLabelEl.innerText = `(Cước tối thiểu 3km • ${currentDistance} Km)`;
-    } else {
-      rateLabelEl.innerText = `(${currentDistance} Km)`;
-    }
-  }
+  currentPrice = Math.round(calcDistance * rateVal);
+  priceEl.innerText = currentPrice.toLocaleString('vi-VN') + 'đ';
+  rateLabelEl.innerText = `(${currentDistance} km)`;
 }
 
 function resetRoute() {
@@ -576,8 +567,6 @@ function resetRoute() {
   routeLine = null;
   currentDistance = 0;
   currentPrice = 0;
-  const distEl = document.getElementById('distance');
-  if (distEl) distEl.innerText = '0';
   document.getElementById('resetBtn').style.display = 'none';
   document.getElementById('pickupInput').value = '';
   document.getElementById('destInput').value = '';
