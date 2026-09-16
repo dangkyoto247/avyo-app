@@ -321,7 +321,6 @@ body.selecting-dest .btn-confirm-select {
   color: #0f172a;
 }
 
-/* DÀNH RIÊNG CHO Ô ĐIỂM ĐÓN CÓ 2 NÚT THAO TÁC */
 .pickup-group input {
   padding-right: 122px !important;
 }
@@ -332,7 +331,7 @@ body.selecting-dest .btn-confirm-select {
   box-shadow: 0 0 0 3px rgba(0, 177, 79, 0.15); 
 }
 
-/* NÚT CHI TIẾT ĐIỂM ĐÓN NẰM BÊN TRÁI NÚT GHIM PIN */
+/* NÚT CHI TIẾT ĐIỂM ĐÓN */
 .btn-pickup-detail {
   position: absolute;
   right: 44px;
@@ -436,26 +435,85 @@ body.selecting-dest .btn-confirm-select {
   color: #16a34a; 
 }
 
+/* KHU VỰC CƯỚC PHÍ VÀ NÚT XEM TÀI XẾ CHIA 2 CỘT */
 .price-container { 
   background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); 
   border: 1.5px solid #86efac; 
   border-radius: 14px; 
-  padding: 10px 12px; 
+  padding: 10px 14px; 
   margin-top: 2px; 
   display: flex; 
-  flex-direction: column; 
+  flex-direction: row; 
   align-items: center; 
-  text-align: center; 
-  gap: 2px; 
+  justify-content: space-between; 
   box-shadow: inset 0 1px 2px rgba(255,255,255,0.6), 0 2px 6px rgba(22,163,74,0.1); 
 }
 
+.price-left {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+}
+
 .price { 
-  font-size: 26px; 
+  font-size: 22px; 
   font-weight: 800; 
   color: #15803d; 
   letter-spacing: -0.5px; 
-  line-height: 1.2; 
+  line-height: 1.1; 
+}
+
+/* NÚT MỞ/ĐÓNG 3 TÀI XẾ */
+.btn-toggle-drivers {
+  background: #00b14f;
+  color: #ffffff;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  box-shadow: 0 2px 6px rgba(0, 177, 79, 0.25);
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.btn-toggle-drivers:hover {
+  background: #009643;
+  transform: translateY(-1px);
+}
+
+.btn-toggle-drivers:active {
+  transform: scale(0.96);
+}
+
+.btn-toggle-drivers.active {
+  background: #0f172a;
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.25);
+}
+
+/* HIỆU ỨNG CUỘN SLIDE LÊN / XUỐNG CHO DANH SÁCH TÀI XẾ */
+.collapsible-drivers {
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+  border-top: none !important;
+  transition: max-height 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease, margin 0.35s ease, padding 0.35s ease;
+}
+
+.collapsible-drivers.show {
+  max-height: 400px;
+  opacity: 1;
+  margin-top: 10px !important;
+  padding-top: 10px !important;
+  border-top: 1px dashed #cbd5e1 !important;
 }
 
 /* NÚT THAO TÁC TRỰC TIẾP TRÊN DÒNG TÀI XẾ */
@@ -701,6 +759,20 @@ body.dark-mode {
 
 .dark-mode #rate-label { 
   color: #86efac !important; 
+}
+
+.dark-mode .btn-toggle-drivers {
+  background: #00b14f;
+  color: #ffffff;
+}
+
+.dark-mode .btn-toggle-drivers.active {
+  background: #334155;
+  color: #f8fafc;
+}
+
+.dark-mode .collapsible-drivers.show {
+  border-top-color: #334155 !important;
 }
 
 .dark-mode .btn-theme-toggle {

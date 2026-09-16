@@ -102,6 +102,25 @@ let currentSelectionMode = 'pickup';
 
 let activeFilter = localStorage.getItem(VEHICLE_PREF_KEY) || 'bike';
 
+/* HÀM MỞ / ĐÓNG TRUỢT 3 TÀI XẾ GẦN NHẤT */
+function toggleTop3Drivers() {
+  const card = document.getElementById('top3Card');
+  const btn = document.getElementById('btnToggleDrivers');
+  const arrow = document.getElementById('toggleArrow');
+  if (!card) return;
+
+  const isShowing = card.classList.contains('show');
+  if (isShowing) {
+    card.classList.remove('show');
+    if (btn) btn.classList.remove('active');
+    if (arrow) arrow.innerText = '▾';
+  } else {
+    card.classList.add('show');
+    if (btn) btn.classList.add('active');
+    if (arrow) arrow.innerText = '▴';
+  }
+}
+
 /* QUẢN LÝ HỘP THOẠI CHI TIẾT ĐIỂM ĐÓN */
 function openPickupDetailDialog() {
   const overlay = document.getElementById('pickupDetailModalOverlay');
@@ -782,6 +801,13 @@ function resetRoute() {
     detailBtn.innerText = '📝 Chi tiết';
   }
 
+  const card = document.getElementById('top3Card');
+  const toggleBtn = document.getElementById('btnToggleDrivers');
+  const toggleArrow = document.getElementById('toggleArrow');
+  if (card) card.classList.remove('show');
+  if (toggleBtn) toggleBtn.classList.remove('active');
+  if (toggleArrow) toggleArrow.innerText = '▾';
+
   const resetBtn = document.getElementById('resetBtn');
   if (resetBtn) resetBtn.style.display = 'none';
   
@@ -1075,18 +1101,18 @@ function renderDriverMarkers() {
   const maxDisplayCount = hasPickup ? 3 : 15;
   const filteredDrivers = baseFiltered.slice(0, maxDisplayCount);
 
-  const top3Card = document.getElementById('top3Card');
   const top3List = document.getElementById('top3List');
   const radiusBadge = document.getElementById('radiusBadge');
 
   if (hasPickup && filteredDrivers.length > 0) {
-    top3Card.style.display = 'block';
-    top3List.innerHTML = '';
+    if (top3List) top3List.innerHTML = '';
 
-    if (isFallback) {
-      radiusBadge.innerHTML = '<b style="color:#d97706;">Nới rộng 15km (Xung quanh ít xe)</b>';
-    } else {
-      radiusBadge.innerHTML = 'Bán kính 5km';
+    if (radiusBadge) {
+      if (isFallback) {
+        radiusBadge.innerHTML = '<b style="color:#d97706;">Nới rộng 15km (Xung quanh ít xe)</b>';
+      } else {
+        radiusBadge.innerHTML = 'Bán kính 5km';
+      }
     }
 
     filteredDrivers.forEach(driver => {
@@ -1113,18 +1139,19 @@ function renderDriverMarkers() {
           <button class="btn-action-phone" onclick="event.stopPropagation(); trackCallById(event, '${driver.id}')" title="Gọi điện">📞 Gọi</button>
         </div>
       `;
-      top3List.appendChild(div);
+      if (top3List) top3List.appendChild(div);
     });
   } else if (hasPickup && filteredDrivers.length === 0) {
-    top3Card.style.display = 'block';
-    radiusBadge.innerText = 'Bán kính 15km';
-    top3List.innerHTML = `
-      <div style="font-size:12px; color:#dc2626; text-align:center; padding:10px; background:#fef2f2; border-radius:10px; border:1px solid #fca5a5;">
-        📍 Chưa tìm thấy tài xế nào trong phạm vi 15km quanh đây.<br>
-        <small style="color:#64748b; margin-top:2px; display:block;">Vui lòng chuyển loại xe khác hoặc đổi vị trí đón.</small>
-      </div>`;
+    if (radiusBadge) radiusBadge.innerText = 'Bán kính 15km';
+    if (top3List) {
+      top3List.innerHTML = `
+        <div style="font-size:12px; color:#dc2626; text-align:center; padding:10px; background:#fef2f2; border-radius:10px; border:1px solid #fca5a5;">
+          📍 Chưa tìm thấy tài xế nào trong phạm vi 15km quanh đây.<br>
+          <small style="color:#64748b; margin-top:2px; display:block;">Vui lòng chuyển loại xe khác hoặc đổi vị trí đón.</small>
+        </div>`;
+    }
   } else {
-    top3Card.style.display = 'none';
+    if (top3List) top3List.innerHTML = '';
   }
 
   const currentValidIds = new Set();
