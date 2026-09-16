@@ -1,7 +1,7 @@
 // MAPBOX ACCESS TOKEN CỦA BẠN
 const MAPBOX_TOKEN = 'pk.eyJ1IjoidHVhbmFuaDM0MTYyMyIsImEiOiJjbXUycmMxa2UwMjd4MnlxeWZ2ZDV5NGF5In0.o10B_hdnfqOIn1jNfbpY2w';
 
-// Khởi tạo bản đồ Leaflet chuẩn hỗ trợ thu phóng cảm ứng di động
+// Khởi tạo bản đồ Leaflet chuẩn hỗ trợ thu phóng cảm ứng di động (ĐÃ GỠ NÚT ZOOM + -)
 const map = L.map('map', { 
   preferCanvas: true,
   attributionControl: false,
@@ -18,34 +18,6 @@ const map = L.map('map', {
   inertia: true,
   inertiaDeceleration: 3000
 }).setView([18.7034, 105.6832], 13);
-
-L.control.zoom({ position: 'topright' }).addTo(map);
-
-/* BẬT / TẮT MENU TRÊN CÙNG (TOP SECTION) */
-function toggleTopSection() {
-  const topSec = document.getElementById('topSection');
-  const brandArrow = document.getElementById('brandArrow');
-  if (!topSec) return;
-  
-  const isShowing = topSec.classList.contains('show');
-  if (isShowing) {
-    topSec.classList.remove('show');
-    if (brandArrow) brandArrow.innerText = '▾';
-  } else {
-    topSec.classList.add('show');
-    if (brandArrow) brandArrow.innerText = '▴';
-  }
-}
-
-// Bấm vào bản đồ thì tự động ẩn Top Section
-map.on('click', () => {
-  const topSec = document.getElementById('topSection');
-  const brandArrow = document.getElementById('brandArrow');
-  if (topSec && topSec.classList.contains('show')) {
-    topSec.classList.remove('show');
-    if (brandArrow) brandArrow.innerText = '▾';
-  }
-});
 
 /* HÀM TÍNH TỌA ĐỘ TẠI ĐIỂM NHỌN CỦA GHIM (MỐC 1/3 PHÍA TRÊN MÀN HÌNH) */
 function getPinCenterLatLng() {
@@ -199,14 +171,11 @@ function zoomToRouteOverview() {
   try {
     const bounds = routeLine.getBounds();
     if (bounds && bounds.isValid()) {
-      const topEl = document.querySelector('.top-section.show');
       const bottomEl = document.querySelector('.bottom-section');
-
-      const paddingTop = (topEl ? topEl.offsetHeight : 20) + 20;
       const paddingBottom = (bottomEl ? bottomEl.offsetHeight : 220) + 20;
 
       map.flyToBounds(bounds, {
-        paddingTopLeft: [30, paddingTop],
+        paddingTopLeft: [30, 60],
         paddingBottomRight: [30, paddingBottom],
         maxZoom: 16,
         duration: 1.2,
@@ -1281,7 +1250,7 @@ function renderDriverMarkers() {
 
     const popupHtml = `
       <div style="text-align:center; padding:2px; min-width:130px;">
-        <b style="font-size:13px; color:#0f172a;">${driver.name}</b><br>
+        <b style="font-size:13px;" class="driver-popup-name">${driver.name}</b><br>
         <span style="color:#eab308; font-weight:bold; font-size:12px;">⭐ ${rating.score} / 5.0</span>
         <small style="color:#64748b; font-size:11px;">(${rating.count} lượt)</small>
         <div style="display:flex; gap:6px; justify-content:center; margin-top:8px;">
@@ -1376,7 +1345,7 @@ window.toggleDarkMode = function() {
   
   localStorage.setItem('avyo_theme', isDark ? 'dark' : 'light');
   if (themeToggleBtn) {
-    themeToggleBtn.innerText = isDark ? '☀️ Sáng' : '🌙 Tối';
+    themeToggleBtn.innerText = isDark ? '☀️' : '🌙';
   }
 };
 
@@ -1391,7 +1360,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const savedTheme = localStorage.getItem('avyo_theme');
   const themeToggleBtn = document.getElementById('themeToggle');
   if (savedTheme === 'dark' && themeToggleBtn) {
-    themeToggleBtn.innerText = '☀️ Sáng';
+    themeToggleBtn.innerText = '☀️';
   }
 });
 
