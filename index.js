@@ -13,7 +13,7 @@ const map = L.map('map', {
 
 L.control.zoom({ position: 'topright' }).addTo(map);
 
-/* QUẢN LÝ PHÓNG TO / THU NHỎ LẤY ĐIỂM MỐC 1/3 PHÍA TRÊN LÀM TÂM ZUM */
+/* QUẢN LÝ PHÓNG TO / THU NHỎ LUÔN LẤY ĐIỂM MỐC 1/3 PHÍA TRÊN LÀM TÂM ZUM BẤT KỂ THAO TÁC NÀO */
 let zoomAnchorLatLng = null;
 
 map.on('zoomstart', () => {
@@ -106,6 +106,12 @@ function getPinCenterLatLng() {
   return map.containerPointToLatLng([pinX, pinY]);
 }
 
+/* HÀM CẬP NHẬT MÀU MẮT GHIM LINH HOẠT THEO TRẠNG THÁI THAO TÁC */
+function updatePinColor(color) {
+  const pinSvg = document.querySelector('.fixed-center-pin .pin-svg');
+  if (pinSvg) pinSvg.setAttribute('fill', color);
+}
+
 /* HÀM ĐẶT BẢN ĐỒ SAO CHO TỌA ĐỘ NẰM ĐÚNG VỊ TRÍ GHIM 1/3 */
 function centerMapOnPin(latlng, zoom = null) {
   if (!map || !latlng) return;
@@ -147,17 +153,16 @@ function triggerPinSelection(type) {
   }
 }
 
-/* QUẢN LÝ QUY TRÌNH CHỌN ĐIỂM ĐÓN / ĐẾN QUA BẢN ĐỒ CỐ ĐỊNH */
+/* QUẢN LÝ QUY TRÌNH CHỌN ĐIỂM ĐÓN / ĐẾN QUA BẢN ĐỒ CỐ ĐỊNH + THAY ĐỔI MÀU GHIM */
 function enterSelectionMode(mode) {
   currentSelectionMode = mode;
   document.body.classList.remove('selecting-pickup', 'selecting-dest');
   
-  const pinSvg = document.querySelector('.fixed-center-pin .pin-svg');
   const confirmBtn = document.getElementById('confirmSelectBtn');
 
   if (mode === 'pickup') {
     document.body.classList.add('selecting-pickup');
-    if (pinSvg) pinSvg.setAttribute('fill', '#dc2626'); // Đỏ cho Điểm Đón
+    updatePinColor('#dc2626'); // Đỏ cho Điểm Đón
     if (confirmBtn) confirmBtn.innerText = "📍 CHỌN ĐIỂM ĐÓN NÀY";
     if (markerStart) {
       map.removeLayer(markerStart);
@@ -165,7 +170,7 @@ function enterSelectionMode(mode) {
     }
   } else if (mode === 'dest') {
     document.body.classList.add('selecting-dest');
-    if (pinSvg) pinSvg.setAttribute('fill', '#2563eb'); // Xanh cho Điểm Đến
+    updatePinColor('#2563eb'); // Xanh cho Điểm Đến
     if (confirmBtn) confirmBtn.innerText = "🚩 CHỌN ĐIỂM ĐẾN NÀY";
     if (markerEnd) {
       map.removeLayer(markerEnd);
@@ -217,6 +222,7 @@ function confirmAndExitSelection() {
 function exitSelectionMode() {
   currentSelectionMode = null;
   document.body.classList.remove('selecting-pickup', 'selecting-dest');
+  updatePinColor('#00b14f'); // Xanh lá Avyo khi duyệt xem bản đồ/xem đường đi
   
   if (markerStart && markerEnd) {
     calculateMapboxRoute();
@@ -225,9 +231,7 @@ function exitSelectionMode() {
 
 /* SỰ KIỆN DI CHUYỂN BẢN ĐỒ */
 map.on('movestart', () => {
-  if (currentSelectionMode) {
-    document.body.classList.add('map-moving');
-  }
+  document.body.classList.add('map-moving');
 });
 
 map.on('moveend', () => {
@@ -392,26 +396,19 @@ map.on('locationfound', (e) => {
   userLatLng = e.latlng;
   if (currentSelectionMode) {
     centerMapOnPin(e.latlng, 15);
-    fetchAddressForInput('pickup', e.latlng);
   } else if (!markerStart) {
     setPickupLocation(e.latlng, true);
   }
 });
 
+/* ĐẶT ĐIỂM ĐÓN CỐ ĐỊNH, CHẠM VÀO GHIM ĐỂ MỞ BẢN ĐỒ CHỈNH SỬA VỊ TRÍ */
 function setPickupLocation(latlng, isAuto = false) {
   if (markerStart) map.removeLayer(markerStart);
  
-  markerStart = L.marker(latlng, { icon: pickupIcon, draggable: true }).addTo(map);
+  markerStart = L.marker(latlng, { icon: pickupIcon, draggable: false }).addTo(map);
     
-  markerStart.on('drag', () => { calculateFastRoute(); });
-
-  markerStart.on('dragend', () => {
-    calculateFastRoute();
-    clearTimeout(mapboxTimeout);
-    mapboxTimeout = setTimeout(() => {
-      calculateMapboxRoute();
-      loadDrivers();
-    }, 1200);
+  markerStart.on('click', () => {
+    triggerPinSelection('pickup');
   });
     
   const resetBtn = document.getElementById('resetBtn');
@@ -423,20 +420,14 @@ function setPickupLocation(latlng, isAuto = false) {
   updateGuide();
 }
 
+/* ĐẶT ĐIỂM ĐẾN CỐ ĐỊNH, CHẠM VÀO GHIM ĐỂ MỞ BẢN ĐỒ CHỈNH SỬA VỊ TRÍ */
 function setDestLocation(latlng) {
   if (markerEnd) map.removeLayer(markerEnd);
 
-  markerEnd = L.marker(latlng, { icon: destinationIcon, draggable: true }).addTo(map);
+  markerEnd = L.marker(latlng, { icon: destinationIcon, draggable: false }).addTo(map);
     
-  markerEnd.on('drag', () => { calculateFastRoute(); });
-
-  markerEnd.on('dragend', () => {
-    calculateFastRoute();
-    clearTimeout(mapboxTimeout);
-    mapboxTimeout = setTimeout(() => {
-      calculateMapboxRoute();
-      loadDrivers();
-    }, 1200);
+  markerEnd.on('click', () => {
+    triggerPinSelection('dest');
   });
     
   const resetBtn = document.getElementById('resetBtn');
