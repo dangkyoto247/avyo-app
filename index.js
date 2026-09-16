@@ -800,9 +800,17 @@ async function calculateMapboxRoute() {
       try {
         const bounds = routeLine.getBounds();
         if (bounds && bounds.isValid()) {
+          // Tính chiều cao thực tế của cụm trên và cụm dưới để chừa lề vừa đủ 2/3 diện tích nhìn thấy
+          const topEl = document.querySelector('.top-section');
+          const bottomEl = document.querySelector('.bottom-section');
+
+          const paddingTop = (topEl ? topEl.offsetHeight : 150) + 25;
+          const paddingBottom = (bottomEl ? bottomEl.offsetHeight : 150) + 25;
+
           map.flyToBounds(bounds, {
-            paddingTopLeft: [30, 160],
-            paddingBottomRight: [30, 220],
+            paddingTopLeft: [30, paddingTop],
+            paddingBottomRight: [30, paddingBottom],
+            maxZoom: 16,
             duration: 1.2,
             easeLinearity: 0.25
           });
