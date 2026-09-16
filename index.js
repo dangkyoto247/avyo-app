@@ -30,6 +30,83 @@ const map = L.map('map', {
   inertiaDeceleration: 3000
 }).setView([18.7034, 105.6832], 13);
 
+// TẮT TỰ ĐỘNG CHẾ ĐỘ FOCUS KHI NHẤP LÊN BẢN ĐỒ HOẶC BẤM ESC
+map.on('click', () => {
+  exitFocusInputMode();
+});
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    exitFocusInputMode();
+  }
+});
+
+/* HÀM ĐẢO CHIỀU ĐIỂM ĐÓN ⇄ ĐIỂM ĐẾN */
+function swapPickupAndDest() {
+  const pickupInput = document.getElementById('pickupInput');
+  const destInput = document.getElementById('destInput');
+  if (!pickupInput || !destInput) return;
+
+  // Đáo chuỗi tên địa chỉ
+  const tempText = pickupInput.value;
+  pickupInput.value = destInput.value;
+  destInput.value = tempText;
+
+  toggleClearButton('pickup');
+  toggleClearButton('dest');
+
+  // Đảo ghim vị trí trên bản đồ
+  const tempMarker = markerStart;
+  markerStart = markerEnd;
+  markerEnd = tempMarker;
+
+  if (markerStart) {
+    markerStart.setIcon(pickupIcon);
+    markerStart.off('click');
+    markerStart.on('click', () => triggerPinSelection('pickup'));
+  }
+
+  if (markerEnd) {
+    markerEnd.setIcon(destinationIcon);
+    markerEnd.off('click');
+    markerEnd.on('click', () => triggerPinSelection('dest'));
+  }
+
+  if (markerStart && markerEnd) {
+    calculateMapboxRoute();
+  } else if (!markerStart && !markerEnd) {
+    resetRoute();
+  }
+}
+
+/* HÀM TỰ ĐỘNG CẬP NHẬT CHIỀU CAO BẢN ĐỒ KHI BẢNG TIN TÀI XẾ BẬT/TẮT */
+function updateMapHeightForPanel() {
+  const bottomEl = document.querySelector('.bottom-section');
+  const mapEl = document.getElementById('map');
+  if (!bottomEl || !mapEl) return;
+
+  if (document.body.classList.contains('top3-open')) {
+    const bottomHeight = bottomEl.offsetHeight;
+    mapEl.style.height = `calc(100vh - ${bottomHeight}px)`;
+    mapEl.style.height = `calc(100dvh - ${bottomHeight}px)`;
+  } else {
+    mapEl.style.height = '100vh';
+    mapEl.style.height = '100dvh';
+  }
+
+  setTimeout(() => {
+    if (map) {
+      map.invalidateSize({ animate: false });
+      if (routeLine && map.hasLayer(routeLine)) {
+        zoomToRouteOverview();
+      } else {
+        const center = markerStart ? markerStart.getLatLng() : (userLatLng || map.getCenter());
+        if (center) centerMapOnPin(center);
+      }
+    }
+  }, 360);
+}
+
 /* HÀM MỞ CHẾ ĐỘ FOCUS ĐẨY NGUYÊN DÒNG NHẬP LÊN ĐẦU MÀN HÌNH */
 function enterFocusInputMode(type) {
   document.body.classList.remove('focus-pickup', 'focus-dest');
@@ -43,16 +120,16 @@ function enterFocusInputMode(type) {
 /* HÀM THOÁT CHẾ ĐỘ FOCUS QUAY VỀ GIAO DIỆN BAN ĐẦU */
 function exitFocusInputMode(type) {
   document.body.classList.remove('focus-pickup', 'focus-dest');
+  if (document.activeElement) document.activeElement.blur();
+
   if (type) {
-    const inputEl = document.getElementById(type + 'Input');
-    if (inputEl) inputEl.blur();
     const listEl = document.getElementById(type + 'Suggestions');
     if (listEl) listEl.style.display = 'none';
   } else {
-    document.getElementById('pickupInput').blur();
-    document.getElementById('destInput').blur();
-    document.getElementById('pickupSuggestions').style.display = 'none';
-    document.getElementById('destSuggestions').style.display = 'none';
+    const pickupSuggestions = document.getElementById('pickupSuggestions');
+    const destSuggestions = document.getElementById('destSuggestions');
+    if (pickupSuggestions) pickupSuggestions.style.display = 'none';
+    if (destSuggestions) destSuggestions.style.display = 'none';
   }
 }
 
@@ -158,7 +235,10 @@ googleLayer.on('tileerror', function() {
 googleLayer.addTo(map);
 
 setTimeout(() => { if (map) map.invalidateSize(); }, 300);
-window.addEventListener('resize', () => { if (map) map.invalidateSize(); });
+window.addEventListener('resize', () => { 
+  if (map) map.invalidateSize(); 
+  updateMapHeightForPanel();
+});
 
 const SUPABASE_URL = 'https://yvucyqkglbgxvozrznir.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl2dWN5cWtnbGJneHZvenJ6bmlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkxMzA3ODAsImV4cCI6MjEwNDcwNjc4MH0.Zagl4i2LPmxW3w9ih0h4LRsrm-OOGtPcWgvEs2vHBqo';
@@ -260,13 +340,19 @@ function toggleTop3Drivers() {
   const isShowing = card.classList.contains('show');
   if (isShowing) {
     card.classList.remove('show');
+    document.body.classList.remove('top3-open');
     if (btn) btn.classList.remove('active');
     if (arrow) arrow.innerText = '▾';
   } else {
     card.classList.add('show');
+    document.body.classList.add('top3-open');
     if (btn) btn.classList.add('active');
     if (arrow) arrow.innerText = '▴';
   }
+
+  setTimeout(() => {
+    updateMapHeightForPanel();
+  }, 30);
 }
 
 function openPickupDetailDialog() {
@@ -501,6 +587,7 @@ function showRecentPickups() {
       document.getElementById('pickupInput').value = item.label;
       toggleClearButton('pickup');
       listEl.style.display = 'none';
+      if (document.activeElement) document.activeElement.blur();
       const latlng = L.latLng(item.lat, item.lng);
       setPickupLocation(latlng);
       saveRecentPickup(item.label, item.lat, item.lng);
@@ -550,6 +637,7 @@ function showRecentDests() {
       document.getElementById('destInput').value = item.label;
       toggleClearButton('dest');
       listEl.style.display = 'none';
+      if (document.activeElement) document.activeElement.blur();
       const latlng = L.latLng(item.lat, item.lng);
       setDestLocation(latlng);
       saveRecentDest(item.label, item.lat, item.lng);
@@ -703,6 +791,10 @@ function onSearchInput(type, isDirectCall = false) {
     return;
   }
 
+  // BÁO TRẠNG THÁI ĐANG TÌM ĐỊA CHỈ
+  listEl.innerHTML = '<div style="padding: 10px 12px; font-size: 12px; color: #64748b; text-align: center;">⏳ Đang tìm địa chỉ...</div>';
+  listEl.style.display = 'block';
+
   const executeSearch = async () => {
     let rawCenter = markerStart ? markerStart.getLatLng() : (userLatLng || getPinCenterLatLng());
     
@@ -750,7 +842,7 @@ function onSearchInput(type, isDirectCall = false) {
     }
 
     if (features.length === 0) {
-      listEl.style.display = 'none';
+      listEl.innerHTML = '<div style="padding: 10px 12px; font-size: 12px; color: #94a3b8; text-align: center;">❌ Không tìm thấy địa chỉ phù hợp</div>';
       return;
     }
 
@@ -771,6 +863,8 @@ function onSearchInput(type, isDirectCall = false) {
       document.getElementById(type + 'Input').value = placeName;
       toggleClearButton(type);
       listEl.style.display = 'none';
+      if (document.activeElement) document.activeElement.blur();
+
       const latlng = L.latLng(resLat, resLng);
 
       if (type === 'pickup') {
@@ -808,6 +902,7 @@ function onSearchInput(type, isDirectCall = false) {
         document.getElementById(type + 'Input').value = mainTitle;
         toggleClearButton(type);
         listEl.style.display = 'none';
+        if (document.activeElement) document.activeElement.blur();
         
         const latlng = L.latLng(fLat, fLng);
 
@@ -970,6 +1065,7 @@ function resetRoute() {
   const toggleBtn = document.getElementById('btnToggleDrivers');
   const toggleArrow = document.getElementById('toggleArrow');
   if (card) card.classList.remove('show');
+  document.body.classList.remove('top3-open');
   if (toggleBtn) toggleBtn.classList.remove('active');
   if (toggleArrow) toggleArrow.innerText = '▾';
 
@@ -985,6 +1081,7 @@ function resetRoute() {
   updateGpsButtonUI(false);
   updatePrice();
   loadDrivers();
+  updateMapHeightForPanel();
   enterSelectionMode('pickup');
 }
 
@@ -1306,6 +1403,10 @@ function renderDriverMarkers() {
       `;
       if (top3List) top3List.appendChild(div);
     });
+
+    if (document.body.classList.contains('top3-open')) {
+      setTimeout(updateMapHeightForPanel, 50);
+    }
   } else if (hasPickup && filteredDrivers.length === 0) {
     if (radiusBadge) radiusBadge.innerText = 'Bán kính 15km';
     if (top3List) {
@@ -1384,6 +1485,28 @@ document.addEventListener('DOMContentLoaded', () => {
       opt.classList.remove('active');
     }
   });
+
+  // BẮT SỰ KIỆN PHÍM ENTER TRÊN CÁC Ô NHẬP ĐỂ TÌM KIẾM TỰ ĐỘNG
+  const pickupInput = document.getElementById('pickupInput');
+  const destInput = document.getElementById('destInput');
+
+  if (pickupInput) {
+    pickupInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        onSearchInput('pickup', true);
+      }
+    });
+  }
+
+  if (destInput) {
+    destInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        onSearchInput('dest', true);
+      }
+    });
+  }
 });
 
 setInterval(() => {

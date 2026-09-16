@@ -19,7 +19,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/gh/ewoken/Leaflet.MovingMarker@master/MovingMarker.js"></script>
 
-  <link rel="stylesheet" href="index.css?v=81">
+  <link rel="stylesheet" href="index.css?v=83">
 </head>
 <body class="selecting-pickup">
 
@@ -86,8 +86,10 @@
         <div id="pickupSuggestions" class="suggestions-list"></div>
       </div>
 
+      <!-- ĐƯỜNG KẺ NỐI KÈM NÚT ĐẢO CHIỀU -->
       <div class="route-divider">
         <span class="connector-line"></span>
+        <button type="button" id="btnSwapRoute" class="btn-swap-route" onclick="swapPickupAndDest()" title="Đảo chiều lộ trình">⇅</button>
       </div>
 
       <!-- DÒNG ĐIỂM ĐẾN -->
@@ -158,7 +160,7 @@
     </div>
   </div>
 
-  <script src="utils.js?v=81"></script>
-  <script src="index.js?v=81"></script>
+  <script src="utils.js?v=83"></script>
+  <script src="index.js?v=83"></script>
 </body>
 </html>
