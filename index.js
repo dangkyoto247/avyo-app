@@ -21,6 +21,32 @@ const map = L.map('map', {
 
 L.control.zoom({ position: 'topright' }).addTo(map);
 
+/* BẬT / TẮT MENU TRÊN CÙNG (TOP SECTION) */
+function toggleTopSection() {
+  const topSec = document.getElementById('topSection');
+  const brandArrow = document.getElementById('brandArrow');
+  if (!topSec) return;
+  
+  const isShowing = topSec.classList.contains('show');
+  if (isShowing) {
+    topSec.classList.remove('show');
+    if (brandArrow) brandArrow.innerText = '▾';
+  } else {
+    topSec.classList.add('show');
+    if (brandArrow) brandArrow.innerText = '▴';
+  }
+}
+
+// Bấm vào bản đồ thì tự động ẩn Top Section
+map.on('click', () => {
+  const topSec = document.getElementById('topSection');
+  const brandArrow = document.getElementById('brandArrow');
+  if (topSec && topSec.classList.contains('show')) {
+    topSec.classList.remove('show');
+    if (brandArrow) brandArrow.innerText = '▾';
+  }
+});
+
 /* HÀM TÍNH TỌA ĐỘ TẠI ĐIỂM NHỌN CỦA GHIM (MỐC 1/3 PHÍA TRÊN MÀN HÌNH) */
 function getPinCenterLatLng() {
   if (!map) return L.latLng(18.7034, 105.6832);
@@ -137,7 +163,6 @@ const typeNames = {
   'truck': '🚚 Chở hàng (Thỏa thuận)'
 };
 
-/* CHUYỂN ĐỔI GIAO DIỆN & TÍNH NĂNG NÚT GPS / CON ĐƯỜNG */
 function updateGpsButtonUI(isRouteActive) {
   const btn = document.getElementById('gpsFloatBtn');
   if (!btn) return;
@@ -174,10 +199,10 @@ function zoomToRouteOverview() {
   try {
     const bounds = routeLine.getBounds();
     if (bounds && bounds.isValid()) {
-      const topEl = document.querySelector('.top-section');
+      const topEl = document.querySelector('.top-section.show');
       const bottomEl = document.querySelector('.bottom-section');
 
-      const paddingTop = (topEl ? topEl.offsetHeight : 60) + 20;
+      const paddingTop = (topEl ? topEl.offsetHeight : 20) + 20;
       const paddingBottom = (bottomEl ? bottomEl.offsetHeight : 220) + 20;
 
       map.flyToBounds(bounds, {
@@ -1351,7 +1376,7 @@ window.toggleDarkMode = function() {
   
   localStorage.setItem('avyo_theme', isDark ? 'dark' : 'light');
   if (themeToggleBtn) {
-    themeToggleBtn.innerText = isDark ? '☀️' : '🌙';
+    themeToggleBtn.innerText = isDark ? '☀️ Sáng' : '🌙 Tối';
   }
 };
 
@@ -1366,7 +1391,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const savedTheme = localStorage.getItem('avyo_theme');
   const themeToggleBtn = document.getElementById('themeToggle');
   if (savedTheme === 'dark' && themeToggleBtn) {
-    themeToggleBtn.innerText = '☀️';
+    themeToggleBtn.innerText = '☀️ Sáng';
   }
 });
 

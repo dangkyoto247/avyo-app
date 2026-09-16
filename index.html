@@ -19,13 +19,29 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/gh/ewoken/Leaflet.MovingMarker@master/MovingMarker.js"></script>
 
-  <!-- Đã đổi v=72 để ép trình duyệt nhận file CSS và JS mới -->
-  <link rel="stylesheet" href="index.css?v=72">
+  <!-- Đã đổi v=73 để ép trình duyệt nhận file CSS và JS mới -->
+  <link rel="stylesheet" href="index.css?v=73">
 </head>
 <body class="selecting-pickup">
 
   <!-- BẢN ĐỒ CỐ ĐỊNH NỀN -->
   <div id="map"></div>
+
+  <!-- NÚT NỔI THU GỌN TOP BAR (Góc trên bên trái) -->
+  <button id="brandPill" class="btn-brand-pill" onclick="toggleTopSection()" title="Mở menu hệ thống">
+    💚 AVYO <span id="brandArrow" style="font-size: 11px; margin-left: 2px;">▾</span>
+  </button>
+
+  <!-- CỤM ĐẦU MÀN HÌNH (TOP BAR TRƯỢT ẨN/HIỆN THÔNG MINH) -->
+  <div id="topSection" class="top-section">
+    <div class="header-brand-row">
+      <span class="brand-logo">💚 AVYO - Gọi Xe 0Đ</span>
+      <div class="header-actions">
+        <button id="themeToggle" class="btn-theme-toggle" onclick="toggleDarkMode()" title="Giao diện Tối/Sáng">🌙 Tối/Sáng</button>
+        <button class="btn-close-top" onclick="toggleTopSection()" title="Đóng">✕</button>
+      </div>
+    </div>
+  </div>
 
   <!-- GHIM CỐ ĐỊNH CHÍNH GIỮA TẠI MỐC 1/3 PHÍA TRÊN MÀN HÌNH -->
   <div id="fixedCenterPin" class="fixed-center-pin">
@@ -33,16 +49,6 @@
       <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
     </svg>
     <div class="pin-shadow"></div>
-  </div>
-
-  <!-- CỤM ĐẦU MÀN HÌNH (TOP BAR) -->
-  <div class="top-section">
-    <div class="header-brand-row">
-      <span class="brand-logo">💚 AVYO</span>
-      <div class="header-actions">
-        <button id="themeToggle" class="btn-theme-toggle" onclick="toggleDarkMode()" title="Giao diện Tối/Sáng">🌙</button>
-      </div>
-    </div>
   </div>
 
   <!-- CỤM ĐÁY MÀN HÌNH (BOTTOM SHEET) -->
@@ -71,11 +77,11 @@
         </div>
       </div>
 
-      <!-- 3. ICON ĐẶT LẠI ĐIỂM ĐÓN/ĐẾN (Nằm dưới loại xe) -->
+      <!-- 3. ICON ĐẶT LẠI ĐIỂM ĐÓN/ĐẾN -->
       <button id="resetBtn" class="btn-reset-icon" onclick="resetRoute()" title="Đặt lại điểm đón/đến">🔄</button>
     </div>
 
-    <!-- NÚT XÁC NHẬN VỊ TRÍ CHÍNH GIỮA (Nằm ngay trên khung nhập địa chỉ) -->
+    <!-- NÚT XÁC NHẬN VỊ TRÍ CHÍNH GIỮA -->
     <button id="confirmSelectBtn" class="btn-confirm-select" onclick="confirmAndExitSelection()">
       📍 CHỌN VỊ TRÍ NÀY
     </button>
@@ -161,7 +167,7 @@
     </div>
   </div>
 
-  <script src="utils.js?v=72"></script>
-  <script src="index.js?v=72"></script>
+  <script src="utils.js?v=73"></script>
+  <script src="index.js?v=73"></script>
 </body>
 </html>
