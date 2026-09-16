@@ -29,7 +29,92 @@ function getPinCenterLatLng() {
 /* CỜ ĐÁNH DẤU TRÁNH XUNG ĐỘT KHI BẢN ĐỒ ĐANG VẼ TOÀN BỘ LỘ TRÌNH */
 let isFittingBounds = false;
 let activeZoomPinLatLng = null;
-let routeAnimationTimer = null; // Quản lý frame animation vẽ đường đi
+let routeAnimationTimer = null;
+
+// GHI ĐÈ BỘ XỬ LÝ CẢM ỨNG 2 NGÓN TAY (PINCH-TO-ZOOM) ĐỂ KHÓA TÂM GHIM 1/3 THỜI GIAN THỰC
+if (L.Map.TouchZoom) {
+  L.Map.TouchZoom.include({
+    _onTouchStart: function (e) {
+      if (!e.touches || e.touches.length !== 2 || this._map._animatingZoom) { return; }
+
+      var p1 = this._map.mouseEventToContainerPoint(e.touches[0]),
+          p2 = this._map.mouseEventToContainerPoint(e.touches[1]);
+
+      this._startDist = p1.distanceTo(p2);
+      this._startZoom = this._map.getZoom();
+
+      this._zooming = true;
+      this._map._stop();
+
+      // Khóa tọa độ dưới ghim 1/3 ngay khi vừa chạm 2 ngón tay
+      this._pinLatLng = getPinCenterLatLng();
+      this._moved = false;
+    },
+
+    _onTouchMove: function (e) {
+      if (!e.touches || e.touches.length !== 2 || !this._zooming) { return; }
+
+      var map = this._map,
+          p1 = map.mouseEventToContainerPoint(e.touches[0]),
+          p2 = map.mouseEventToContainerPoint(e.touches[1]),
+          scale = p1.distanceTo(p2) / this._startDist;
+
+      if (!scale || scale === 1) { return; }
+
+      this._zoom = map.getScaleZoom(scale, this._startZoom);
+
+      if (!map.options.bounceAtZoomLimits && (
+        (this._zoom < map.getMinZoom() && scale < 1) ||
+        (this._zoom > map.getMaxZoom() && scale > 1)
+      )) {
+        this._zoom = map._limitZoom(this._zoom);
+      }
+
+      // Tính toán tâm bản đồ thời gian thực sao cho ghim 1/3 luôn giữ nguyên tọa độ trên màn hình
+      var size = map.getSize();
+      var pinPixel = map.project(this._pinLatLng, this._zoom);
+      var centerPixel = pinPixel.add([0, size.y * (0.5 - 0.3333)]);
+      this._center = map.unproject(centerPixel, this._zoom);
+
+      if (!this._moved) {
+        map.fire('zoomstart', { emitter: this });
+        this._moved = true;
+      }
+
+      L.Util.cancelAnimFrame(this._animRequest);
+      var self = this;
+      this._animRequest = L.Util.requestAnimFrame(function () {
+        map._move(self._center, self._zoom, { pinch: true, round: false });
+      });
+    },
+
+    _onTouchEnd: function () {
+      if (!this._moved || !this._zooming) {
+        this._zooming = false;
+        return;
+      }
+
+      this._zooming = false;
+      this._moved = false;
+      L.Util.cancelAnimFrame(this._animRequest);
+
+      map.fire('zoomend');
+    }
+  });
+}
+
+// GHI ĐÈ SCROLL WHEEL ZOOM TRÊN LAPTOP / PC LUÔN LẤY GHIM 1/3 LÀM TÂM
+if (L.Map.ScrollWheelZoom) {
+  L.Map.ScrollWheelZoom.include({
+    _performZoom: function () {
+      var map = this._map;
+      map._stop();
+
+      var pinLatLng = getPinCenterLatLng();
+      map.setZoomAround(pinLatLng, this._zoom, { animate: true });
+    }
+  });
+}
 
 map.on('zoomstart', () => {
   if (!isFittingBounds) {
@@ -44,7 +129,7 @@ map.on('zoomend', () => {
     const currentPoint = map.latLngToContainerPoint(activeZoomPinLatLng);
     const delta = currentPoint.subtract(pinPoint);
 
-    if (Math.abs(delta.x) > 1 || Math.abs(delta.y) > 1) {
+    if (Math.abs(delta.x) > 2 || Math.abs(delta.y) > 2) {
       map.panBy(delta, { animate: false });
     }
     activeZoomPinLatLng = null;
@@ -741,7 +826,6 @@ async function calculateMapboxRoute() {
     ? routePoints 
     : [[start.lat, start.lng], [end.lat, end.lng]];
 
-  // Khởi tạo nét vẽ rỗng
   routeLine = L.polyline([], { 
     color: '#00b14f', 
     weight: 6, 
@@ -751,14 +835,13 @@ async function calculateMapboxRoute() {
     smoothFactor: 1 
   }).addTo(map);
 
-  const drawDuration = 1000; // Vẽ từ từ trong 1.0 giây
+  const drawDuration = 1000;
   const startTime = performance.now();
 
   function animateDrawRoute(now) {
     const elapsed = now - startTime;
     const progress = Math.min(elapsed / drawDuration, 1);
     
-    // Hàm easing mượt mà cho hiệu ứng vẽ
     const easeProgress = progress < 0.5 
       ? 2 * progress * progress 
       : 1 - Math.pow(-2 * progress + 2, 2) / 2;
@@ -769,12 +852,11 @@ async function calculateMapboxRoute() {
     if (progress < 1) {
       routeAnimationTimer = requestAnimationFrame(animateDrawRoute);
     } else {
-      // VẼ XONG MỚI BẮT ĐẦU CHUYỂN CẢNH BẢN ĐỒ NHẸ NHÀNG MƯỢT MÀ TOÀN BỘ LỘ TRÌNH
       isFittingBounds = true;
       map.flyToBounds(routeLine.getBounds(), {
         paddingTopLeft: [30, 160],
         paddingBottomRight: [30, 220],
-        duration: 1.2,       // Di chuyển camera cực nhẹ nhàng trong 1.2s
+        duration: 1.2,
         easeLinearity: 0.25
       });
 
