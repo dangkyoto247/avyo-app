@@ -1,7 +1,18 @@
+// CHẶN PHÓNG TO THU NHỎ GIAO DIỆN KHI DÙNG GESTURE TRÊN ĐIỆN THOẠI
+document.addEventListener('gesturestart', function (e) {
+  e.preventDefault();
+});
+document.addEventListener('gesturechange', function (e) {
+  e.preventDefault();
+});
+document.addEventListener('gestureend', function (e) {
+  e.preventDefault();
+});
+
 // MAPBOX ACCESS TOKEN CỦA BẠN
 const MAPBOX_TOKEN = 'pk.eyJ1IjoidHVhbmFuaDM0MTYyMyIsImEiOiJjbXUycmMxa2UwMjd4MnlxeWZ2ZDV5NGF5In0.o10B_hdnfqOIn1jNfbpY2w';
 
-// Khởi tạo bản đồ Leaflet chuẩn hỗ trợ thu phóng cảm ứng di động (ĐÃ GỠ NÚT ZOOM + -)
+// Khởi tạo bản đồ Leaflet
 const map = L.map('map', { 
   preferCanvas: true,
   attributionControl: false,
@@ -43,7 +54,7 @@ function clearInput(type) {
   }
 }
 
-/* HÀM TÍNH TỌA ĐỘ TẠI ĐIỂM NHỌN CỦA GHIM (MỐC 1/3 PHÍA TRÊN MÀN HÌNH) */
+/* HÀM TÍNH TỌA ĐỘ TẠI ĐIỂM NHỌN CỦA GHIM */
 function getPinCenterLatLng() {
   if (!map) return L.latLng(18.7034, 105.6832);
   try {
@@ -72,7 +83,6 @@ map.on('zoomstart', () => {
   }
 });
 
-/* CĂN CHỈNH BẢN ĐỒ VỀ ĐIỂM 1/3 BẰNG HIỆU ỨNG TRƯỢT CAMERA MƯỢT MÀ */
 map.on('zoomend', () => {
   if (activeZoomPinLatLng && !isFittingBounds && Number.isFinite(activeZoomPinLatLng.lat) && Number.isFinite(activeZoomPinLatLng.lng)) {
     try {
@@ -935,7 +945,6 @@ function resetRoute() {
   document.getElementById('pickupInput').value = '';
   document.getElementById('destInput').value = '';
   
-  // Gọi hàm ẩn nút xóa đi
   toggleClearButton('pickup');
   toggleClearButton('dest');
 
