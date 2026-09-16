@@ -1,7 +1,7 @@
 // MAPBOX ACCESS TOKEN CỦA BẠN
 const MAPBOX_TOKEN = 'pk.eyJ1IjoidHVhbmFuaDM0MTYyMyIsImEiOiJjbXUycmMxa2UwMjd4MnlxeWZ2ZDV5NGF5In0.o10B_hdnfqOIn1jNfbpY2w';
 
-// Khởi tạo bản đồ Leaflet chuẩn hỗ trợ thu phóng cảm ứng di động (ĐÃ GỠ NÚT ZOOM + -)
+// Khởi tạo bản đồ Leaflet chuẩn Grab
 const map = L.map('map', { 
   preferCanvas: true,
   attributionControl: false,
@@ -48,7 +48,6 @@ map.on('zoomstart', () => {
   }
 });
 
-/* CĂN CHỈNH BẢN ĐỒ VỀ ĐIỂM 1/3 BẰNG HIỆU ỨNG TRƯỢT CAMERA MƯỢT MÀ */
 map.on('zoomend', () => {
   if (activeZoomPinLatLng && !isFittingBounds && Number.isFinite(activeZoomPinLatLng.lat) && Number.isFinite(activeZoomPinLatLng.lng)) {
     try {
@@ -129,11 +128,18 @@ const typeIcons = {
 };
 
 const typeNames = { 
-  'bike': '🛵 Xe máy (6.000đ/km)', 
-  'car': '🚕 Ô tô (11.000đ/km)', 
-  'driver': '👤 Lái xe hộ (11.000đ/km)', 
-  'truck': '🚚 Chở hàng (Thỏa thuận)'
+  'bike': 'Bike Phổ Thông', 
+  'car': 'GrabCar 4 Chỗ', 
+  'driver': 'Lái Xe Hộ', 
+  'truck': 'Giao Hàng / Chở Hàng'
 };
+
+/* ĐỒNG BỘ Ô NHẬP TÌM KIẾM TRÊN CÙNG */
+function syncAndSearch(type, val) {
+  const mainInput = document.getElementById(type + 'Input');
+  if (mainInput) mainInput.value = val;
+  onSearchInput(type);
+}
 
 function updateGpsButtonUI(isRouteActive) {
   const btn = document.getElementById('gpsFloatBtn');
@@ -141,7 +147,7 @@ function updateGpsButtonUI(isRouteActive) {
   if (isRouteActive) {
     btn.title = 'Xem toàn cảnh lộ trình';
     btn.innerHTML = `
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00b14f" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <path d="M4 19L9 3"/>
         <path d="M20 19L15 3"/>
         <path d="M12 4v3"/>
@@ -151,8 +157,13 @@ function updateGpsButtonUI(isRouteActive) {
   } else {
     btn.title = 'Vị trí hiện tại';
     btn.innerHTML = `
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <polygon points="3 11 22 2 13 21 11 13 3 11"></polygon>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1c2024" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="8"></circle>
+        <line x1="12" y1="2" x2="12" y2="6"></line>
+        <line x1="12" y1="18" x2="12" y2="22"></line>
+        <line x1="2" y1="12" x2="6" y2="12"></line>
+        <line x1="18" y1="12" x2="22" y2="12"></line>
+        <circle cx="12" cy="12" r="2" fill="#1c2024"></circle>
       </svg>`;
   }
 }
@@ -175,7 +186,7 @@ function zoomToRouteOverview() {
       const paddingBottom = (bottomEl ? bottomEl.offsetHeight : 220) + 20;
 
       map.flyToBounds(bounds, {
-        paddingTopLeft: [30, 60],
+        paddingTopLeft: [30, 80],
         paddingBottomRight: [30, paddingBottom],
         maxZoom: 16,
         duration: 1.2,
@@ -229,10 +240,8 @@ function savePickupDetail() {
   const btn = document.getElementById('btnPickupDetail');
   if (btn) {
     if (pickupDetailNote) {
-      btn.classList.add('has-note');
       btn.innerText = '📝 Đã ghi chú';
     } else {
-      btn.classList.remove('has-note');
       btn.innerText = '📝 Chi tiết';
     }
   }
@@ -257,9 +266,10 @@ function getBBox(lat, lng, radiusKm) {
   return `${(lng - dLng).toFixed(4)},${(lat - dLat).toFixed(4)},${(lng + dLng).toFixed(4)},${(lat + dLat).toFixed(4)}`;
 }
 
+/* ĐỔI MÀU GHIM CHÍNH GIỮA TEARDROP CHUẨN GRAB */
 function updatePinColor(color) {
-  const pinSvg = document.querySelector('.fixed-center-pin .pin-svg');
-  if (pinSvg) pinSvg.setAttribute('fill', color);
+  const pinSvgPath = document.querySelector('.fixed-center-pin .pin-svg path');
+  if (pinSvgPath) pinSvgPath.setAttribute('fill', color);
 }
 
 function centerMapOnPin(latlng, zoom = null) {
@@ -318,16 +328,16 @@ function enterSelectionMode(mode) {
 
   if (mode === 'pickup') {
     document.body.classList.add('selecting-pickup');
-    updatePinColor('#dc2626');
-    if (confirmBtn) confirmBtn.innerText = "📍 CHỌN ĐIỂM ĐÓN NÀY";
+    updatePinColor('#007aff'); // Xanh dương điểm đón Grab
+    if (confirmBtn) confirmBtn.innerText = "Chọn điểm đón này";
     if (markerStart) {
       map.removeLayer(markerStart);
       markerStart = null;
     }
   } else if (mode === 'dest') {
     document.body.classList.add('selecting-dest');
-    updatePinColor('#2563eb');
-    if (confirmBtn) confirmBtn.innerText = "🚩 CHỌN ĐIỂM ĐẾN NÀY";
+    updatePinColor('#fa3d3b'); // Đỏ điểm đến Grab
+    if (confirmBtn) confirmBtn.innerText = "Chọn điểm đến này";
     if (markerEnd) {
       map.removeLayer(markerEnd);
       markerEnd = null;
@@ -348,7 +358,11 @@ async function fetchAddressForInput(type, latlng) {
         const placeName = cleanAddressText(data.features[0].text || data.features[0].place_name);
         const inputEl = document.getElementById(type + 'Input');
         if (inputEl) inputEl.value = placeName;
-        if (type === 'pickup') saveRecentPickup(placeName, latlng.lat, latlng.lng);
+        if (type === 'pickup') {
+          const topInput = document.getElementById('pickupInputTop');
+          if (topInput) topInput.value = placeName;
+          saveRecentPickup(placeName, latlng.lat, latlng.lng);
+        }
         if (type === 'dest') saveRecentDest(placeName, latlng.lat, latlng.lng);
       }
     }
@@ -426,7 +440,7 @@ function showRecentPickups() {
     return;
   }
 
-  listEl.innerHTML = '<div style="padding: 6px 12px; font-size: 11px; color: #16a34a; font-weight: bold; background: #f0fdf4; border-bottom: 1px solid #e2e8f0;">🕒 ĐIỂM ĐÓN GẦN ĐÂY</div>';
+  listEl.innerHTML = '<div style="padding: 6px 12px; font-size: 11px; color: #00b14f; font-weight: bold; background: #f0fdf4; border-bottom: 1px solid #e5e9eb;">🕒 DÙNG GẦN ĐÂY</div>';
   
   recents.forEach(item => {
     const div = document.createElement('div');
@@ -434,6 +448,8 @@ function showRecentPickups() {
     div.innerHTML = `🕒 <b>${item.label}</b>`;
     div.onclick = () => {
       document.getElementById('pickupInput').value = item.label;
+      const topInput = document.getElementById('pickupInputTop');
+      if (topInput) topInput.value = item.label;
       listEl.style.display = 'none';
       const latlng = L.latLng(item.lat, item.lng);
       setPickupLocation(latlng);
@@ -473,7 +489,7 @@ function showRecentDests() {
     return;
   }
 
-  listEl.innerHTML = '<div style="padding: 6px 12px; font-size: 11px; color: #2563eb; font-weight: bold; background: #eff6ff; border-bottom: 1px solid #e2e8f0;">🕒 ĐIỂM ĐẾN GẦN ĐÂY</div>';
+  listEl.innerHTML = '<div style="padding: 6px 12px; font-size: 11px; color: #fa3d3b; font-weight: bold; background: #fff5f5; border-bottom: 1px solid #e5e9eb;">🕒 DÙNG GẦN ĐÂY</div>';
 
   recents.forEach(item => {
     const div = document.createElement('div');
@@ -494,22 +510,19 @@ function showRecentDests() {
 
 function updateGuide() {}
 
+/* GHIM ĐIỂM ĐÓN & ĐẾN CHUẨN ĐỒ HỌA TEARDROP GRAB */
 const pickupIcon = L.divIcon({
-  html: `<svg width="34" height="34" viewBox="0 0 24 24" fill="#dc2626" stroke="#ffffff" stroke-width="1.5" style="filter: drop-shadow(0 3px 6px rgba(0,0,0,0.4));">
-           <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
-         </svg>`,
+  html: `<svg width="36" height="44" viewBox="0 0 44 52" fill="none"><path d="M22 0C9.84974 0 0 9.84974 0 22C0 35.5 22 52 22 52C22 52 44 35.5 44 22C44 9.84974 34.1503 0 22 0Z" fill="#007aff"/><circle cx="22" cy="20" r="7" fill="white"/></svg>`,
   className: 'custom-pin-icon',
-  iconSize: [34, 34],
-  iconAnchor: [17, 34]
+  iconSize: [36, 44],
+  iconAnchor: [18, 44]
 });
 
 const destinationIcon = L.divIcon({
-  html: `<svg width="34" height="34" viewBox="0 0 24 24" fill="#2563eb" stroke="#ffffff" stroke-width="1.5" style="filter: drop-shadow(0 3px 6px rgba(0,0,0,0.4));">
-           <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
-         </svg>`,
+  html: `<svg width="36" height="44" viewBox="0 0 44 52" fill="none"><path d="M22 0C9.84974 0 0 9.84974 0 22C0 35.5 22 52 22 52C22 52 44 35.5 44 22C44 9.84974 34.1503 0 22 0Z" fill="#fa3d3b"/><circle cx="22" cy="20" r="7" fill="white"/></svg>`,
   className: 'custom-pin-icon',
-  iconSize: [34, 34],
-  iconAnchor: [17, 34]
+  iconSize: [36, 44],
+  iconAnchor: [18, 44]
 });
 
 function toggleVehicleMenu() {
@@ -535,6 +548,16 @@ function selectFilter(type, element) {
   const activeLabel = document.getElementById('activeVehicleLabel');
   if (activeLabel && typeIcons[type]) {
     activeLabel.innerText = typeIcons[type];
+  }
+
+  const vehicleTypeName = document.getElementById('vehicleTypeName');
+  if (vehicleTypeName && typeNames[type]) {
+    vehicleTypeName.innerText = typeNames[type];
+  }
+
+  const grabIcon = document.getElementById('grabVehicleIcon');
+  if (grabIcon && typeIcons[type]) {
+    grabIcon.innerText = typeIcons[type];
   }
 
   if (selectedDriver && selectedDriver.vehicle_type !== activeFilter) {
@@ -604,6 +627,8 @@ function useCurrentLocationAsPickup() {
       setPickupLocation(userLatLng, true);
       const labelText = "Vị trí hiện tại của bạn";
       document.getElementById('pickupInput').value = labelText;
+      const topInput = document.getElementById('pickupInputTop');
+      if (topInput) topInput.value = labelText;
       saveRecentPickup(labelText, userLatLng.lat, userLatLng.lng);
     }
   } else {
@@ -699,6 +724,10 @@ function onSearchInput(type, isDirectCall = false) {
       const [resLng, resLat] = topResult.geometry.coordinates;
       
       document.getElementById(type + 'Input').value = placeName;
+      if (type === 'pickup') {
+        const topInput = document.getElementById('pickupInputTop');
+        if (topInput) topInput.value = placeName;
+      }
       listEl.style.display = 'none';
       const latlng = L.latLng(resLat, resLng);
 
@@ -729,10 +758,14 @@ function onSearchInput(type, isDirectCall = false) {
 
       const div = document.createElement('div');
       div.className = 'suggestion-item';
-      div.innerHTML = `📍 <b>${mainTitle}</b> <small style="color:#64748b; font-size:11px;">(${addressSub}<b style="color:#00b14f;">${distTag}</b>)</small>`;
+      div.innerHTML = `📍 <b>${mainTitle}</b> <small style="color:#677073; font-size:11px;">(${addressSub}<b style="color:#00b14f;">${distTag}</b>)</small>`;
       
       div.onclick = () => {
         document.getElementById(type + 'Input').value = mainTitle;
+        if (type === 'pickup') {
+          const topInput = document.getElementById('pickupInputTop');
+          if (topInput) topInput.value = mainTitle;
+        }
         listEl.style.display = 'none';
         
         const latlng = L.latLng(fLat, fLng);
@@ -768,6 +801,7 @@ document.addEventListener('click', (e) => {
   }
 });
 
+/* VẼ LỘ TRÌNH VỚI MÀU XANH LÁ CHUẨN GRAB (#00b14f) */
 async function calculateMapboxRoute() {
   if (!markerStart || !markerEnd) return;
 
@@ -802,9 +836,9 @@ async function calculateMapboxRoute() {
     : [[start.lat, start.lng], [end.lat, end.lng]];
 
   routeLine = L.polyline([], { 
-    color: '#00b14f', 
+    color: '#00b14f', // Màu xanh Grab chính xác
     weight: 6, 
-    opacity: 0.9,
+    opacity: 0.95,
     lineCap: 'round',    
     lineJoin: 'round',   
     smoothFactor: 1 
@@ -850,7 +884,7 @@ function updatePrice() {
 
   if (!markerStart || !markerEnd || currentDistance == 0) {
     priceEl.innerText = '0đ';
-    rateLabelEl.innerText = '';
+    rateLabelEl.innerText = 'Đón trong 5 phút';
     return;
   }
 
@@ -868,7 +902,7 @@ function updatePrice() {
 
   currentPrice = Math.round(calcDistance * rateVal);
   priceEl.innerText = currentPrice.toLocaleString('vi-VN') + 'đ';
-  rateLabelEl.innerText = `(${currentDistance} km)`;
+  rateLabelEl.innerText = `Đón trong 5 phút · ${currentDistance} km`;
 }
 
 function resetRoute() {
@@ -886,7 +920,6 @@ function resetRoute() {
   
   const detailBtn = document.getElementById('btnPickupDetail');
   if (detailBtn) {
-    detailBtn.classList.remove('has-note');
     detailBtn.innerText = '📝 Chi tiết';
   }
 
@@ -902,6 +935,8 @@ function resetRoute() {
   
   document.getElementById('pickupInput').value = '';
   document.getElementById('destInput').value = '';
+  const topInput = document.getElementById('pickupInputTop');
+  if (topInput) topInput.value = '';
 
   updateGpsButtonUI(false);
   updatePrice();
@@ -1215,8 +1250,8 @@ function renderDriverMarkers() {
         <div style="display:flex; align-items:center; gap:10px; flex: 1;" onclick="selectDriver(rawDriversData.find(d => d.id === '${driver.id}'))">
           <img src="${avatarUrl}" class="driver-avatar-img" onerror="this.src='https://cdn-icons-png.flaticon.com/512/149/149071.png'">
           <div>
-            <div style="font-weight:bold; font-size:13px; color:#0f172a;">${driver.name}</div>
-            <div style="font-size:11px; color:#64748b;">${typeBadge} • Cách <b>${distKm.toFixed(1)} km</b></div>
+            <div style="font-weight:bold; font-size:13px; color:#1c2024;">${driver.name}</div>
+            <div style="font-size:11px; color:#677073;">${typeBadge} • Cách <b>${distKm.toFixed(1)} km</b></div>
             <div style="font-size:11px; color:#eab308; font-weight:bold;">⭐ ${rating.score} (${rating.count} lượt)</div>
           </div>
         </div>
@@ -1233,7 +1268,7 @@ function renderDriverMarkers() {
       top3List.innerHTML = `
         <div style="font-size:12px; color:#dc2626; text-align:center; padding:10px; background:#fef2f2; border-radius:10px; border:1px solid #fca5a5;">
           📍 Chưa tìm thấy tài xế nào trong phạm vi 15km quanh đây.<br>
-          <small style="color:#64748b; margin-top:2px; display:block;">Vui lòng chuyển loại xe khác hoặc đổi vị trí đón.</small>
+          <small style="color:#677073; margin-top:2px; display:block;">Vui lòng chuyển loại xe khác hoặc đổi vị trí đón.</small>
         </div>`;
     }
   } else {
@@ -1252,7 +1287,7 @@ function renderDriverMarkers() {
       <div style="text-align:center; padding:2px; min-width:130px;">
         <b style="font-size:13px;" class="driver-popup-name">${driver.name}</b><br>
         <span style="color:#eab308; font-weight:bold; font-size:12px;">⭐ ${rating.score} / 5.0</span>
-        <small style="color:#64748b; font-size:11px;">(${rating.count} lượt)</small>
+        <small style="color:#677073; font-size:11px;">(${rating.count} lượt)</small>
         <div style="display:flex; gap:6px; justify-content:center; margin-top:8px;">
           <button class="btn-action-zalo" onclick="event.stopPropagation(); openZaloById('${driver.id}')" style="padding:5px 8px; font-size:11px;">💬 Zalo</button>
           <button class="btn-action-phone" onclick="event.stopPropagation(); trackCallById(event, '${driver.id}')" style="padding:5px 8px; font-size:11px;">📞 Gọi</button>
