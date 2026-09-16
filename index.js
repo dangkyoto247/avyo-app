@@ -117,7 +117,7 @@ function centerMapOnPin(latlng, zoom = null) {
   const currentPoint = map.latLngToContainerPoint(latlng);
   const delta = currentPoint.subtract(pinPoint);
   
-  map.panBy(delta, { animate: true, duration: 0.4 });
+  map.panBy(delta, { animate: true, duration: 0.3 });
 }
 
 /* KÍCH HOẠT CHẾ ĐỘ CHỌN GHIM PIN VÀ DỊCH CHUYỂN BẢN ĐỒ GIỮ NGUYÊN ZOOM */
@@ -194,7 +194,7 @@ async function fetchAddressForInput(type, latlng) {
   }
 }
 
-/* XÁC NHẬN CHỌN GHIM PIN VÀ TỰ ĐỘNG CHUYỂN NGAY SANG NÚT GHIM ĐIỂM ĐẾN */
+/* XÁC NHẬN CHỌN GHIM PIN: CHỈ CHUYỂN BƯỚC NẾU CHƯA CÓ ĐIỂM ĐẾN */
 function confirmAndExitSelection() {
   const pinLatLng = getPinCenterLatLng();
 
@@ -202,8 +202,11 @@ function confirmAndExitSelection() {
     setPickupLocation(pinLatLng);
     fetchAddressForInput('pickup', pinLatLng);
     
-    // TỰ ĐỘNG CHUYỂN NGAY SANG CHẾ ĐỘ CHỌN GHIM PIN ĐIỂM ĐẾN
-    enterSelectionMode('dest');
+    if (!markerEnd) {
+      enterSelectionMode('dest');
+    } else {
+      exitSelectionMode();
+    }
   } else if (currentSelectionMode === 'dest') {
     setDestLocation(pinLatLng);
     fetchAddressForInput('dest', pinLatLng);
@@ -628,6 +631,7 @@ function calculateFastRoute() {
   updatePrice();
 }
 
+/* TÍNH TOÁN LỘ TRÌNH VÀ TỰ ĐỘNG THU NHỎ BẢN ĐỒ KHÔNG CÓ HIỆU ỨNG TRƯỢT CẮT GIẢM HOÀN TOÀN CHÓNG MẶT (ANIMATE: FALSE) */
 async function calculateMapboxRoute() {
   if (!markerStart || !markerEnd) return;
 
@@ -673,7 +677,12 @@ async function calculateMapboxRoute() {
     }).addTo(map);
   }
 
-  map.fitBounds(routeLine.getBounds(), { padding: [50, 50] });
+  // TẮT HIỆU ỨNG TRƯỢT KÉO DÀI (ANIMATE: FALSE) ĐỂ ÔM TOÀN CẢNH LẬP TỨC VÀ KHÔNG GÂY CHÓNG MẶT
+  map.fitBounds(routeLine.getBounds(), { 
+    padding: [60, 60],
+    animate: false 
+  });
+
   updatePrice();
   updateGuide();
 }
