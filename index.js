@@ -106,10 +106,10 @@ function getPinCenterLatLng() {
   return map.containerPointToLatLng([pinX, pinY]);
 }
 
-/* HÀM ĐẶT BẢN ĐỒ SAO CHO TỌA ĐỘ NẰM ĐÚNG VỊ TRÍ GHIM 1/3 PHÍA TRÊN */
-function centerMapOnPin(latlng, zoom = 15) {
+/* HÀM ĐẶT BẢN ĐỒ SAO CHO TỌA ĐỘ NẰM ĐÚNG VỊ TRÍ GHIM 1/3 (GIỮ NGUYÊN MỨC ZOOM) */
+function centerMapOnPin(latlng, zoom = null) {
   if (!map || !latlng) return;
-  if (map.getZoom() !== zoom) {
+  if (zoom !== null && map.getZoom() !== zoom) {
     map.setZoom(zoom, { animate: false });
   }
   const size = map.getSize();
@@ -120,7 +120,7 @@ function centerMapOnPin(latlng, zoom = 15) {
   map.panBy(delta, { animate: true, duration: 0.4 });
 }
 
-/* KÍCH HOẠT CHẾ ĐỘ CHỌN GHIM PIN VÀ CĂN DỊCH CHUYỂN BẢN ĐỒ VỀ ĐÚNG ĐIỂM CŨ */
+/* KÍCH HOẠT CHẾ ĐỘ CHỌN GHIM PIN VÀ DỊCH CHUYỂN BẢN ĐỒ GIỮ NGUYÊN ZOOM */
 function triggerPinSelection(type) {
   let targetLatLng = null;
 
@@ -143,7 +143,7 @@ function triggerPinSelection(type) {
   enterSelectionMode(type);
 
   if (targetLatLng) {
-    centerMapOnPin(targetLatLng, 15);
+    centerMapOnPin(targetLatLng, map.getZoom());
   }
 }
 
@@ -194,13 +194,16 @@ async function fetchAddressForInput(type, latlng) {
   }
 }
 
+/* XÁC NHẬN CHỌN GHIM PIN VÀ TỰ ĐỘNG CHUYỂN NGAY SANG NÚT GHIM ĐIỂM ĐẾN */
 function confirmAndExitSelection() {
   const pinLatLng = getPinCenterLatLng();
 
   if (currentSelectionMode === 'pickup') {
     setPickupLocation(pinLatLng);
     fetchAddressForInput('pickup', pinLatLng);
-    exitSelectionMode();
+    
+    // TỰ ĐỘNG CHUYỂN NGAY SANG CHẾ ĐỘ CHỌN GHIM PIN ĐIỂM ĐẾN
+    enterSelectionMode('dest');
   } else if (currentSelectionMode === 'dest') {
     setDestLocation(pinLatLng);
     fetchAddressForInput('dest', pinLatLng);
@@ -435,7 +438,7 @@ function setDestLocation(latlng) {
 function useCurrentLocationAsPickup() {
   if (userLatLng) {
     if (currentSelectionMode) {
-      centerMapOnPin(userLatLng, 15);
+      centerMapOnPin(userLatLng, map.getZoom());
     } else {
       map.setView(userLatLng, 15);
       setPickupLocation(userLatLng, true);
