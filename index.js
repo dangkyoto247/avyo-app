@@ -19,6 +19,30 @@ const map = L.map('map', {
   inertiaDeceleration: 3000
 }).setView([18.7034, 105.6832], 13);
 
+/* HÀM ẨN/HIỆN NÚT XÓA CHỮ X TRONG Ô NHẬP */
+function toggleClearButton(type) {
+  const inputEl = document.getElementById(type + 'Input');
+  const clearBtn = document.getElementById(type === 'pickup' ? 'clearPickupBtn' : 'clearDestBtn');
+  if (inputEl && clearBtn) {
+    clearBtn.style.display = inputEl.value.trim().length > 0 ? 'flex' : 'none';
+  }
+}
+
+/* HÀM XÓA TOÀN BỘ CHỮ 1 LẦN */
+function clearInput(type) {
+  const inputEl = document.getElementById(type + 'Input');
+  if (inputEl) {
+    inputEl.value = '';
+    inputEl.focus();
+  }
+  toggleClearButton(type);
+  if (type === 'pickup') {
+    showRecentPickups();
+  } else {
+    showRecentDests();
+  }
+}
+
 /* HÀM TÍNH TỌA ĐỘ TẠI ĐIỂM NHỌN CỦA GHIM (MỐC 1/3 PHÍA TRÊN MÀN HÌNH) */
 function getPinCenterLatLng() {
   if (!map) return L.latLng(18.7034, 105.6832);
@@ -347,7 +371,10 @@ async function fetchAddressForInput(type, latlng) {
       if (data.features && data.features.length > 0) {
         const placeName = cleanAddressText(data.features[0].text || data.features[0].place_name);
         const inputEl = document.getElementById(type + 'Input');
-        if (inputEl) inputEl.value = placeName;
+        if (inputEl) {
+          inputEl.value = placeName;
+          toggleClearButton(type);
+        }
         if (type === 'pickup') saveRecentPickup(placeName, latlng.lat, latlng.lng);
         if (type === 'dest') saveRecentDest(placeName, latlng.lat, latlng.lng);
       }
@@ -434,6 +461,7 @@ function showRecentPickups() {
     div.innerHTML = `🕒 <b>${item.label}</b>`;
     div.onclick = () => {
       document.getElementById('pickupInput').value = item.label;
+      toggleClearButton('pickup');
       listEl.style.display = 'none';
       const latlng = L.latLng(item.lat, item.lng);
       setPickupLocation(latlng);
@@ -481,6 +509,7 @@ function showRecentDests() {
     div.innerHTML = `🕒 <b>${item.label}</b>`;
     div.onclick = () => {
       document.getElementById('destInput').value = item.label;
+      toggleClearButton('dest');
       listEl.style.display = 'none';
       const latlng = L.latLng(item.lat, item.lng);
       setDestLocation(latlng);
@@ -604,6 +633,7 @@ function useCurrentLocationAsPickup() {
       setPickupLocation(userLatLng, true);
       const labelText = "Vị trí hiện tại của bạn";
       document.getElementById('pickupInput').value = labelText;
+      toggleClearButton('pickup');
       saveRecentPickup(labelText, userLatLng.lat, userLatLng.lng);
     }
   } else {
@@ -699,6 +729,7 @@ function onSearchInput(type, isDirectCall = false) {
       const [resLng, resLat] = topResult.geometry.coordinates;
       
       document.getElementById(type + 'Input').value = placeName;
+      toggleClearButton(type);
       listEl.style.display = 'none';
       const latlng = L.latLng(resLat, resLng);
 
@@ -733,6 +764,7 @@ function onSearchInput(type, isDirectCall = false) {
       
       div.onclick = () => {
         document.getElementById(type + 'Input').value = mainTitle;
+        toggleClearButton(type);
         listEl.style.display = 'none';
         
         const latlng = L.latLng(fLat, fLng);
@@ -902,6 +934,10 @@ function resetRoute() {
   
   document.getElementById('pickupInput').value = '';
   document.getElementById('destInput').value = '';
+  
+  // Gọi hàm ẩn nút xóa đi
+  toggleClearButton('pickup');
+  toggleClearButton('dest');
 
   updateGpsButtonUI(false);
   updatePrice();

@@ -20,7 +20,7 @@
   <script src="https://cdn.jsdelivr.net/gh/ewoken/Leaflet.MovingMarker@master/MovingMarker.js"></script>
 
   <!-- Đã đổi v=75 để ép trình duyệt nhận file CSS và JS mới -->
-  <link rel="stylesheet" href="index.css?v=75">
+  <link rel="stylesheet" href="index.css?v=76">
 </head>
 <body class="selecting-pickup">
 
@@ -80,8 +80,9 @@
     <div class="route-card" style="margin-bottom: 10px;">
       <div class="route-input-item pickup-group">
         <span class="route-icon pickup-icon">🔴</span>
-        <input type="text" id="pickupInput" placeholder="📍 Nhập điểm đón (VD: Sân bay Vinh)..." autocomplete="off" oninput="onSearchInput('pickup')" onfocus="showRecentPickups()">
+        <input type="text" id="pickupInput" placeholder="📍 Nhập điểm đón (VD: Sân bay Vinh)..." autocomplete="off" oninput="onSearchInput('pickup'); toggleClearButton('pickup');" onfocus="showRecentPickups(); toggleClearButton('pickup');">
         <div class="action-buttons-right">
+          <button type="button" id="clearPickupBtn" class="btn-clear-input" onclick="clearInput('pickup')" title="Xóa hết chữ" style="display: none;">✕</button>
           <button type="button" id="btnPickupDetail" class="btn-pickup-detail" onclick="openPickupDetailDialog()" title="Thêm ghi chú chi tiết vị trí đón">📝 Chi tiết</button>
           <button type="button" class="btn-pin-select" onclick="triggerPinSelection('pickup')" title="Chọn điểm đón trên bản đồ">📍</button>
         </div>
@@ -94,8 +95,9 @@
 
       <div class="route-input-item dest-group">
         <span class="route-icon dest-icon">🚩</span>
-        <input type="text" id="destInput" placeholder="🚩 Nhập điểm đến (VD: Bến xe Vinh)..." autocomplete="off" oninput="onSearchInput('dest')" onfocus="showRecentDests()">
+        <input type="text" id="destInput" placeholder="🚩 Nhập điểm đến (VD: Bến xe Vinh)..." autocomplete="off" oninput="onSearchInput('dest'); toggleClearButton('dest');" onfocus="showRecentDests(); toggleClearButton('dest');">
         <div class="action-buttons-right">
+          <button type="button" id="clearDestBtn" class="btn-clear-input" onclick="clearInput('dest')" title="Xóa hết chữ" style="display: none;">✕</button>
           <button type="button" class="btn-pin-select" onclick="triggerPinSelection('dest')" title="Chọn điểm đến trên bản đồ">🚩</button>
         </div>
         <div id="destSuggestions" class="suggestions-list"></div>
@@ -157,7 +159,7 @@
     </div>
   </div>
 
-  <script src="utils.js?v=75"></script>
-  <script src="index.js?v=75"></script>
+  <script src="utils.js?v=76"></script>
+  <script src="index.js?v=76"></script>
 </body>
 </html>
