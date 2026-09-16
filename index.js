@@ -29,6 +29,7 @@ function getPinCenterLatLng() {
 /* CỜ ĐÁNH DẤU TRÁNH XUNG ĐỘT KHI BẢN ĐỒ ĐANG VẼ TOÀN BỘ LỘ TRÌNH */
 let isFittingBounds = false;
 let activeZoomPinLatLng = null;
+let routeAnimationTimer = null; // Quản lý frame animation vẽ đường đi
 
 map.on('zoomstart', () => {
   if (!isFittingBounds) {
@@ -709,6 +710,7 @@ function calculateFastRoute() {
   updatePrice();
 }
 
+/* TÍNH TOÁN VÀ VẼ ĐƯỜNG ĐI MƯỢT MÀ CHẬM XONG MỚI DI CHUYỂN BẢN ĐỒ */
 async function calculateMapboxRoute() {
   if (!markerStart || !markerEnd) return;
 
@@ -733,38 +735,56 @@ async function calculateMapboxRoute() {
   }
 
   if (routeLine) map.removeLayer(routeLine);
+  if (routeAnimationTimer) cancelAnimationFrame(routeAnimationTimer);
 
-  if (routePoints && routePoints.length > 0) {
-    routeLine = L.polyline(routePoints, { 
-      color: '#00b14f', 
-      weight: 6, 
-      opacity: 0.9,
-      lineCap: 'round',    
-      lineJoin: 'round',   
-      smoothFactor: 1 
-    }).addTo(map);
-  } else {
-    const straightKm = safeDistance(start.lat, start.lng, end.lat, end.lng);
-    currentDistance = (straightKm * 1.3).toFixed(1);
-    routeLine = L.polyline([start, end], { 
-      color: '#00b14f', 
-      weight: 4, 
-      dashArray: '8, 8', 
-      opacity: 0.85 
-    }).addTo(map);
+  const targetPoints = (routePoints && routePoints.length > 0) 
+    ? routePoints 
+    : [[start.lat, start.lng], [end.lat, end.lng]];
+
+  // Khởi tạo nét vẽ rỗng
+  routeLine = L.polyline([], { 
+    color: '#00b14f', 
+    weight: 6, 
+    opacity: 0.9,
+    lineCap: 'round',    
+    lineJoin: 'round',   
+    smoothFactor: 1 
+  }).addTo(map);
+
+  const drawDuration = 1000; // Vẽ từ từ trong 1.0 giây
+  const startTime = performance.now();
+
+  function animateDrawRoute(now) {
+    const elapsed = now - startTime;
+    const progress = Math.min(elapsed / drawDuration, 1);
+    
+    // Hàm easing mượt mà cho hiệu ứng vẽ
+    const easeProgress = progress < 0.5 
+      ? 2 * progress * progress 
+      : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+
+    const count = Math.max(1, Math.floor(easeProgress * targetPoints.length));
+    routeLine.setLatLngs(targetPoints.slice(0, count));
+
+    if (progress < 1) {
+      routeAnimationTimer = requestAnimationFrame(animateDrawRoute);
+    } else {
+      // VẼ XONG MỚI BẮT ĐẦU CHUYỂN CẢNH BẢN ĐỒ NHẸ NHÀNG MƯỢT MÀ TOÀN BỘ LỘ TRÌNH
+      isFittingBounds = true;
+      map.flyToBounds(routeLine.getBounds(), {
+        paddingTopLeft: [30, 160],
+        paddingBottomRight: [30, 220],
+        duration: 1.2,       // Di chuyển camera cực nhẹ nhàng trong 1.2s
+        easeLinearity: 0.25
+      });
+
+      setTimeout(() => {
+        isFittingBounds = false;
+      }, 1300);
+    }
   }
 
-  isFittingBounds = true;
-  map.fitBounds(routeLine.getBounds(), {
-    paddingTopLeft: [30, 160],
-    paddingBottomRight: [30, 220],
-    animate: true,
-    duration: 0.8
-  });
-
-  setTimeout(() => {
-    isFittingBounds = false;
-  }, 900);
+  routeAnimationTimer = requestAnimationFrame(animateDrawRoute);
 
   updatePrice();
   updateGuide();
@@ -800,6 +820,7 @@ function updatePrice() {
 }
 
 function resetRoute() {
+  if (routeAnimationTimer) cancelAnimationFrame(routeAnimationTimer);
   clearTimeout(mapboxTimeout);
   if (markerStart) map.removeLayer(markerStart);
   if (markerEnd) map.removeLayer(markerEnd);
