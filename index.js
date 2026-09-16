@@ -30,6 +30,32 @@ const map = L.map('map', {
   inertiaDeceleration: 3000
 }).setView([18.7034, 105.6832], 13);
 
+/* HÀM MỞ CHẾ ĐỘ FOCUS ĐẨY NGUYÊN DÒNG NHẬP LÊN ĐẦU MÀN HÌNH */
+function enterFocusInputMode(type) {
+  document.body.classList.remove('focus-pickup', 'focus-dest');
+  if (type === 'pickup') {
+    document.body.classList.add('focus-pickup');
+  } else if (type === 'dest') {
+    document.body.classList.add('focus-dest');
+  }
+}
+
+/* HÀM THOÁT CHẾ ĐỘ FOCUS QUAY VỀ GIAO DIỆN BAN ĐẦU */
+function exitFocusInputMode(type) {
+  document.body.classList.remove('focus-pickup', 'focus-dest');
+  if (type) {
+    const inputEl = document.getElementById(type + 'Input');
+    if (inputEl) inputEl.blur();
+    const listEl = document.getElementById(type + 'Suggestions');
+    if (listEl) listEl.style.display = 'none';
+  } else {
+    document.getElementById('pickupInput').blur();
+    document.getElementById('destInput').blur();
+    document.getElementById('pickupSuggestions').style.display = 'none';
+    document.getElementById('destSuggestions').style.display = 'none';
+  }
+}
+
 /* HÀM ẨN/HIỆN NÚT XÓA CHỮ X TRONG Ô NHẬP */
 function toggleClearButton(type) {
   const inputEl = document.getElementById(type + 'Input');
@@ -41,6 +67,7 @@ function toggleClearButton(type) {
 
 /* HÀM XÓA TOÀN BỘ CHỮ 1 LẦN */
 function clearInput(type) {
+  enterFocusInputMode(type);
   const inputEl = document.getElementById(type + 'Input');
   if (inputEl) {
     inputEl.value = '';
@@ -315,6 +342,7 @@ function centerMapOnPin(latlng, zoom = null) {
 }
 
 function triggerPinSelection(type) {
+  exitFocusInputMode(type);
   let targetLatLng = null;
 
   if (type === 'pickup') {
@@ -476,6 +504,7 @@ function showRecentPickups() {
       const latlng = L.latLng(item.lat, item.lng);
       setPickupLocation(latlng);
       saveRecentPickup(item.label, item.lat, item.lng);
+      exitFocusInputMode('pickup');
       exitSelectionMode();
     };
     listEl.appendChild(div);
@@ -524,6 +553,7 @@ function showRecentDests() {
       const latlng = L.latLng(item.lat, item.lng);
       setDestLocation(latlng);
       saveRecentDest(item.label, item.lat, item.lng);
+      exitFocusInputMode('dest');
       exitSelectionMode();
     };
     listEl.appendChild(div);
@@ -746,10 +776,12 @@ function onSearchInput(type, isDirectCall = false) {
       if (type === 'pickup') {
         setPickupLocation(latlng);
         saveRecentPickup(placeName, resLat, resLng);
+        exitFocusInputMode('pickup');
         exitSelectionMode();
       } else {
         setDestLocation(latlng);
         saveRecentDest(placeName, resLat, resLng);
+        exitFocusInputMode('dest');
         exitSelectionMode();
       }
       return;
@@ -782,10 +814,12 @@ function onSearchInput(type, isDirectCall = false) {
         if (type === 'pickup') {
           setPickupLocation(latlng);
           saveRecentPickup(mainTitle, fLat, fLng);
+          exitFocusInputMode('pickup');
           exitSelectionMode();
         } else {
           setDestLocation(latlng);
           saveRecentDest(mainTitle, fLat, fLng);
+          exitFocusInputMode('dest');
           exitSelectionMode();
         }
       };

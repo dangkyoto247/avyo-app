@@ -145,17 +145,116 @@ body {
   z-index: 10;
 }
 
-/* TỰ ĐỘNG NÂNG TẦNG CHỈNH SỬA CHO Ô ĐANG ĐƯỢC NHẬP THÔNG TIN */
-.route-input-item:focus-within {
-  z-index: 100 !important;
-}
-
 .pickup-group {
   z-index: 20;
 }
 
 .dest-group {
   z-index: 10;
+}
+
+/* NÚT TRỞ VỀ KHI VÀO CHẾ ĐỘ FOCUS */
+.btn-back-focus {
+  display: none;
+  background: transparent;
+  border: none;
+  font-size: 18px;
+  font-weight: bold;
+  color: #0f172a;
+  cursor: pointer;
+  padding: 0 6px 0 0;
+  margin-right: 4px;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.dark-mode .btn-back-focus {
+  color: #f8fafc;
+}
+
+/* VÔ HIỆU HÓA TRANSFORM CỦA BOTTOM-SECTION KHI FOCUS ĐỂ Ô NHẬP KHÔNG BỊ KHÓA Ở ĐÁY MÀN HÌNH */
+body.focus-pickup .bottom-section,
+body.focus-dest .bottom-section {
+  transform: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+/* CHẾ ĐỘ FOCUS ĐẨY NGUYÊN DÒNG ĐIỂM ĐÓN / ĐIỂM ĐẾN LÊN ĐẦU MÀN HÌNH */
+body.focus-pickup .pickup-group,
+body.focus-dest .dest-group {
+  position: fixed !important;
+  top: calc(10px + env(safe-area-inset-top, 0px)) !important;
+  left: 14px !important;
+  right: 14px !important;
+  width: calc(100% - 28px) !important;
+  max-width: 452px !important;
+  margin: 0 auto !important;
+  z-index: 99999 !important;
+  background: #ffffff !important;
+  border: 2px solid #00b14f !important;
+  border-radius: 14px !important;
+  padding: 4px 10px !important;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.18) !important;
+  min-height: 42px !important;
+}
+
+/* ĐỊNH VỊ CHUẨN TRÊN MÀN HÌNH MÁY TÍNH (PC) KHI FOCUS */
+@media (min-width: 481px) {
+  body.focus-pickup .pickup-group,
+  body.focus-dest .dest-group {
+    left: 50% !important;
+    right: auto !important;
+    transform: translateX(-50%) !important;
+    width: 100% !important;
+    max-width: 452px !important;
+  }
+}
+
+/* HIỂN THỊ NÚT TRỞ VỀ VÀ ẨN ICON ĐẦU DÒNG KHI VÀO FOCUS */
+body.focus-pickup .pickup-group .btn-back-focus,
+body.focus-dest .dest-group .btn-back-focus {
+  display: flex !important;
+}
+
+body.focus-pickup .pickup-group .pickup-icon,
+body.focus-dest .dest-group .dest-icon {
+  display: none !important;
+}
+
+/* GIỮ NGUYÊN TOÀN BỘ CỤM NÚT BÊN PHẢI KHI FOCUS */
+body.focus-pickup .pickup-group .action-buttons-right,
+body.focus-dest .dest-group .action-buttons-right {
+  display: flex !important;
+}
+
+/* GỢI Ý XỔ XUỐNG NGAY DƯỚI DÒNG FOCUS */
+body.focus-pickup .pickup-group .suggestions-list,
+body.focus-dest .dest-group .suggestions-list {
+  position: absolute !important;
+  top: calc(100% + 6px) !important;
+  bottom: auto !important;
+  left: 0 !important;
+  right: 0 !important;
+  width: 100% !important;
+  margin: 0 !important;
+  max-height: calc(100vh - 120px) !important;
+  z-index: 100000 !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2) !important;
+  border-radius: 14px !important;
+}
+
+/* ẨN CÁC PHẦN DƯỚI KHÔNG CẦN THIẾT KHI FOCUS */
+body.focus-pickup .route-divider,
+body.focus-pickup .dest-group,
+body.focus-pickup .bottom-main-bar,
+body.focus-pickup .collapsible-drivers-panel,
+body.focus-dest .route-divider,
+body.focus-dest .pickup-group,
+body.focus-dest .bottom-main-bar,
+body.focus-dest .collapsible-drivers-panel {
+  display: none !important;
 }
 
 .route-icon {
@@ -624,7 +723,7 @@ body.map-moving .fixed-center-pin .pin-shadow {
   opacity: 0.15;
 }
 
-/* DANH SÁCH GỢI Ý ĐƯỢC ĐẶT NỔI VÀ XỔ XUỐNG DƯỚI RÕ RÀNG */
+/* DANH SÁCH GỢI Ý MẶC ĐỊNH */
 .suggestions-list { 
   position: absolute; 
   top: 100% !important; 
@@ -641,13 +740,6 @@ body.map-moving .fixed-center-pin .pin-shadow {
   display: none; 
   margin-top: 4px !important; 
   -webkit-overflow-scrolling: touch;
-}
-
-.dest-group .suggestions-list {
-  top: 100% !important;
-  bottom: auto !important;
-  margin-top: 4px !important;
-  margin-bottom: 0 !important;
 }
 
 .suggestion-item { 
