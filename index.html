@@ -19,7 +19,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/gh/ewoken/Leaflet.MovingMarker@master/MovingMarker.js"></script>
 
-  <link rel="stylesheet" href="index.css?v=60">
+  <link rel="stylesheet" href="index.css?v=61">
 </head>
 <body class="selecting-pickup">
 
@@ -54,63 +54,68 @@
     <div class="vehicle-option" onclick="selectFilter('truck', this)">🚚 Chở hàng (Thỏa thuận)</div>
   </div>
 
-  <!-- CỤM ĐẦU MÀN HÌNH -->
+  <!-- CỤM ĐẦU MÀN HÌNH (TOP BAR) -->
   <div class="top-section">
-    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-      <span style="font-size: 15px; font-weight: 900; color: #00b14f; letter-spacing: 0.6px; display: flex; align-items: center; gap: 4px;">
-        💚 AVYO
-      </span>
-      <div style="display: flex; align-items: center; gap: 6px;">
-        <!-- NÚT RESET DẠNG ICON NHỎ GỌN -->
+    <div class="header-brand-row">
+      <span class="brand-logo">💚 AVYO</span>
+      <div class="header-actions">
         <button id="resetBtn" class="btn-reset-icon" onclick="resetRoute()" title="Đặt lại điểm đón/đến">🔄</button>
         <button id="themeToggle" class="btn-theme-toggle" onclick="toggleDarkMode()" title="Giao diện Tối/Sáng">🌙</button>
       </div>
     </div>
 
-    <!-- Ô NHẬP ĐIỂM ĐÓN + NÚT CHI TIẾT + NÚT GHIM PIN -->
-    <div class="search-input-group pickup-group">
-      <input type="text" id="pickupInput" placeholder="📍 Tìm điểm đón (VD: Sân bay Vinh)..." autocomplete="off" oninput="onSearchInput('pickup')" onfocus="showRecentPickups()">
-      <button type="button" id="btnPickupDetail" class="btn-pickup-detail" onclick="openPickupDetailDialog()" title="Thêm ghi chú chi tiết vị trí đón">📝 Chi tiết</button>
-      <button type="button" class="btn-pin-select" onclick="triggerPinSelection('pickup')" title="Chọn điểm đón bằng ghim pin trên bản đồ">📍</button>
-      <div id="pickupSuggestions" class="suggestions-list"></div>
-    </div>
+    <!-- KHUNG ĐỊA CHỈ DẠNG KHUÔN LIÊN KẾT (TIMELINE CARD) -->
+    <div class="route-card">
+      <div class="route-input-item pickup-group">
+        <span class="route-icon pickup-icon">🔴</span>
+        <input type="text" id="pickupInput" placeholder="📍 Nhập điểm đón (VD: Sân bay Vinh)..." autocomplete="off" oninput="onSearchInput('pickup')" onfocus="showRecentPickups()">
+        <div class="action-buttons-right">
+          <button type="button" id="btnPickupDetail" class="btn-pickup-detail" onclick="openPickupDetailDialog()" title="Thêm ghi chú chi tiết vị trí đón">📝 Chi tiết</button>
+          <button type="button" class="btn-pin-select" onclick="triggerPinSelection('pickup')" title="Chọn điểm đón trên bản đồ">📍</button>
+        </div>
+        <div id="pickupSuggestions" class="suggestions-list"></div>
+      </div>
 
-    <!-- Ô NHẬP ĐIỂM ĐẾN + NÚT GHIM PIN -->
-    <div class="search-input-group dest-group" style="margin-bottom: 0px;">
-      <input type="text" id="destInput" placeholder="🚩 Tìm điểm đến (VD: Bến xe Vinh)..." autocomplete="off" oninput="onSearchInput('dest')" onfocus="showRecentDests()">
-      <button type="button" class="btn-pin-select" onclick="triggerPinSelection('dest')" title="Chọn điểm đến bằng ghim pin trên bản đồ">🚩</button>
-      <div id="destSuggestions" class="suggestions-list"></div>
+      <div class="route-divider">
+        <span class="connector-line"></span>
+      </div>
+
+      <div class="route-input-item dest-group">
+        <span class="route-icon dest-icon">🚩</span>
+        <input type="text" id="destInput" placeholder="🚩 Nhập điểm đến (VD: Bến xe Vinh)..." autocomplete="off" oninput="onSearchInput('dest')" onfocus="showRecentDests()">
+        <div class="action-buttons-right">
+          <button type="button" class="btn-pin-select" onclick="triggerPinSelection('dest')" title="Chọn điểm đến trên bản đồ">🚩</button>
+        </div>
+        <div id="destSuggestions" class="suggestions-list"></div>
+      </div>
     </div>
 
     <!-- NÚT XÁC NHẬN VỊ TRÍ CHÍNH GIỮA BẢN ĐỒ -->
     <button id="confirmSelectBtn" class="btn-confirm-select" onclick="confirmAndExitSelection()">
-      📍 CHỌN ĐIỂM ĐÓN NÀY
+      📍 CHỌN VỊ TRÍ NÀY
     </button>
   </div>
 
-  <!-- CỤM ĐÁY MÀN HÌNH -->
+  <!-- CỤM ĐÁY MÀN HÌNH (BOTTOM SHEET) -->
   <div class="bottom-section">
-    <!-- Khối 1: Cước phí (Bên Trái) & Nút mở 3 Tài Xế (Bên Phải) -->
-    <div class="section-block">
-      <div class="price-container">
-        <div class="price-left">
-          <div id="price" class="price">0đ</div>
-          <small id="rate-label" style="font-size: 12px; color: #15803d; font-weight: 600; line-height: 1.2;"></small>
-        </div>
-        <button type="button" id="btnToggleDrivers" class="btn-toggle-drivers" onclick="toggleTop3Drivers()" title="Xem danh sách 3 tài xế gần nhất">
-          <span>⚡ 3 Tài Xế Gần Nhất</span>
-          <span id="toggleArrow" style="font-size: 10px; margin-left: 2px;">▾</span>
-        </button>
+    <div class="bottom-main-bar">
+      <div class="price-info">
+        <div id="price" class="price-amount">0đ</div>
+        <div id="rate-label" class="price-sub"></div>
       </div>
+      <button type="button" id="btnToggleDrivers" class="btn-drivers-toggle" onclick="toggleTop3Drivers()" title="Xem danh sách 3 tài xế gần nhất">
+        <span>⚡ 3 Tài Xế Gần Nhất</span>
+        <span id="toggleArrow" class="arrow-icon">▾</span>
+      </button>
     </div>
 
-    <!-- Khối 2: 3 Tài xế gần điểm đón nhất (Thu gọn / Mở rộng trượt mượt) -->
-    <div id="top3Card" class="section-block divider-top collapsible-drivers">
-      <h4 style="margin: 0 0 8px 0; color: #334155; font-size: 13px; display: flex; align-items: center; justify-content: space-between;">
+    <!-- DANH SÁCH 3 TÀI XẾ (SLIDE UP / DOWN PANEL) -->
+    <div id="top3Card" class="collapsible-drivers-panel">
+      <div class="panel-header">
         <span>⚡ 3 Tài Xế Gần điểm đón nhất</span>
-        <span id="radiusBadge" style="font-size: 11px; color: #64748b; font-weight: normal;">Bán kính 5km</span>
-      </h4>
-      <div id="top3List"></div>
+        <span id="radiusBadge" class="radius-badge">Bán kính 5km</span>
+      </div>
+      <div id="top3List" class="drivers-list"></div>
     </div>
   </div>
 
@@ -147,7 +152,7 @@
     </div>
   </div>
 
-  <script src="utils.js?v=60"></script>
-  <script src="index.js?v=60"></script>
+  <script src="utils.js?v=61"></script>
+  <script src="index.js?v=61"></script>
 </body>
 </html>

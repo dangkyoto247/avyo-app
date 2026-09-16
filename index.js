@@ -96,13 +96,13 @@ let ratingDriverTarget = null;
 let rawDriversData = [];
 let searchTimer = null;
 let mapboxTimeout = null;
-let pickupDetailNote = ''; // LƯU GHI CHÚ CHI TIẾT NƠI ĐÓNG KHÁCH
+let pickupDetailNote = '';
 
 let currentSelectionMode = 'pickup';
 
 let activeFilter = localStorage.getItem(VEHICLE_PREF_KEY) || 'bike';
 
-/* HÀM MỞ / ĐÓNG TRUỢT 3 TÀI XẾ GẦN NHẤT */
+/* HÀM MỞ / ĐÓNG TRƯỢT 3 TÀI XẾ GẦN NHẤT */
 function toggleTop3Drivers() {
   const card = document.getElementById('top3Card');
   const btn = document.getElementById('btnToggleDrivers');
@@ -667,7 +667,7 @@ document.addEventListener('click', (e) => {
     if (menu) menu.style.display = 'none';
   }
 
-  if (!e.target.closest('.search-input-group')) {
+  if (!e.target.closest('.route-card')) {
     document.getElementById('pickupSuggestions').style.display = 'none';
     document.getElementById('destSuggestions').style.display = 'none';
   }
@@ -741,7 +741,7 @@ async function calculateMapboxRoute() {
   isFittingBounds = true;
   map.fitBounds(routeLine.getBounds(), {
     paddingTopLeft: [30, 160],
-    paddingBottomRight: [30, 240],
+    paddingBottomRight: [30, 220],
     animate: true,
     duration: 0.8
   });
@@ -1127,7 +1127,7 @@ function renderDriverMarkers() {
 
       div.innerHTML = `
         <div style="display:flex; align-items:center; gap:10px; flex: 1;" onclick="selectDriver(rawDriversData.find(d => d.id === '${driver.id}'))">
-          <img src="${avatarUrl}" class="driver-avatar-img" style="width:40px; height:40px;" onerror="this.src='https://cdn-icons-png.flaticon.com/512/149/149071.png'">
+          <img src="${avatarUrl}" class="driver-avatar-img" onerror="this.src='https://cdn-icons-png.flaticon.com/512/149/149071.png'">
           <div>
             <div style="font-weight:bold; font-size:13px; color:#0f172a;">${driver.name}</div>
             <div style="font-size:11px; color:#64748b;">${typeBadge} • Cách <b>${distKm.toFixed(1)} km</b></div>
