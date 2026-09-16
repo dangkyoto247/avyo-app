@@ -1,5 +1,5 @@
 const TILE_CACHE_NAME = 'map-tiles-v2';
-const STATIC_CACHE_NAME = 'avyo-static-v14';
+const STATIC_CACHE_NAME = 'avyo-static-v52'; // Đã đổi version để buộc điện thoại xóa cache cũ
 
 const STATIC_ASSETS = [
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
@@ -66,7 +66,6 @@ self.addEventListener('fetch', (event) => {
 
   if (event.request.method !== 'GET') return;
 
-  // BỎ QUA KHÔNG BẮT REQUEST ẢNH BÊN THỨ 3 ĐỂ TRÁNH LỖI NETWORK CONSOLE
   if (requestUrl.includes('weserv.nl') || requestUrl.includes('flaticon.com')) {
     return;
   }

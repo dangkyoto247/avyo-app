@@ -76,7 +76,7 @@ let rawDriversData = [];
 let searchTimer = null;
 let mapboxTimeout = null;
 
-let currentSelectionMode = null; // Mặc định chưa bật chế độ chọn bằng ghim cố định
+let currentSelectionMode = 'pickup'; // Mặc định khi vào trang chọn điểm đón qua ghim
 
 function safeDistance(lat1, lon1, lat2, lon2) {
   if (typeof getHaversineDistance === 'function') {
@@ -106,7 +106,7 @@ function getPinCenterLatLng() {
   return map.containerPointToLatLng([pinX, pinY]);
 }
 
-/* HÀM ĐẶT BẢN ĐỒ SAO CHO TỌA ĐỘ NẰM ĐÚNG VỊ TRÍ GHIM 1/3 (GIỮ NGUYÊN MỨC ZOOM) */
+/* HÀM ĐẶT BẢN ĐỒ SAO CHO TỌA ĐỘ NẰM ĐÚNG VỊ TRÍ GHIM 1/3 */
 function centerMapOnPin(latlng, zoom = null) {
   if (!map || !latlng) return;
   if (zoom !== null && map.getZoom() !== zoom) {
@@ -117,7 +117,7 @@ function centerMapOnPin(latlng, zoom = null) {
   const currentPoint = map.latLngToContainerPoint(latlng);
   const delta = currentPoint.subtract(pinPoint);
   
-  map.panBy(delta, { animate: true, duration: 0.3 });
+  map.panBy(delta, { animate: true, duration: 0.4 });
 }
 
 /* KÍCH HOẠT CHẾ ĐỘ CHỌN GHIM PIN VÀ DỊCH CHUYỂN BẢN ĐỒ GIỮ NGUYÊN ZOOM */
@@ -194,7 +194,7 @@ async function fetchAddressForInput(type, latlng) {
   }
 }
 
-/* XÁC NHẬN CHỌN GHIM PIN: CHỈ CHUYỂN BƯỚC NẾU CHƯA CÓ ĐIỂM ĐẾN */
+/* XÁC NHẬN CHỌN GHIM PIN: CHUYỂN SANG ĐIỂM ĐẾN NẾU CHƯA CÓ ĐIỂM ĐẾN */
 function confirmAndExitSelection() {
   const pinLatLng = getPinCenterLatLng();
 
@@ -233,6 +233,10 @@ map.on('movestart', () => {
 map.on('moveend', () => {
   document.body.classList.remove('map-moving');
   if (map) map.invalidateSize();
+
+  if (currentSelectionMode) {
+    fetchAddressForInput(currentSelectionMode, getPinCenterLatLng());
+  }
 });
 
 function getRecentPickups() {
@@ -388,6 +392,7 @@ map.on('locationfound', (e) => {
   userLatLng = e.latlng;
   if (currentSelectionMode) {
     centerMapOnPin(e.latlng, 15);
+    fetchAddressForInput('pickup', e.latlng);
   } else if (!markerStart) {
     setPickupLocation(e.latlng, true);
   }
@@ -409,7 +414,9 @@ function setPickupLocation(latlng, isAuto = false) {
     }, 1200);
   });
     
-  document.getElementById('resetBtn').style.display = 'block';
+  const resetBtn = document.getElementById('resetBtn');
+  if (resetBtn) resetBtn.style.display = 'inline-flex';
+  
   if (markerEnd) calculateMapboxRoute();
 
   loadDrivers();
@@ -432,7 +439,9 @@ function setDestLocation(latlng) {
     }, 1200);
   });
     
-  document.getElementById('resetBtn').style.display = 'block';
+  const resetBtn = document.getElementById('resetBtn');
+  if (resetBtn) resetBtn.style.display = 'inline-flex';
+  
   calculateMapboxRoute();
   loadDrivers();
   updateGuide();
@@ -442,6 +451,7 @@ function useCurrentLocationAsPickup() {
   if (userLatLng) {
     if (currentSelectionMode) {
       centerMapOnPin(userLatLng, map.getZoom());
+      fetchAddressForInput(currentSelectionMode, userLatLng);
     } else {
       map.setView(userLatLng, 15);
       setPickupLocation(userLatLng, true);
@@ -631,7 +641,7 @@ function calculateFastRoute() {
   updatePrice();
 }
 
-/* TÍNH TOÁN LỘ TRÌNH VÀ TỰ ĐỘNG THU NHỎ BẢN ĐỒ KHÔNG CÓ HIỆU ỨNG TRƯỢT CẮT GIẢM HOÀN TOÀN CHÓNG MẶT (ANIMATE: FALSE) */
+/* TÍNH TOÁN LỘ TRÌNH VÀ TỰ ĐỘNG THU NHỎ BẢN ĐỒ KHÔNG CÓ HIỆU ỨNG TRƯỢT KÉO DÀI (ANIMATE: FALSE) */
 async function calculateMapboxRoute() {
   if (!markerStart || !markerEnd) return;
 
@@ -677,7 +687,7 @@ async function calculateMapboxRoute() {
     }).addTo(map);
   }
 
-  // TẮT HIỆU ỨNG TRƯỢT KÉO DÀI (ANIMATE: FALSE) ĐỂ ÔM TOÀN CẢNH LẬP TỨC VÀ KHÔNG GÂY CHÓNG MẶT
+  // TẮT CHUYỂN CẢNH KÉO DÀI ĐỂ ÔM TOÀN CẢNH TỨC THÌ
   map.fitBounds(routeLine.getBounds(), { 
     padding: [60, 60],
     animate: false 
@@ -726,13 +736,16 @@ function resetRoute() {
   routeLine = null;
   currentDistance = 0;
   currentPrice = 0;
-  document.getElementById('resetBtn').style.display = 'none';
+  
+  const resetBtn = document.getElementById('resetBtn');
+  if (resetBtn) resetBtn.style.display = 'none';
+  
   document.getElementById('pickupInput').value = '';
   document.getElementById('destInput').value = '';
 
   updatePrice();
   loadDrivers();
-  exitSelectionMode();
+  enterSelectionMode('pickup');
 }
 
 function deselectDriver() {
@@ -1113,7 +1126,8 @@ function renderDriverMarkers() {
   });
 }
 
-// Tải danh sách tài xế ban đầu (chế độ ghim chỉ bật khi bấm nút 📍/🚩)
+// Bật mặc định chọn ghim điểm đón ngay khi tải trang
+enterSelectionMode('pickup');
 loadDrivers();
 updateGuide();
 
@@ -1125,9 +1139,29 @@ setInterval(() => {
 
 document.addEventListener('gesturestart', function (e) { e.preventDefault(); });
 
+/* TỰ ĐỘNG LÀM MỚI KHI CÓ PHIÊN BẢN CẮT CACHE MỚI */
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js').then(() => {
+  navigator.serviceWorker.register('sw.js').then((reg) => {
     console.log("App đã sẵn sàng hoạt động!");
+    
+    reg.addEventListener('updatefound', () => {
+      const newWorker = reg.installing;
+      if (newWorker) {
+        newWorker.addEventListener('statechange', () => {
+          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            window.location.reload();
+          }
+        });
+      }
+    });
+  });
+
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!refreshing) {
+      refreshing = true;
+      window.location.reload();
+    }
   });
 }
 

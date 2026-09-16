@@ -454,18 +454,38 @@ body.selecting-dest .btn-confirm-select {
   transform: scale(0.95);
 }
 
-.btn-reset { 
-  background: #f97316; 
-  color: white; 
-  padding: 10px; 
-  border-radius: 10px; 
-  border: none; 
-  font-weight: bold; 
-  width: 100%; 
-  margin-top: 8px; 
-  cursor: pointer; 
-  display: none; 
+/* NÚT RESET ICON TINH GỌN TRÊN HEADER */
+.btn-reset-icon { 
+  background: #fff7ed; 
+  border: 1px solid #ffedd5; 
+  color: #f97316; 
+  border-radius: 20px; 
+  min-width: 32px; 
+  height: 30px; 
   font-size: 14px; 
+  display: none; 
+  align-items: center; 
+  justify-content: center; 
+  cursor: pointer; 
+  flex-shrink: 0; 
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1); 
+  transition: all 0.2s ease; 
+  padding: 0 8px; 
+}
+
+.btn-reset-icon:hover { 
+  background: #ffedd5; 
+  transform: scale(1.05); 
+}
+
+.btn-reset-icon:active { 
+  transform: scale(0.95); 
+}
+
+.dark-mode .btn-reset-icon { 
+  background: #431407; 
+  border-color: #7c2d12; 
+  color: #fb923c; 
 }
 
 .vehicle-icon { 
