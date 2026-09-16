@@ -30,6 +30,50 @@ const map = L.map('map', {
   inertiaDeceleration: 3000
 }).setView([18.7034, 105.6832], 13);
 
+/* HÀM HOÁN ĐỔI ĐIỂM ĐÓN VÀ ĐIỂM ĐẾN */
+function swapRoute() {
+  const pickupInput = document.getElementById('pickupInput');
+  const destInput = document.getElementById('destInput');
+
+  // 1. Hoán đổi văn bản giữa 2 ô nhập
+  const tempVal = pickupInput.value;
+  pickupInput.value = destInput.value;
+  destInput.value = tempVal;
+
+  toggleClearButton('pickup');
+  toggleClearButton('dest');
+
+  // 2. Hoán đổi Marker & Tọa độ Điểm đón ⇄ Điểm đến
+  if (markerStart || markerEnd) {
+    const tempMarker = markerStart;
+    markerStart = markerEnd;
+    markerEnd = tempMarker;
+
+    if (markerStart) {
+      markerStart.setIcon(pickupIcon);
+      markerStart.off('click');
+      markerStart.on('click', () => triggerPinSelection('pickup'));
+    }
+    if (markerEnd) {
+      markerEnd.setIcon(destinationIcon);
+      markerEnd.off('click');
+      markerEnd.on('click', () => triggerPinSelection('dest'));
+    }
+
+    if (markerStart && markerEnd) {
+      calculateMapboxRoute();
+    } else {
+      if (routeLine) {
+        map.removeLayer(routeLine);
+        routeLine = null;
+      }
+      currentDistance = 0;
+      updatePrice();
+    }
+    loadDrivers();
+  }
+}
+
 /* HÀM MỞ CHẾ ĐỘ FOCUS ĐẨY NGUYÊN DÒNG NHẬP LÊN ĐẦU MÀN HÌNH */
 function enterFocusInputMode(type) {
   document.body.classList.remove('focus-pickup', 'focus-dest');
@@ -498,6 +542,7 @@ function showRecentPickups() {
     div.className = 'suggestion-item';
     div.innerHTML = `🕒 <b>${item.label}</b>`;
     div.onclick = () => {
+      if (document.activeElement) document.activeElement.blur(); // Thu bàn phím ảo
       document.getElementById('pickupInput').value = item.label;
       toggleClearButton('pickup');
       listEl.style.display = 'none';
@@ -547,6 +592,7 @@ function showRecentDests() {
     div.className = 'suggestion-item';
     div.innerHTML = `🕒 <b>${item.label}</b>`;
     div.onclick = () => {
+      if (document.activeElement) document.activeElement.blur(); // Thu bàn phím ảo
       document.getElementById('destInput').value = item.label;
       toggleClearButton('dest');
       listEl.style.display = 'none';
@@ -703,6 +749,10 @@ function onSearchInput(type, isDirectCall = false) {
     return;
   }
 
+  // Bật trạng thái "Đang tìm..." ngay lập tức khi gõ từ ký tự thứ 2
+  listEl.innerHTML = '<div class="suggestion-loading">⏳ Đang tìm địa chỉ...</div>';
+  listEl.style.display = 'block';
+
   const executeSearch = async () => {
     let rawCenter = markerStart ? markerStart.getLatLng() : (userLatLng || getPinCenterLatLng());
     
@@ -768,6 +818,7 @@ function onSearchInput(type, isDirectCall = false) {
       const placeName = cleanAddressText(topResult.text || topResult.place_name);
       const [resLng, resLat] = topResult.geometry.coordinates;
       
+      if (document.activeElement) document.activeElement.blur(); // Thu bàn phím ảo
       document.getElementById(type + 'Input').value = placeName;
       toggleClearButton(type);
       listEl.style.display = 'none';
@@ -805,6 +856,7 @@ function onSearchInput(type, isDirectCall = false) {
       div.innerHTML = `📍 <b>${mainTitle}</b> <small style="color:#64748b; font-size:11px;">(${addressSub}<b style="color:#00b14f;">${distTag}</b>)</small>`;
       
       div.onclick = () => {
+        if (document.activeElement) document.activeElement.blur(); // Thu bàn phím ảo lập tức
         document.getElementById(type + 'Input').value = mainTitle;
         toggleClearButton(type);
         listEl.style.display = 'none';

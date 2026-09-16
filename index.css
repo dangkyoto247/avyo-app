@@ -344,6 +344,52 @@ body.focus-dest .collapsible-drivers-panel {
   border-radius: 2px;
 }
 
+/* NÚT HOÁN ĐỔI NƠI ĐÓN ⇄ NƠI ĐẾN */
+.btn-swap-route {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 50%;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: bold;
+  color: #00b14f;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+  transition: all 0.2s ease;
+  z-index: 25;
+  padding: 0;
+}
+
+.btn-swap-route:active {
+  transform: translateY(-50%) scale(0.88);
+}
+
+.dark-mode .btn-swap-route {
+  background: #334155;
+  border-color: #475569;
+  color: #6ee7b7;
+}
+
+/* THÔNG BÁO ĐANG TÌM ĐỊA CHỈ */
+.suggestion-loading {
+  padding: 10px 12px;
+  font-size: 13px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.dark-mode .suggestion-loading {
+  color: #94a3b8;
+}
+
 .btn-pickup-detail {
   background: #ffffff;
   border: 1px solid #cbd5e1;
@@ -897,6 +943,16 @@ body.dark-mode {
 
 .dark-mode .suggestion-item:hover {
   background: #064e3b;
+  color: #6ee7b7;
+}
+
+.dark-mode .suggestion-loading {
+  color: #94a3b8;
+}
+
+.dark-mode .btn-swap-route {
+  background: #334155;
+  border-color: #475569;
   color: #6ee7b7;
 }
 
