@@ -232,20 +232,20 @@ body.focus-dest .dest-group .action-buttons-right {
 /* GỢI Ý XỔ XUỐNG NGAY DƯỚI DÒNG FOCUS */
 body.focus-pickup .pickup-group .suggestions-list,
 body.focus-dest .dest-group .suggestions-list {
-  position: absolute !important;
-  top: calc(100% + 6px) !important;
+  top: 100% !important;
   bottom: auto !important;
   left: 0 !important;
   right: 0 !important;
-  width: 100% !important;
-  margin: 0 !important;
+  margin-top: 6px !important;
   max-height: calc(100vh - 120px) !important;
   z-index: 100000 !important;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2) !important;
   border-radius: 14px !important;
 }
 
-/* ẨN CÁC PHẦN DƯỚI KHÔNG CẦN THIẾT KHI FOCUS */
+/* PHƯƠNG ÁN 1: ẨN LOGO AVYO & NÚT SÁNG TỐI CÙNG CÁC PHẦN DƯỚI KHI FOCUS ĐỂ DÒNG NHẬP NẰM TRÊN CÙNG MÀN HÌNH */
+body.focus-pickup .top-float-bar,
+body.focus-dest .top-float-bar,
 body.focus-pickup .route-divider,
 body.focus-pickup .dest-group,
 body.focus-pickup .bottom-main-bar,
