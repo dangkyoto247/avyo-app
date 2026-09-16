@@ -26,33 +26,29 @@ function getPinCenterLatLng() {
   return map.containerPointToLatLng([size.x / 2, size.y * 0.3333]);
 }
 
-/* QUẢN LÝ THU NHỎ / PHÓNG TO KHÓA CHÍNH XÁC GHIM 1/3 LÀM TÂM XUÂN */
+/* CỜ ĐÁNH DẤU TRÁNH XUNG ĐỘT KHI BẢN ĐỒ ĐANG VẼ TOÀN BỘ LỘ TRÌNH */
+let isFittingBounds = false;
 let activeZoomPinLatLng = null;
 
 map.on('zoomstart', () => {
-  activeZoomPinLatLng = getPinCenterLatLng();
+  if (!isFittingBounds) {
+    activeZoomPinLatLng = getPinCenterLatLng();
+  }
 });
 
 map.on('zoomend', () => {
-  if (activeZoomPinLatLng) {
+  if (activeZoomPinLatLng && !isFittingBounds) {
     const size = map.getSize();
     const pinPoint = L.point(size.x / 2, size.y * 0.3333);
     const currentPoint = map.latLngToContainerPoint(activeZoomPinLatLng);
     const delta = currentPoint.subtract(pinPoint);
 
-    // Chuẩn hóa sai số pixel ngay lập tức nếu có lệch do cử chỉ vuốt chạm
-    if (Math.abs(delta.x) > 0.5 || Math.abs(delta.y) > 0.5) {
+    if (Math.abs(delta.x) > 1 || Math.abs(delta.y) > 1) {
       map.panBy(delta, { animate: false });
     }
     activeZoomPinLatLng = null;
   }
 });
-
-// GHI ĐÈ PHƯƠNG THỨC ZOOM ĐỂ MỌI THAO TÁC (NÚT BẤM, NÉN HAI NGÓN TAY, CUỘN CHUỘT) LUÔN DÙNG GHIM 1/3 LÀM TÂM
-map.setZoom = function (zoom, options) {
-  const pinLatLng = activeZoomPinLatLng || getPinCenterLatLng();
-  return this.setZoomAround(pinLatLng, zoom, options);
-};
 
 // LỚP BẢN ĐỒ CHÍNH: GOOGLE MAPS TILES (ĐÃ TỐI ƯU MƯỢT MÀ)
 const googleLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
@@ -646,6 +642,7 @@ function calculateFastRoute() {
   updatePrice();
 }
 
+/* TÍNH TOÁN LỘ TRÌNH VÀ TỰ ĐỘNG CĂN TÂM HIỂN THỊ TOÀN BỘ ĐƯỜNG VẼ LỘ TRÌNH CHUẨN ĐẸP MẮT */
 async function calculateMapboxRoute() {
   if (!markerStart || !markerEnd) return;
 
@@ -691,10 +688,18 @@ async function calculateMapboxRoute() {
     }).addTo(map);
   }
 
-  map.fitBounds(routeLine.getBounds(), { 
-    padding: [60, 60],
-    animate: true 
+  // BẬT CỜ DỰNG BẢN ĐỒ ĐỂ FITBOUNDS HIỂN THỊ TRỌN VẸN VỚI KHOẢNG ĐỆM CHUẨN
+  isFittingBounds = true;
+  map.fitBounds(routeLine.getBounds(), {
+    paddingTopLeft: [30, 140],     // Tránh bị khung tìm kiếm trên che
+    paddingBottomRight: [30, 240], // Tránh bị bảng cước phí dưới che
+    animate: true,
+    duration: 0.8
   });
+
+  setTimeout(() => {
+    isFittingBounds = false;
+  }, 900);
 
   updatePrice();
   updateGuide();
