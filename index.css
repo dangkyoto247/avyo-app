@@ -2,28 +2,30 @@ html, body {
   margin: 0;
   padding: 0;
   height: 100%;
+  height: 100dvh;
   width: 100%;
   overflow: hidden;
+  background: #ffffff;
 }
 
 body { 
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
   max-width: 480px; 
   margin: auto; 
-  background: #cbd5e1; 
   touch-action: manipulation;
   -webkit-text-size-adjust: 100%;
   box-sizing: border-box;
   position: relative;
 }
 
-/* BẢN ĐỒ CỐ ĐỊNH NỀN */
+/* BẢN ĐỒ CỐ ĐỊNH NỀN KHÔNG BỊ HỞ KHE */
 #map { 
   position: fixed;
   top: 0;
   left: 0;
   width: 100vw;
   height: 100vh;
+  height: 100dvh;
   z-index: 1;
   margin: 0;
   overflow: hidden;
@@ -58,12 +60,6 @@ body {
 
   body.dark-mode {
     background-color: #0f172a;
-  }
-
-  .btn-gps-float,
-  .btn-vehicle-float,
-  .vehicle-menu-popover {
-    right: calc(50vw - 240px + 16px) !important;
   }
 }
 
@@ -250,9 +246,11 @@ body {
 }
 
 body.selecting-pickup .dest-group,
-body.selecting-pickup .bottom-section,
+body.selecting-pickup .bottom-main-bar,
+body.selecting-pickup .collapsible-drivers-panel,
 body.selecting-dest .pickup-group,
-body.selecting-dest .bottom-section {
+body.selecting-dest .bottom-main-bar,
+body.selecting-dest .collapsible-drivers-panel {
   display: none !important;
 }
 
@@ -261,7 +259,16 @@ body.selecting-dest .btn-confirm-select {
   display: block !important;
 }
 
-/* CỤM KHUNG DƯỚI (BOTTOM SHEET CHUẨN GỌN) */
+body.selecting-pickup .bottom-section,
+body.selecting-dest .bottom-section {
+  background: transparent !important;
+  box-shadow: none !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  pointer-events: none !important;
+}
+
+/* CỤM KHUNG DƯỚI (BOTTOM SHEET CHUẨN TRÀN MÀN HÌNH - KHÔNG DÙNG OVERFLOW HIDE NÚT) */
 .bottom-section {
   position: fixed;
   bottom: 0;
@@ -277,9 +284,119 @@ body.selecting-dest .btn-confirm-select {
   border-radius: 20px 20px 0 0;
   box-shadow: 0 -6px 20px rgba(0, 0, 0, 0.12);
   box-sizing: border-box;
-  max-height: 60vh;
-  overflow-y: auto;
+  overflow: visible !important;
   transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+}
+
+/* CỤM NÚT NỔI CỐ ĐỊNH NGAY MỐC MÉP TRÊN THẺ BOTTOM */
+.floating-controls-stack {
+  position: absolute;
+  bottom: 100%;
+  right: 14px;
+  margin-bottom: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  z-index: 105;
+  pointer-events: none;
+}
+
+/* NÚT NỔI GPS KHU VỰC BẢN ĐỒ */
+.btn-gps-float {
+  pointer-events: auto;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.96);
+  color: #334155;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.18);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  padding: 0;
+}
+
+.btn-gps-float:hover {
+  background: #ffffff;
+  color: #00b14f;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.22);
+}
+
+.btn-gps-float:active {
+  transform: translateY(0) scale(0.95);
+}
+
+/* NÚT NỔI CHỌN XE TINH GỌN ICON */
+.btn-vehicle-float {
+  pointer-events: auto;
+  height: 40px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.96);
+  color: #0f172a;
+  border: 1.5px solid #00b14f;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.18);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0 10px;
+  font-size: 13px;
+  font-weight: 700;
+  transition: all 0.2s ease;
+}
+
+.btn-vehicle-float:hover {
+  background: #ffffff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.22);
+}
+
+.btn-vehicle-float:active {
+  transform: translateY(0) scale(0.95);
+}
+
+/* MENU CHỌN LOẠI XE POPUP */
+.vehicle-menu-popover {
+  pointer-events: auto;
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 6px);
+  z-index: 110;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 14px;
+  padding: 6px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+  display: none;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 190px;
+}
+
+.vehicle-option {
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.vehicle-option:hover {
+  background: #f0fdf4;
+  color: #16a34a;
+}
+
+.vehicle-option.active {
+  background: #00b14f;
+  color: #ffffff;
 }
 
 .bottom-main-bar {
@@ -291,6 +408,7 @@ body.selecting-dest .btn-confirm-select {
   border-radius: 14px;
   padding: 10px 12px;
   box-shadow: inset 0 1px 2px rgba(255,255,255,0.6), 0 2px 6px rgba(22,163,74,0.1);
+  pointer-events: auto;
 }
 
 .price-info {
@@ -347,8 +465,9 @@ body.selecting-dest .btn-confirm-select {
 
 /* DANH SÁCH TÀI XẾ TRƯỢT LÊN / XUỐNG MƯỢT MÀ */
 .collapsible-drivers-panel {
+  pointer-events: auto;
   max-height: 0;
-  overflow: hidden;
+  overflow-y: auto;
   opacity: 0;
   margin-top: 0;
   padding-top: 0;
@@ -357,7 +476,7 @@ body.selecting-dest .btn-confirm-select {
 }
 
 .collapsible-drivers-panel.show {
-  max-height: 420px;
+  max-height: 50vh;
   opacity: 1;
   margin-top: 10px;
   padding-top: 10px;
@@ -414,123 +533,6 @@ body.map-moving .fixed-center-pin {
 body.map-moving .fixed-center-pin .pin-shadow {
   transform: scale(0.4);
   opacity: 0.15;
-}
-
-/* NÚT NỔI GPS KHU VỰC BẢN ĐỒ */
-.btn-gps-float {
-  position: fixed;
-  right: 16px;
-  bottom: 210px;
-  z-index: 90;
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.95);
-  color: #334155;
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  padding: 0;
-}
-
-.btn-gps-float:hover {
-  background: #ffffff;
-  color: #00b14f;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-}
-
-.btn-gps-float:active {
-  transform: translateY(0) scale(0.95);
-}
-
-/* NÚT NỔI CHỌN XE */
-.btn-vehicle-float {
-  position: fixed;
-  right: 16px;
-  bottom: 160px;
-  z-index: 90;
-  height: 40px;
-  border-radius: 20px;
-  background: rgba(255, 255, 255, 0.95);
-  color: #0f172a;
-  border: 1.5px solid #00b14f;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 0 12px;
-  font-size: 13px;
-  font-weight: 700;
-  transition: all 0.2s ease;
-}
-
-.btn-vehicle-float:hover {
-  background: #ffffff;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-}
-
-.btn-vehicle-float:active {
-  transform: translateY(0) scale(0.95);
-}
-
-/* MENU CHỌN LOẠI XE POPUP */
-.vehicle-menu-popover {
-  position: fixed;
-  right: 16px;
-  bottom: 208px;
-  z-index: 91;
-  background: #ffffff;
-  border: 1px solid #cbd5e1;
-  border-radius: 14px;
-  padding: 6px;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
-  display: none;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 190px;
-}
-
-.vehicle-option {
-  padding: 8px 12px;
-  border-radius: 10px;
-  font-size: 13px;
-  font-weight: 600;
-  color: #334155;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  white-space: nowrap;
-}
-
-.vehicle-option:hover {
-  background: #f0fdf4;
-  color: #16a34a;
-}
-
-.vehicle-option.active {
-  background: #00b14f;
-  color: #ffffff;
-}
-
-body.selecting-pickup .btn-gps-float,
-body.selecting-dest .btn-gps-float {
-  bottom: 85px;
-}
-
-body.selecting-pickup .btn-vehicle-float,
-body.selecting-dest .btn-vehicle-float {
-  bottom: 135px;
-}
-
-body.selecting-pickup .vehicle-menu-popover,
-body.selecting-dest .vehicle-menu-popover {
-  bottom: 183px;
 }
 
 .suggestions-list { 
@@ -637,17 +639,17 @@ body.selecting-dest .vehicle-menu-popover {
   background: rgba(255, 255, 255, 0.9);
   border: 1px solid #cbd5e1;
   border-radius: 20px;
-  min-width: 32px;
-  height: 30px;
-  font-size: 15px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  flex-shrink: 0;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-  transition: all 0.2s ease;
-  padding: 0 8px;
+  min-width: 32px; 
+  height: 30px; 
+  font-size: 15px; 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  cursor: pointer; 
+  flex-shrink: 0; 
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1); 
+  transition: all 0.2s ease; 
+  padding: 0 8px; 
 }
 
 .driver-avatar-img { 

@@ -102,6 +102,21 @@ let currentSelectionMode = 'pickup';
 
 let activeFilter = localStorage.getItem(VEHICLE_PREF_KEY) || 'bike';
 
+/* DANH SÁCH ICON TINH GỌN CHO NÚT BẤM */
+const typeIcons = {
+  'bike': '🛵',
+  'car': '🚕',
+  'driver': '👤',
+  'truck': '🚚'
+};
+
+const typeNames = { 
+  'bike': '🛵 Xe máy (6.000đ/km)', 
+  'car': '🚕 Ô tô (11.000đ/km)', 
+  'driver': '👤 Lái xe hộ (11.000đ/km)', 
+  'truck': '🚚 Chở hàng (Thỏa thuận)'
+};
+
 /* HÀM MỞ / ĐÓNG TRƯỢT 3 TÀI XẾ GẦN NHẤT */
 function toggleTop3Drivers() {
   const card = document.getElementById('top3Card');
@@ -427,6 +442,7 @@ function toggleVehicleMenu() {
   }
 }
 
+/* CHỌN LOẠI XE: CHỈ CẬP NHẬT ICON LÊN NÚT BẤM */
 function selectFilter(type, element) {
   const menu = document.getElementById('vehicleMenu');
   if (menu) menu.style.display = 'none';
@@ -440,8 +456,8 @@ function selectFilter(type, element) {
   if (element) element.classList.add('active');
 
   const activeLabel = document.getElementById('activeVehicleLabel');
-  if (activeLabel && typeNames[type]) {
-    activeLabel.innerText = typeNames[type];
+  if (activeLabel && typeIcons[type]) {
+    activeLabel.innerText = typeIcons[type];
   }
 
   if (selectedDriver && selectedDriver.vehicle_type !== activeFilter) {
@@ -834,13 +850,6 @@ const icons = {
   'truck': L.divIcon({ html: '<div class="vehicle-icon">🚚</div>', className: 'custom-icon', iconSize: [30, 30], iconAnchor: [15, 15] })
 };
 
-const typeNames = { 
-  'bike': '🛵 Xe máy (6.000đ/km)', 
-  'car': '🚕 Ô tô (11.000đ/km)', 
-  'driver': '👤 Lái xe hộ (11.000đ/km)', 
-  'truck': '🚚 Chở hàng (Thỏa thuận)'
-};
-
 function showRatingModal(driver) {
   if (!driver) return;
   const todayStr = new Date().toDateString();
@@ -954,14 +963,17 @@ async function openZaloById(driverId) {
     msg += `\n💰 Cước phí: ${driver.vehicle_type === 'truck' ? 'Thỏa thuận' : currentPrice.toLocaleString('vi-VN') + 'đ'}`;
   }
 
-  setTimeout(() => showRatingModal(driver), 1000);
+  try {
+    await navigator.clipboard.writeText(msg);
+  } catch (err) {
+    console.warn('Lỗi tự động sao chép:', err);
+  }
 
-  navigator.clipboard.writeText(msg).then(() => {
-    alert("✅ ĐÃ COPY LỘ TRÌNH!\n\nHệ thống mở Zalo ngay bây giờ. Bạn hãy dán (Paste) nội dung tin nhắn gửi cho tài xế nhé!");
-    window.open(`https://zalo.me/${driver.phone}`, '_blank');
-  }).catch(() => {
-    window.open(`https://zalo.me/${driver.phone}?text=${encodeURIComponent(msg)}`, '_blank');
-  });
+  await alert("✅ ĐÃ COPY LỘ TRÌNH!\n\nHệ thống mở Zalo ngay bây giờ. Bạn hãy dán (Paste) nội dung tin nhắn gửi cho tài xế nhé!");
+
+  window.open(`https://zalo.me/${driver.phone}`, '_blank');
+
+  setTimeout(() => showRatingModal(driver), 1000);
 }
 
 async function loadDrivers() {
@@ -1209,8 +1221,8 @@ updateGuide();
 
 document.addEventListener('DOMContentLoaded', () => {
   const activeLabel = document.getElementById('activeVehicleLabel');
-  if (activeLabel && typeNames[activeFilter]) {
-    activeLabel.innerText = typeNames[activeFilter];
+  if (activeLabel && typeIcons[activeFilter]) {
+    activeLabel.innerText = typeIcons[activeFilter];
   }
   document.querySelectorAll('.vehicle-option').forEach(opt => {
     if (opt.getAttribute('onclick')?.includes(`'${activeFilter}'`)) {
