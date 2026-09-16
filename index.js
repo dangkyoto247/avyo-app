@@ -19,14 +19,14 @@ const map = L.map('map', {
 
 L.control.zoom({ position: 'topright' }).addTo(map);
 
-/* HÀM TÍNH TỌA ĐỘ TẠI ĐIỂM NHỌN CỦA GHIM (MỐC 1/3 PHÍA TRÊN MÀN HÌNH) */
+/* HÀM TÍNH TỌA ĐỘ TẠI ĐIỂM NHỌN CỦA GHIM (MỐC 1/3 PHÍA TRÊN MÀN HÌNH) - AN TOÀN TUYỆT ĐỐI */
 function getPinCenterLatLng() {
   if (!map) return L.latLng(18.7034, 105.6832);
   try {
     const size = map.getSize();
     if (!size || !size.x || !size.y) return L.latLng(18.7034, 105.6832);
     const pt = map.containerPointToLatLng([size.x / 2, size.y * 0.3333]);
-    if (pt && !isNaN(pt.lat) && !isNaN(pt.lng)) {
+    if (pt && Number.isFinite(pt.lat) && Number.isFinite(pt.lng)) {
       return pt;
     }
   } catch (e) {
@@ -35,7 +35,7 @@ function getPinCenterLatLng() {
   return L.latLng(18.7034, 105.6832);
 }
 
-// GHI ĐÈ XỬ LÝ 2 NGÓN TAY PINCH-ZOOM: KHÓA HOÀN TOÀN BẢN ĐỒ VÀO TÂM GHIM 1/3 (KHÔNG DI CHUYỂN TÂM TRONG KHI TRƯỢT)
+// GHI ĐÈ BỘ XỬ LÝ 2 NGÓN TAY (PINCH-TO-ZOOM) CÓ AN TOÀN CHỐNG NAN
 if (L.Map.TouchZoom) {
   L.Map.TouchZoom.include({
     _onTouchStart: function (e) {
@@ -45,27 +45,36 @@ if (L.Map.TouchZoom) {
           p2 = this._map.mouseEventToContainerPoint(e.touches[1]);
 
       this._startDist = p1.distanceTo(p2);
-      this._startZoom = this._map.getZoom();
+      if (!this._startDist || this._startDist <= 0) { return; }
 
+      this._startZoom = this._map.getZoom();
       this._zooming = true;
       this._map._stop();
 
-      // Khóa cố định điểm tọa độ tại ghim 1/3 ngay khoảnh khắc 2 ngón tay chạm màn hình
-      this._fixedPinLatLng = getPinCenterLatLng();
+      const pin = getPinCenterLatLng();
+      if (pin && Number.isFinite(pin.lat) && Number.isFinite(pin.lng)) {
+        this._fixedPinLatLng = pin;
+      } else {
+        this._fixedPinLatLng = this._map.getCenter();
+      }
       this._moved = false;
     },
 
     _onTouchMove: function (e) {
-      if (!e.touches || e.touches.length !== 2 || !this._zooming) { return; }
+      if (!e.touches || e.touches.length !== 2 || !this._zooming || !this._startDist) { return; }
 
       var map = this._map,
           p1 = map.mouseEventToContainerPoint(e.touches[0]),
           p2 = map.mouseEventToContainerPoint(e.touches[1]),
-          scale = p1.distanceTo(p2) / this._startDist;
+          dist = p1.distanceTo(p2);
 
-      if (!scale || scale === 1) { return; }
+      if (!dist || dist <= 0) { return; }
+
+      var scale = dist / this._startDist;
+      if (!scale || !Number.isFinite(scale) || scale === 1) { return; }
 
       this._zoom = map.getScaleZoom(scale, this._startZoom);
+      if (!Number.isFinite(this._zoom)) { return; }
 
       if (!map.options.bounceAtZoomLimits && (
         (this._zoom < map.getMinZoom() && scale < 1) ||
@@ -74,22 +83,29 @@ if (L.Map.TouchZoom) {
         this._zoom = map._limitZoom(this._zoom);
       }
 
-      // Tính toán tâm bản đồ thời gian thực giữ nguyên vị trí tọa độ _fixedPinLatLng đúng điểm ghim 1/3
       var size = map.getSize();
-      var pinPixel = map.project(this._fixedPinLatLng, this._zoom);
-      var centerPixel = pinPixel.add([0, size.y * (0.5 - 0.3333)]);
-      var targetCenter = map.unproject(centerPixel, this._zoom);
+      if (!size || !size.x || !size.y) { return; }
 
-      if (!this._moved) {
-        map.fire('zoomstart', { emitter: this });
-        this._moved = true;
+      try {
+        var pinPixel = map.project(this._fixedPinLatLng, this._zoom);
+        var centerPixel = pinPixel.add([0, size.y * (0.5 - 0.3333)]);
+        var targetCenter = map.unproject(centerPixel, this._zoom);
+
+        if (targetCenter && Number.isFinite(targetCenter.lat) && Number.isFinite(targetCenter.lng)) {
+          if (!this._moved) {
+            map.fire('zoomstart', { emitter: this });
+            this._moved = true;
+          }
+
+          L.Util.cancelAnimFrame(this._animRequest);
+          var self = this;
+          this._animRequest = L.Util.requestAnimFrame(function () {
+            map._move(targetCenter, self._zoom, { pinch: true, round: false });
+          });
+        }
+      } catch (err) {
+        console.warn("Lỗi tính toán Pinch-Zoom:", err);
       }
-
-      L.Util.cancelAnimFrame(this._animRequest);
-      var self = this;
-      this._animRequest = L.Util.requestAnimFrame(function () {
-        map._move(targetCenter, self._zoom, { pinch: true, round: false });
-      });
     },
 
     _onTouchEnd: function () {
@@ -107,7 +123,6 @@ if (L.Map.TouchZoom) {
   });
 }
 
-/* CỜ ĐÁNH DẤU TRÁNH XUNG ĐỘT KHI BẢN ĐỒ ĐANG VẼ TOÀN BỘ LỘ TRÌNH */
 let isFittingBounds = false;
 let activeZoomPinLatLng = null;
 let routeAnimationTimer = null;
@@ -115,23 +130,24 @@ let routeAnimationTimer = null;
 map.on('zoomstart', () => {
   if (!isFittingBounds) {
     const pin = getPinCenterLatLng();
-    if (pin && !isNaN(pin.lat) && !isNaN(pin.lng)) {
+    if (pin && Number.isFinite(pin.lat) && Number.isFinite(pin.lng)) {
       activeZoomPinLatLng = pin;
     }
   }
 });
 
+/* CĂN CHỈNH BẢN ĐỒ VỀ ĐIỂM 1/3 BẰNG HIỆU ỨNG TRƯỢT CAMERA MƯỢT MÀ */
 map.on('zoomend', () => {
-  if (activeZoomPinLatLng && !isFittingBounds && !isNaN(activeZoomPinLatLng.lat) && !isNaN(activeZoomPinLatLng.lng)) {
+  if (activeZoomPinLatLng && !isFittingBounds && Number.isFinite(activeZoomPinLatLng.lat) && Number.isFinite(activeZoomPinLatLng.lng)) {
     try {
       const size = map.getSize();
       if (size && size.x && size.y) {
         const pinPoint = L.point(size.x / 2, size.y * 0.3333);
         const currentPoint = map.latLngToContainerPoint(activeZoomPinLatLng);
-        if (currentPoint && !isNaN(currentPoint.x) && !isNaN(currentPoint.y)) {
+        if (currentPoint && Number.isFinite(currentPoint.x) && Number.isFinite(currentPoint.y)) {
           const delta = currentPoint.subtract(pinPoint);
-          if (Math.abs(delta.x) > 1 || Math.abs(delta.y) > 1) {
-            map.panBy(delta, { animate: false });
+          if (Math.abs(delta.x) > 2 || Math.abs(delta.y) > 2) {
+            map.panBy(delta, { animate: true, duration: 0.35, easeLinearity: 0.25 });
           }
         }
       }
@@ -284,7 +300,7 @@ function updatePinColor(color) {
 }
 
 function centerMapOnPin(latlng, zoom = null) {
-  if (!map || !latlng || isNaN(latlng.lat) || isNaN(latlng.lng)) return;
+  if (!map || !latlng || !Number.isFinite(latlng.lat) || !Number.isFinite(latlng.lng)) return;
   try {
     if (zoom !== null && map.getZoom() !== zoom) {
       map.setZoom(zoom, { animate: true });
@@ -293,7 +309,7 @@ function centerMapOnPin(latlng, zoom = null) {
     if (!size || !size.x || !size.y) return;
     const pinPoint = L.point(size.x / 2, size.y * 0.3333);
     const currentPoint = map.latLngToContainerPoint(latlng);
-    if (!currentPoint || isNaN(currentPoint.x) || isNaN(currentPoint.y)) return;
+    if (!currentPoint || !Number.isFinite(currentPoint.x) || !Number.isFinite(currentPoint.y)) return;
     const delta = currentPoint.subtract(pinPoint);
     map.panBy(delta, { animate: true, duration: 0.4 });
   } catch (e) {
@@ -357,7 +373,7 @@ function enterSelectionMode(mode) {
 }
 
 async function fetchAddressForInput(type, latlng) {
-  if (!MAPBOX_TOKEN || !latlng || isNaN(latlng.lat) || isNaN(latlng.lng)) return;
+  if (!MAPBOX_TOKEN || !latlng || !Number.isFinite(latlng.lat) || !Number.isFinite(latlng.lng)) return;
   try {
     const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${latlng.lng},${latlng.lat}.json?access_token=${MAPBOX_TOKEN}&country=vn&language=vi&limit=1`;
     const res = await fetch(url);
@@ -425,7 +441,7 @@ function getRecentPickups() {
 }
 
 function saveRecentPickup(label, lat, lng) {
-  if (!label || !lat || !lng || isNaN(lat) || isNaN(lng)) return;
+  if (!label || !lat || !lng || !Number.isFinite(lat) || !Number.isFinite(lng)) return;
   let list = getRecentPickups();
   list = list.filter(item => item.label !== label && !(Math.abs(item.lat - lat) < 0.0001 && Math.abs(item.lng - lng) < 0.0001));
   list.unshift({ label, lat, lng });
@@ -472,7 +488,7 @@ function getRecentDests() {
 }
 
 function saveRecentDest(label, lat, lng) {
-  if (!label || !lat || !lng || isNaN(lat) || isNaN(lng)) return;
+  if (!label || !lat || !lng || !Number.isFinite(lat) || !Number.isFinite(lng)) return;
   let list = getRecentDests();
   list = list.filter(item => item.label !== label && !(Math.abs(item.lat - lat) < 0.0001 && Math.abs(item.lng - lng) < 0.0001));
   list.unshift({ label, lat, lng });
@@ -539,7 +555,6 @@ function toggleVehicleMenu() {
   }
 }
 
-/* CHỌN LOẠI XE: CHỈ CẬP NHẬT ICON LÊN NÚT BẤM */
 function selectFilter(type, element) {
   const menu = document.getElementById('vehicleMenu');
   if (menu) menu.style.display = 'none';
@@ -578,7 +593,7 @@ map.on('locationfound', (e) => {
 });
 
 function setPickupLocation(latlng, isAuto = false) {
-  if (!latlng || isNaN(latlng.lat) || isNaN(latlng.lng)) return;
+  if (!latlng || !Number.isFinite(latlng.lat) || !Number.isFinite(latlng.lng)) return;
   if (markerStart) map.removeLayer(markerStart);
  
   markerStart = L.marker(latlng, { icon: pickupIcon, draggable: false }).addTo(map);
@@ -597,7 +612,7 @@ function setPickupLocation(latlng, isAuto = false) {
 }
 
 function setDestLocation(latlng) {
-  if (!latlng || isNaN(latlng.lat) || isNaN(latlng.lng)) return;
+  if (!latlng || !Number.isFinite(latlng.lat) || !Number.isFinite(latlng.lng)) return;
   if (markerEnd) map.removeLayer(markerEnd);
 
   markerEnd = L.marker(latlng, { icon: destinationIcon, draggable: false }).addTo(map);
@@ -615,7 +630,7 @@ function setDestLocation(latlng) {
 }
 
 function useCurrentLocationAsPickup() {
-  if (userLatLng && !isNaN(userLatLng.lat) && !isNaN(userLatLng.lng)) {
+  if (userLatLng && Number.isFinite(userLatLng.lat) && Number.isFinite(userLatLng.lng)) {
     if (currentSelectionMode) {
       centerMapOnPin(userLatLng, map.getZoom());
       fetchAddressForInput(currentSelectionMode, userLatLng);
@@ -665,7 +680,7 @@ function onSearchInput(type, isDirectCall = false) {
 
     const fetchGeocoding = async (bboxStr) => {
       let url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${MAPBOX_TOKEN}&country=vn&language=vi&limit=8`;
-      if (rawCenter && !isNaN(lat) && !isNaN(lng)) {
+      if (rawCenter && Number.isFinite(lat) && Number.isFinite(lng)) {
         url += `&proximity=${lng.toFixed(4)},${lat.toFixed(4)}`;
       }
       if (bboxStr) {
@@ -683,7 +698,7 @@ function onSearchInput(type, isDirectCall = false) {
 
     let features = [];
 
-    if (rawCenter && !isNaN(lat) && !isNaN(lng)) {
+    if (rawCenter && Number.isFinite(lat) && Number.isFinite(lng)) {
       const bbox15 = getBBox(lat, lng, 15);
       features = await fetchGeocoding(bbox15);
 
@@ -704,7 +719,7 @@ function onSearchInput(type, isDirectCall = false) {
       return;
     }
 
-    if (rawCenter && !isNaN(lat) && !isNaN(lng)) {
+    if (rawCenter && Number.isFinite(lat) && Number.isFinite(lng)) {
       features.sort((a, b) => {
         if (!a.geometry || !b.geometry) return 0;
         const distA = safeDistance(lat, lng, a.geometry.coordinates[1], a.geometry.coordinates[0]);
@@ -742,7 +757,7 @@ function onSearchInput(type, isDirectCall = false) {
       const [fLng, fLat] = f.geometry.coordinates;
 
       let distTag = '';
-      if (rawCenter && !isNaN(lat) && !isNaN(lng)) {
+      if (rawCenter && Number.isFinite(lat) && Number.isFinite(lng)) {
         const d = safeDistance(lat, lng, fLat, fLng);
         distTag = ` • Cách ${d < 1 ? Math.round(d * 1000) + 'm' : d.toFixed(1) + 'km'}`;
       }
@@ -808,14 +823,13 @@ function calculateFastRoute() {
   updatePrice();
 }
 
-/* TÍNH TOÁN VÀ VẼ ĐƯỜNG ĐI MƯỢT MÀ CHẬM XONG MỚI DI CHUYỂN BẢN ĐỒ */
 async function calculateMapboxRoute() {
   if (!markerStart || !markerEnd) return;
 
   const start = markerStart.getLatLng();
   const end = markerEnd.getLatLng();
 
-  if (!start || !end || isNaN(start.lat) || isNaN(start.lng) || isNaN(end.lat) || isNaN(end.lng)) return;
+  if (!start || !end || !Number.isFinite(start.lat) || !Number.isFinite(start.lng) || !Number.isFinite(end.lat) || !Number.isFinite(end.lng)) return;
 
   let routePoints = null;
 
@@ -1372,8 +1386,8 @@ document.addEventListener('gesturestart', function (e) { e.preventDefault(); });
 
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').then((reg) => {
-    console.log("App đã sẵn sàng hoạt động!");
-    
+    reg.update();
+
     reg.addEventListener('updatefound', () => {
       const newWorker = reg.installing;
       if (newWorker) {
