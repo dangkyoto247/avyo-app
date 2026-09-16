@@ -19,8 +19,8 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/gh/ewoken/Leaflet.MovingMarker@master/MovingMarker.js"></script>
 
-  <!-- Đổi v=68 để tải CSS và JS mới -->
-  <link rel="stylesheet" href="index.css?v=68">
+  <!-- Đã đổi v=70 để tải CSS và JS mới -->
+  <link rel="stylesheet" href="index.css?v=70">
 </head>
 <body class="selecting-pickup">
 
@@ -81,8 +81,8 @@
   <div class="bottom-section">
     <!-- CỤM NÚT NỔI ĐỊNH VỊ VÀ CHỌN XE NẰM ĐÚNG MÉP TRÊN -->
     <div class="floating-controls-stack">
-      <!-- 1. ICON GPS ĐỊNH VỊ HIỆN TẠI -->
-      <button id="gpsFloatBtn" class="btn-gps-float" onclick="useCurrentLocationAsPickup()" title="Vị trí hiện tại">
+      <!-- 1. ICON GPS / CON ĐƯỜNG ĐIỀU HƯỚNG LINH HOẠT -->
+      <button id="gpsFloatBtn" class="btn-gps-float" onclick="handleGpsOrRouteBtnClick()" title="Vị trí hiện tại">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <polygon points="3 11 22 2 13 21 11 13 3 11"></polygon>
         </svg>
@@ -158,8 +158,8 @@
     </div>
   </div>
 
-  <!-- Đổi v=68 để tải JS mới -->
-  <script src="utils.js?v=68"></script>
-  <script src="index.js?v=68"></script>
+  <!-- Đổi v=70 để tải JS mới -->
+  <script src="utils.js?v=70"></script>
+  <script src="index.js?v=70"></script>
 </body>
 </html>

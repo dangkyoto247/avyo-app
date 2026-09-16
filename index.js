@@ -121,7 +121,6 @@ let mapboxTimeout = null;
 let pickupDetailNote = '';
 
 let currentSelectionMode = 'pickup';
-
 let activeFilter = localStorage.getItem(VEHICLE_PREF_KEY) || 'bike';
 
 const typeIcons = {
@@ -137,6 +136,65 @@ const typeNames = {
   'driver': '👤 Lái xe hộ (11.000đ/km)', 
   'truck': '🚚 Chở hàng (Thỏa thuận)'
 };
+
+/* CHUYỂN ĐỔI GIAO DIỆN & TÍNH NĂNG NÚT GPS / CON ĐƯỜNG */
+function updateGpsButtonUI(isRouteActive) {
+  const btn = document.getElementById('gpsFloatBtn');
+  if (!btn) return;
+  if (isRouteActive) {
+    btn.title = 'Xem toàn cảnh lộ trình';
+    btn.innerHTML = `
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 19L9 3"/>
+        <path d="M20 19L15 3"/>
+        <path d="M12 4v3"/>
+        <path d="M12 11v3"/>
+        <path d="M12 18v3"/>
+      </svg>`;
+  } else {
+    btn.title = 'Vị trí hiện tại';
+    btn.innerHTML = `
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="3 11 22 2 13 21 11 13 3 11"></polygon>
+      </svg>`;
+  }
+}
+
+function handleGpsOrRouteBtnClick() {
+  if (routeLine && map.hasLayer(routeLine)) {
+    zoomToRouteOverview();
+  } else {
+    useCurrentLocationAsPickup();
+  }
+}
+
+function zoomToRouteOverview() {
+  if (!routeLine) return;
+  isFittingBounds = true;
+  try {
+    const bounds = routeLine.getBounds();
+    if (bounds && bounds.isValid()) {
+      const topEl = document.querySelector('.top-section');
+      const bottomEl = document.querySelector('.bottom-section');
+
+      const paddingTop = (topEl ? topEl.offsetHeight : 150) + 25;
+      const paddingBottom = (bottomEl ? bottomEl.offsetHeight : 150) + 25;
+
+      map.flyToBounds(bounds, {
+        paddingTopLeft: [30, paddingTop],
+        paddingBottomRight: [30, paddingBottom],
+        maxZoom: 16,
+        duration: 1.2,
+        easeLinearity: 0.25
+      });
+    }
+  } catch (e) {
+    console.warn("Lỗi flyToBounds:", e);
+  }
+  setTimeout(() => {
+    isFittingBounds = false;
+  }, 1300);
+}
 
 function toggleTop3Drivers() {
   const card = document.getElementById('top3Card');
@@ -281,6 +339,8 @@ function enterSelectionMode(mode) {
       markerEnd = null;
     }
   }
+
+  updateGpsButtonUI(false);
 }
 
 async function fetchAddressForInput(type, latlng) {
@@ -714,26 +774,6 @@ document.addEventListener('click', (e) => {
   }
 });
 
-function calculateFastRoute() {
-  if (!markerStart || !markerEnd) return;
-  const start = markerStart.getLatLng();
-  const end = markerEnd.getLatLng();
-
-  if (routeLine) map.removeLayer(routeLine);
-
-  const straightKm = safeDistance(start.lat, start.lng, end.lat, end.lng);
-  currentDistance = (straightKm * 1.3).toFixed(1);
-
-  routeLine = L.polyline([start, end], { 
-    color: '#94a3b8', 
-    weight: 4, 
-    dashArray: '8, 8', 
-    opacity: 0.8 
-  }).addTo(map);
-
-  updatePrice();
-}
-
 async function calculateMapboxRoute() {
   if (!markerStart || !markerEnd) return;
 
@@ -776,6 +816,8 @@ async function calculateMapboxRoute() {
     smoothFactor: 1 
   }).addTo(map);
 
+  updateGpsButtonUI(true);
+
   const drawDuration = 1000;
   const startTime = performance.now();
 
@@ -796,32 +838,7 @@ async function calculateMapboxRoute() {
     if (progress < 1) {
       routeAnimationTimer = requestAnimationFrame(animateDrawRoute);
     } else {
-      isFittingBounds = true;
-      try {
-        const bounds = routeLine.getBounds();
-        if (bounds && bounds.isValid()) {
-          // Tính chiều cao thực tế của cụm trên và cụm dưới để chừa lề vừa đủ 2/3 diện tích nhìn thấy
-          const topEl = document.querySelector('.top-section');
-          const bottomEl = document.querySelector('.bottom-section');
-
-          const paddingTop = (topEl ? topEl.offsetHeight : 150) + 25;
-          const paddingBottom = (bottomEl ? bottomEl.offsetHeight : 150) + 25;
-
-          map.flyToBounds(bounds, {
-            paddingTopLeft: [30, paddingTop],
-            paddingBottomRight: [30, paddingBottom],
-            maxZoom: 16,
-            duration: 1.2,
-            easeLinearity: 0.25
-          });
-        }
-      } catch (e) {
-        console.warn("Lỗi flyToBounds:", e);
-      }
-
-      setTimeout(() => {
-        isFittingBounds = false;
-      }, 1300);
+      zoomToRouteOverview();
     }
   }
 
@@ -892,6 +909,7 @@ function resetRoute() {
   document.getElementById('pickupInput').value = '';
   document.getElementById('destInput').value = '';
 
+  updateGpsButtonUI(false);
   updatePrice();
   loadDrivers();
   enterSelectionMode('pickup');

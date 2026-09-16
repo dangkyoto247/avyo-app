@@ -1,5 +1,5 @@
 const TILE_CACHE_NAME = 'map-tiles-v2';
-const STATIC_CACHE_NAME = 'avyo-static-v69';
+const STATIC_CACHE_NAME = 'avyo-static-v70';
 
 const STATIC_ASSETS = [
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
@@ -103,7 +103,6 @@ self.addEventListener('fetch', (event) => {
           }
           return networkResponse;
         } catch (e) {
-          // Sửa lỗi ở đây: Trả về Response.error() thay vì return null
           return Response.error();
         }
       })
