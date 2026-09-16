@@ -1,11 +1,13 @@
 // MAPBOX ACCESS TOKEN CỦA BẠN
 const MAPBOX_TOKEN = 'pk.eyJ1IjoidHVhbmFuaDM0MTYyMyIsImEiOiJjbXUycmMxa2UwMjd4MnlxeWZ2ZDV5NGF5In0.o10B_hdnfqOIn1jNfbpY2w';
 
-// Khởi tạo bản đồ Leaflet chuẩn Grab (Zoom phân đoạn mượt + Quán tính)
+// Khởi tạo bản đồ Leaflet chuẩn hỗ trợ thu phóng cảm ứng di động
 const map = L.map('map', { 
   preferCanvas: true,
   attributionControl: false,
   zoomControl: false,
+  touchZoom: true,
+  dragging: true,
   fadeAnimation: true,
   zoomAnimation: true,
   zoomSnap: 0.5,             
@@ -33,94 +35,6 @@ function getPinCenterLatLng() {
     console.warn("Lỗi tính tọa độ ghim:", e);
   }
   return L.latLng(18.7034, 105.6832);
-}
-
-// GHI ĐÈ BỘ XỬ LÝ 2 NGÓN TAY (PINCH-TO-ZOOM) CÓ AN TOÀN CHỐNG NAN
-if (L.Map.TouchZoom) {
-  L.Map.TouchZoom.include({
-    _onTouchStart: function (e) {
-      if (!e.touches || e.touches.length !== 2 || this._map._animatingZoom) { return; }
-
-      var p1 = this._map.mouseEventToContainerPoint(e.touches[0]),
-          p2 = this._map.mouseEventToContainerPoint(e.touches[1]);
-
-      this._startDist = p1.distanceTo(p2);
-      if (!this._startDist || this._startDist <= 0) { return; }
-
-      this._startZoom = this._map.getZoom();
-      this._zooming = true;
-      this._map._stop();
-
-      const pin = getPinCenterLatLng();
-      if (pin && Number.isFinite(pin.lat) && Number.isFinite(pin.lng)) {
-        this._fixedPinLatLng = pin;
-      } else {
-        this._fixedPinLatLng = this._map.getCenter();
-      }
-      this._moved = false;
-    },
-
-    _onTouchMove: function (e) {
-      if (!e.touches || e.touches.length !== 2 || !this._zooming || !this._startDist) { return; }
-
-      var map = this._map,
-          p1 = map.mouseEventToContainerPoint(e.touches[0]),
-          p2 = map.mouseEventToContainerPoint(e.touches[1]),
-          dist = p1.distanceTo(p2);
-
-      if (!dist || dist <= 0) { return; }
-
-      var scale = dist / this._startDist;
-      if (!scale || !Number.isFinite(scale) || scale === 1) { return; }
-
-      this._zoom = map.getScaleZoom(scale, this._startZoom);
-      if (!Number.isFinite(this._zoom)) { return; }
-
-      if (!map.options.bounceAtZoomLimits && (
-        (this._zoom < map.getMinZoom() && scale < 1) ||
-        (this._zoom > map.getMaxZoom() && scale > 1)
-      )) {
-        this._zoom = map._limitZoom(this._zoom);
-      }
-
-      var size = map.getSize();
-      if (!size || !size.x || !size.y) { return; }
-
-      try {
-        var pinPixel = map.project(this._fixedPinLatLng, this._zoom);
-        var centerPixel = pinPixel.add([0, size.y * (0.5 - 0.3333)]);
-        var targetCenter = map.unproject(centerPixel, this._zoom);
-
-        if (targetCenter && Number.isFinite(targetCenter.lat) && Number.isFinite(targetCenter.lng)) {
-          if (!this._moved) {
-            map.fire('zoomstart', { emitter: this });
-            this._moved = true;
-          }
-
-          L.Util.cancelAnimFrame(this._animRequest);
-          var self = this;
-          this._animRequest = L.Util.requestAnimFrame(function () {
-            map._move(targetCenter, self._zoom, { pinch: true, round: false });
-          });
-        }
-      } catch (err) {
-        console.warn("Lỗi tính toán Pinch-Zoom:", err);
-      }
-    },
-
-    _onTouchEnd: function () {
-      if (!this._moved || !this._zooming) {
-        this._zooming = false;
-        return;
-      }
-
-      this._zooming = false;
-      this._moved = false;
-      L.Util.cancelAnimFrame(this._animRequest);
-
-      map.fire('zoomend');
-    }
-  });
 }
 
 let isFittingBounds = false;
@@ -210,7 +124,6 @@ let currentSelectionMode = 'pickup';
 
 let activeFilter = localStorage.getItem(VEHICLE_PREF_KEY) || 'bike';
 
-/* DANH SÁCH ICON TINH GỌN CHO NÚT BẤM */
 const typeIcons = {
   'bike': '🛵',
   'car': '🚕',
@@ -225,7 +138,6 @@ const typeNames = {
   'truck': '🚚 Chở hàng (Thỏa thuận)'
 };
 
-/* HÀM MỞ / ĐÓNG TRƯỢT 3 TÀI XẾ GẦN NHẤT */
 function toggleTop3Drivers() {
   const card = document.getElementById('top3Card');
   const btn = document.getElementById('btnToggleDrivers');
@@ -244,7 +156,6 @@ function toggleTop3Drivers() {
   }
 }
 
-/* QUẢN LÝ HỘP THOẠI CHI TIẾT ĐIỂM ĐÓN */
 function openPickupDetailDialog() {
   const overlay = document.getElementById('pickupDetailModalOverlay');
   const input = document.getElementById('pickupDetailInput');
@@ -1381,8 +1292,6 @@ setInterval(() => {
     loadDrivers();
   }
 }, 12000);
-
-// ĐÃ GỠ BỎ ĐOẠN MÃ CẤM ZOOM ĐIỆN THOẠI HỆ ĐIỀU HÀNH IOS (gesturestart)
 
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').then((reg) => {
