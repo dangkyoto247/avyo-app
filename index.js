@@ -96,10 +96,42 @@ let ratingDriverTarget = null;
 let rawDriversData = [];
 let searchTimer = null;
 let mapboxTimeout = null;
+let pickupDetailNote = ''; // LƯU GHI CHÚ CHI TIẾT NƠI ĐÓNG KHÁCH
 
 let currentSelectionMode = 'pickup';
 
 let activeFilter = localStorage.getItem(VEHICLE_PREF_KEY) || 'bike';
+
+/* QUẢN LÝ HỘP THOẠI CHI TIẾT ĐIỂM ĐÓN */
+function openPickupDetailDialog() {
+  const overlay = document.getElementById('pickupDetailModalOverlay');
+  const input = document.getElementById('pickupDetailInput');
+  if (input) input.value = pickupDetailNote;
+  if (overlay) overlay.classList.add('active');
+  if (input) setTimeout(() => input.focus(), 150);
+}
+
+function closePickupDetailDialog() {
+  const overlay = document.getElementById('pickupDetailModalOverlay');
+  if (overlay) overlay.classList.remove('active');
+}
+
+function savePickupDetail() {
+  const input = document.getElementById('pickupDetailInput');
+  pickupDetailNote = input ? input.value.trim() : '';
+  closePickupDetailDialog();
+
+  const btn = document.getElementById('btnPickupDetail');
+  if (btn) {
+    if (pickupDetailNote) {
+      btn.classList.add('has-note');
+      btn.innerText = '📝 Đã ghi chú';
+    } else {
+      btn.classList.remove('has-note');
+      btn.innerText = '📝 Chi tiết';
+    }
+  }
+}
 
 function safeDistance(lat1, lon1, lat2, lon2) {
   if (typeof getHaversineDistance === 'function') {
@@ -642,7 +674,6 @@ function calculateFastRoute() {
   updatePrice();
 }
 
-/* TÍNH TOÁN LỘ TRÌNH VÀ TỰ ĐỘNG CĂN TÂM HIỂN THỊ TOÀN BỘ ĐƯỜNG VẼ LỘ TRÌNH CHUẨN ĐẸP MẮT */
 async function calculateMapboxRoute() {
   if (!markerStart || !markerEnd) return;
 
@@ -688,11 +719,10 @@ async function calculateMapboxRoute() {
     }).addTo(map);
   }
 
-  // BẬT CỜ DỰNG BẢN ĐỒ ĐỂ FITBOUNDS HIỂN THỊ TRỌN VẸN VỚI KHOẢNG ĐỆM CHUẨN
   isFittingBounds = true;
   map.fitBounds(routeLine.getBounds(), {
-    paddingTopLeft: [30, 160],     // Tránh bị khung tìm kiếm trên che (đã bù notch)
-    paddingBottomRight: [30, 240], // Tránh bị bảng cước phí dưới che
+    paddingTopLeft: [30, 160],
+    paddingBottomRight: [30, 240],
     animate: true,
     duration: 0.8
   });
@@ -744,7 +774,14 @@ function resetRoute() {
   routeLine = null;
   currentDistance = 0;
   currentPrice = 0;
+  pickupDetailNote = '';
   
+  const detailBtn = document.getElementById('btnPickupDetail');
+  if (detailBtn) {
+    detailBtn.classList.remove('has-note');
+    detailBtn.innerText = '📝 Chi tiết';
+  }
+
   const resetBtn = document.getElementById('resetBtn');
   if (resetBtn) resetBtn.style.display = 'none';
   
@@ -881,6 +918,9 @@ async function openZaloById(driverId) {
 
   if (markerStart) {
     msg += `\n📍 Điểm đi: https://maps.google.com/?q=${markerStart.getLatLng().lat.toFixed(5)},${markerStart.getLatLng().lng.toFixed(5)}`;
+    if (pickupDetailNote) {
+      msg += `\n📝 Chi tiết điểm đón: ${pickupDetailNote}`;
+    }
   }
   if (markerEnd) {
     msg += `\n🚩 Điểm đến: https://maps.google.com/?q=${markerEnd.getLatLng().lat.toFixed(5)},${markerEnd.getLatLng().lng.toFixed(5)}`;

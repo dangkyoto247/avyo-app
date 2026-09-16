@@ -19,7 +19,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/gh/ewoken/Leaflet.MovingMarker@master/MovingMarker.js"></script>
 
-  <link rel="stylesheet" href="index.css?v=58">
+  <link rel="stylesheet" href="index.css?v=59">
 </head>
 <body class="selecting-pickup">
 
@@ -67,9 +67,10 @@
       </div>
     </div>
 
-    <!-- Ô NHẬP ĐIỂM ĐÓN + NÚT GHIM PIN -->
+    <!-- Ô NHẬP ĐIỂM ĐÓN + NÚT CHI TIẾT + NÚT GHIM PIN -->
     <div class="search-input-group pickup-group">
       <input type="text" id="pickupInput" placeholder="📍 Tìm điểm đón (VD: Sân bay Vinh)..." autocomplete="off" oninput="onSearchInput('pickup')" onfocus="showRecentPickups()">
+      <button type="button" id="btnPickupDetail" class="btn-pickup-detail" onclick="openPickupDetailDialog()" title="Thêm ghi chú chi tiết vị trí đón">📝 Chi tiết</button>
       <button type="button" class="btn-pin-select" onclick="triggerPinSelection('pickup')" title="Chọn điểm đón bằng ghim pin trên bản đồ">📍</button>
       <div id="pickupSuggestions" class="suggestions-list"></div>
     </div>
@@ -107,6 +108,20 @@
     </div>
   </div>
 
+  <!-- HỘP THOẠI NHẬP CHI TIẾT NƠI ĐÓNG KHÁCH -->
+  <div id="pickupDetailModalOverlay" class="custom-alert-overlay">
+    <div class="custom-alert-box" style="max-width: 340px;">
+      <div class="custom-alert-icon">📝</div>
+      <div class="custom-alert-title">Chi Tiết Điểm Đón</div>
+      <div class="custom-alert-msg" style="margin-bottom: 12px; font-size: 13px; text-align: left;">Vui lòng chỉ rõ địa điểm đón cho tài xế, như Số nhà, Cổng vào, Gần địa điểm nào đó...</div>
+      <input type="text" id="pickupDetailInput" placeholder="VD: Cổng số 2, Cạnh cây xăng..." style="width: 100%; padding: 10px 12px; border: 1.5px solid #cbd5e1; border-radius: 12px; font-size: 13.5px; box-sizing: border-box; margin-bottom: 16px; outline: none; transition: border-color 0.2s;">
+      <div style="display: flex; gap: 8px;">
+        <button class="custom-alert-btn" style="background: #94a3b8; box-shadow: none;" onclick="closePickupDetailDialog()">HỦY</button>
+        <button class="custom-alert-btn" onclick="savePickupDetail()">LƯU GHI CHÚ</button>
+      </div>
+    </div>
+  </div>
+
   <!-- POPUP ĐÁNH GIÁ TÀI XẾ (KÍCH HOẠT SAU KHI BẤM GỌI/ZALO) -->
   <div id="ratingModalOverlay" class="custom-alert-overlay">
     <div class="custom-alert-box">
@@ -126,7 +141,7 @@
     </div>
   </div>
 
-  <script src="utils.js?v=58"></script>
-  <script src="index.js?v=58"></script>
+  <script src="utils.js?v=59"></script>
+  <script src="index.js?v=59"></script>
 </body>
 </html>
