@@ -19,7 +19,7 @@ const map = L.map('map', {
 
 L.control.zoom({ position: 'topright' }).addTo(map);
 
-/* HÀM TÍNH TỌA ĐỘ TẠI ĐIỂM NHỌN CỦA GHIM (MỐC 1/3 PHÍA TRÊN MÀN HÌNH) - AN TOÀN TUYỆT ĐỐI */
+/* HÀM TÍNH TỌA ĐỘ TẠI ĐIỂM NHỌN CỦA GHIM (MỐC 1/3 PHÍA TRÊN MÀN HÌNH) */
 function getPinCenterLatLng() {
   if (!map) return L.latLng(18.7034, 105.6832);
   try {
@@ -158,7 +158,7 @@ map.on('zoomend', () => {
   }
 });
 
-// LỚP BẢN ĐỒ CHÍNH: GOOGLE MAPS TILES (ĐÃ TỐI ƯU MƯỢT MÀ)
+// LỚP BẢN ĐỒ CHÍNH: GOOGLE MAPS TILES
 const googleLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
   subdomains: ['0', '1', '2', '3'],
   maxZoom: 20,
@@ -1382,7 +1382,7 @@ setInterval(() => {
   }
 }, 12000);
 
-document.addEventListener('gesturestart', function (e) { e.preventDefault(); });
+// ĐÃ GỠ BỎ ĐOẠN MÃ CẤM ZOOM ĐIỆN THOẠI HỆ ĐIỀU HÀNH IOS (gesturestart)
 
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').then((reg) => {
