@@ -8,9 +8,9 @@ const map = L.map('map', {
   zoomControl: false,
   fadeAnimation: true,
   zoomAnimation: true,
-  zoomSnap: 0.5,             // Zoom mượt theo tỉ lệ nhỏ (chuẩn Grab)
+  zoomSnap: 0.5,             
   zoomDelta: 0.5,
-  wheelDebounceTime: 40,     // Khử độ trễ cuộn chuột
+  wheelDebounceTime: 40,     
   wheelPxPerZoomLevel: 120,
   bounceAtZoomLimits: false,
   inertia: true,
@@ -691,7 +691,7 @@ async function calculateMapboxRoute() {
   // BẬT CỜ DỰNG BẢN ĐỒ ĐỂ FITBOUNDS HIỂN THỊ TRỌN VẸN VỚI KHOẢNG ĐỆM CHUẨN
   isFittingBounds = true;
   map.fitBounds(routeLine.getBounds(), {
-    paddingTopLeft: [30, 140],     // Tránh bị khung tìm kiếm trên che
+    paddingTopLeft: [30, 160],     // Tránh bị khung tìm kiếm trên che (đã bù notch)
     paddingBottomRight: [30, 240], // Tránh bị bảng cước phí dưới che
     animate: true,
     duration: 0.8

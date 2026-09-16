@@ -67,7 +67,7 @@ body {
   }
 }
 
-/* CỤM KHUNG TRÊN CHE KÍN 100% VIỀN TRÊN MÀN HÌNH */
+/* CỤM KHUNG TRÊN TỰ ĐỘNG NÉ TAI THỎ / DYNAMIC ISLAND */
 .top-section {
   position: fixed;
   top: 0;
@@ -79,13 +79,14 @@ body {
   z-index: 100;
   background: #ffffff;
   padding: 12px;
-  border-radius: 0 0 16px 16px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  padding-top: calc(12px + env(safe-area-inset-top, 0px));
+  border-radius: 0 0 20px 20px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
   box-sizing: border-box;
   transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
 }
 
-/* CỤM KHUNG DƯỚI CHE KÍN 100% VIỀN DƯỚI MÀN HÌNH */
+/* CỤM KHUNG DƯỚI CHE KÍN VÙNG SAFE AREA DƯỚI */
 .bottom-section {
   position: fixed;
   bottom: 0;
@@ -97,8 +98,9 @@ body {
   z-index: 100;
   background: #ffffff;
   padding: 12px;
-  border-radius: 16px 16px 0 0;
-  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.15);
+  padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  border-radius: 20px 20px 0 0;
+  box-shadow: 0 -6px 20px rgba(0, 0, 0, 0.12);
   box-sizing: border-box;
   max-height: 55vh;
   overflow-y: auto;
@@ -111,7 +113,7 @@ body {
   border-top: 1px dashed #cbd5e1;
 }
 
-/* GHIM CỐ ĐỊNH CHÍNH GIỮA TẠI MỐC 1/3 PHÍA TRÊN MÀN HÌNH (LUÔN LUÔN HIỂN THỊ) */
+/* GHIM CỐ ĐỊNH CHÍNH GIỮA TẠI MỐC 1/3 PHÍA TRÊN MÀN HÌNH */
 .fixed-center-pin {
   position: fixed;
   top: 33.33vh;
@@ -269,15 +271,15 @@ body.selecting-dest .vehicle-menu-popover {
   display: none;
   width: 100%;
   padding: 12px;
-  margin-top: 8px;
+  margin-top: 10px;
   background: #00b14f;
   color: white;
   border: none;
-  border-radius: 10px;
+  border-radius: 12px;
   font-weight: 800;
   font-size: 14px;
   cursor: pointer;
-  box-shadow: 0 3px 10px rgba(0,177,79,0.3);
+  box-shadow: 0 4px 12px rgba(0,177,79,0.3);
   letter-spacing: 0.3px;
 }
 
@@ -303,22 +305,25 @@ body.selecting-dest .btn-confirm-select {
 
 .search-input-group { 
   position: relative; 
-  margin-bottom: 6px; 
+  margin-bottom: 8px; 
 }
 
 .search-input-group input { 
   width: 100%; 
-  padding: 10px 42px 10px 12px; 
-  border: 1.5px solid #cbd5e1; 
-  border-radius: 10px; 
+  padding: 11px 42px 11px 12px; 
+  border: 1.5px solid #e2e8f0; 
+  border-radius: 12px; 
   font-size: 14px; 
   outline: none; 
   box-sizing: border-box; 
-  transition: border 0.2s; 
+  transition: all 0.2s ease; 
+  background: #f8fafc;
+  color: #0f172a;
 }
 
 .search-input-group input:focus { 
   border-color: #00b14f; 
+  background: #ffffff;
   box-shadow: 0 0 0 3px rgba(0, 177, 79, 0.15); 
 }
 
@@ -328,7 +333,7 @@ body.selecting-dest .btn-confirm-select {
   right: 6px;
   top: 50%;
   transform: translateY(-50%);
-  background: #f1f5f9;
+  background: #ffffff;
   border: 1px solid #cbd5e1;
   border-radius: 8px;
   width: 32px;
@@ -341,10 +346,11 @@ body.selecting-dest .btn-confirm-select {
   z-index: 5;
   transition: all 0.2s ease;
   padding: 0;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
 }
 
 .btn-pin-select:hover {
-  background: #e2e8f0;
+  background: #f1f5f9;
   border-color: #00b14f;
 }
 
