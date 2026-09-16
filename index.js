@@ -19,7 +19,7 @@ const map = L.map('map', {
 
 L.control.zoom({ position: 'topright' }).addTo(map);
 
-/* HÀM TÍNH TỌA ĐỘ TẠI ĐIỂM NHỌN CỦA GHIM (MỐC 1/3 PHÍA TRÊN MÀN HÌNH) - BỔ SUNG KIỂM TRA TỌA ĐỘ AN TOÀN */
+/* HÀM TÍNH TỌA ĐỘ TẠI ĐIỂM NHỌN CỦA GHIM (MỐC 1/3 PHÍA TRÊN MÀN HÌNH) */
 function getPinCenterLatLng() {
   if (!map) return L.latLng(18.7034, 105.6832);
   try {
@@ -33,6 +33,78 @@ function getPinCenterLatLng() {
     console.warn("Lỗi tính tọa độ ghim:", e);
   }
   return L.latLng(18.7034, 105.6832);
+}
+
+// GHI ĐÈ XỬ LÝ 2 NGÓN TAY PINCH-ZOOM: KHÓA HOÀN TOÀN BẢN ĐỒ VÀO TÂM GHIM 1/3 (KHÔNG DI CHUYỂN TÂM TRONG KHI TRƯỢT)
+if (L.Map.TouchZoom) {
+  L.Map.TouchZoom.include({
+    _onTouchStart: function (e) {
+      if (!e.touches || e.touches.length !== 2 || this._map._animatingZoom) { return; }
+
+      var p1 = this._map.mouseEventToContainerPoint(e.touches[0]),
+          p2 = this._map.mouseEventToContainerPoint(e.touches[1]);
+
+      this._startDist = p1.distanceTo(p2);
+      this._startZoom = this._map.getZoom();
+
+      this._zooming = true;
+      this._map._stop();
+
+      // Khóa cố định điểm tọa độ tại ghim 1/3 ngay khoảnh khắc 2 ngón tay chạm màn hình
+      this._fixedPinLatLng = getPinCenterLatLng();
+      this._moved = false;
+    },
+
+    _onTouchMove: function (e) {
+      if (!e.touches || e.touches.length !== 2 || !this._zooming) { return; }
+
+      var map = this._map,
+          p1 = map.mouseEventToContainerPoint(e.touches[0]),
+          p2 = map.mouseEventToContainerPoint(e.touches[1]),
+          scale = p1.distanceTo(p2) / this._startDist;
+
+      if (!scale || scale === 1) { return; }
+
+      this._zoom = map.getScaleZoom(scale, this._startZoom);
+
+      if (!map.options.bounceAtZoomLimits && (
+        (this._zoom < map.getMinZoom() && scale < 1) ||
+        (this._zoom > map.getMaxZoom() && scale > 1)
+      )) {
+        this._zoom = map._limitZoom(this._zoom);
+      }
+
+      // Tính toán tâm bản đồ thời gian thực giữ nguyên vị trí tọa độ _fixedPinLatLng đúng điểm ghim 1/3
+      var size = map.getSize();
+      var pinPixel = map.project(this._fixedPinLatLng, this._zoom);
+      var centerPixel = pinPixel.add([0, size.y * (0.5 - 0.3333)]);
+      var targetCenter = map.unproject(centerPixel, this._zoom);
+
+      if (!this._moved) {
+        map.fire('zoomstart', { emitter: this });
+        this._moved = true;
+      }
+
+      L.Util.cancelAnimFrame(this._animRequest);
+      var self = this;
+      this._animRequest = L.Util.requestAnimFrame(function () {
+        map._move(targetCenter, self._zoom, { pinch: true, round: false });
+      });
+    },
+
+    _onTouchEnd: function () {
+      if (!this._moved || !this._zooming) {
+        this._zooming = false;
+        return;
+      }
+
+      this._zooming = false;
+      this._moved = false;
+      L.Util.cancelAnimFrame(this._animRequest);
+
+      map.fire('zoomend');
+    }
+  });
 }
 
 /* CỜ ĐÁNH DẤU TRÁNH XUNG ĐỘT KHI BẢN ĐỒ ĐANG VẼ TOÀN BỘ LỘ TRÌNH */
@@ -58,7 +130,7 @@ map.on('zoomend', () => {
         const currentPoint = map.latLngToContainerPoint(activeZoomPinLatLng);
         if (currentPoint && !isNaN(currentPoint.x) && !isNaN(currentPoint.y)) {
           const delta = currentPoint.subtract(pinPoint);
-          if (Math.abs(delta.x) > 2 || Math.abs(delta.y) > 2) {
+          if (Math.abs(delta.x) > 1 || Math.abs(delta.y) > 1) {
             map.panBy(delta, { animate: false });
           }
         }
@@ -467,6 +539,7 @@ function toggleVehicleMenu() {
   }
 }
 
+/* CHỌN LOẠI XE: CHỈ CẬP NHẬT ICON LÊN NÚT BẤM */
 function selectFilter(type, element) {
   const menu = document.getElementById('vehicleMenu');
   if (menu) menu.style.display = 'none';
