@@ -19,11 +19,20 @@ const map = L.map('map', {
 
 L.control.zoom({ position: 'topright' }).addTo(map);
 
-/* HÀM TÍNH TỌA ĐỘ TẠI ĐIỂM NHỌN CỦA GHIM (MỐC 1/3 PHÍA TRÊN MÀN HÌNH) */
+/* HÀM TÍNH TỌA ĐỘ TẠI ĐIỂM NHỌN CỦA GHIM (MỐC 1/3 PHÍA TRÊN MÀN HÌNH) - BỔ SUNG KIỂM TRA TỌA ĐỘ AN TOÀN */
 function getPinCenterLatLng() {
   if (!map) return L.latLng(18.7034, 105.6832);
-  const size = map.getSize();
-  return map.containerPointToLatLng([size.x / 2, size.y * 0.3333]);
+  try {
+    const size = map.getSize();
+    if (!size || !size.x || !size.y) return L.latLng(18.7034, 105.6832);
+    const pt = map.containerPointToLatLng([size.x / 2, size.y * 0.3333]);
+    if (pt && !isNaN(pt.lat) && !isNaN(pt.lng)) {
+      return pt;
+    }
+  } catch (e) {
+    console.warn("Lỗi tính tọa độ ghim:", e);
+  }
+  return L.latLng(18.7034, 105.6832);
 }
 
 /* CỜ ĐÁNH DẤU TRÁNH XUNG ĐỘT KHI BẢN ĐỒ ĐANG VẼ TOÀN BỘ LỘ TRÌNH */
@@ -31,106 +40,31 @@ let isFittingBounds = false;
 let activeZoomPinLatLng = null;
 let routeAnimationTimer = null;
 
-// GHI ĐÈ BỘ XỬ LÝ CẢM ỨNG 2 NGÓN TAY (PINCH-TO-ZOOM) ĐỂ KHÓA TÂM GHIM 1/3 THỜI GIAN THỰC
-if (L.Map.TouchZoom) {
-  L.Map.TouchZoom.include({
-    _onTouchStart: function (e) {
-      if (!e.touches || e.touches.length !== 2 || this._map._animatingZoom) { return; }
-
-      var p1 = this._map.mouseEventToContainerPoint(e.touches[0]),
-          p2 = this._map.mouseEventToContainerPoint(e.touches[1]);
-
-      this._startDist = p1.distanceTo(p2);
-      this._startZoom = this._map.getZoom();
-
-      this._zooming = true;
-      this._map._stop();
-
-      // Khóa tọa độ dưới ghim 1/3 ngay khi vừa chạm 2 ngón tay
-      this._pinLatLng = getPinCenterLatLng();
-      this._moved = false;
-    },
-
-    _onTouchMove: function (e) {
-      if (!e.touches || e.touches.length !== 2 || !this._zooming) { return; }
-
-      var map = this._map,
-          p1 = map.mouseEventToContainerPoint(e.touches[0]),
-          p2 = map.mouseEventToContainerPoint(e.touches[1]),
-          scale = p1.distanceTo(p2) / this._startDist;
-
-      if (!scale || scale === 1) { return; }
-
-      this._zoom = map.getScaleZoom(scale, this._startZoom);
-
-      if (!map.options.bounceAtZoomLimits && (
-        (this._zoom < map.getMinZoom() && scale < 1) ||
-        (this._zoom > map.getMaxZoom() && scale > 1)
-      )) {
-        this._zoom = map._limitZoom(this._zoom);
-      }
-
-      // Tính toán tâm bản đồ thời gian thực sao cho ghim 1/3 luôn giữ nguyên tọa độ trên màn hình
-      var size = map.getSize();
-      var pinPixel = map.project(this._pinLatLng, this._zoom);
-      var centerPixel = pinPixel.add([0, size.y * (0.5 - 0.3333)]);
-      this._center = map.unproject(centerPixel, this._zoom);
-
-      if (!this._moved) {
-        map.fire('zoomstart', { emitter: this });
-        this._moved = true;
-      }
-
-      L.Util.cancelAnimFrame(this._animRequest);
-      var self = this;
-      this._animRequest = L.Util.requestAnimFrame(function () {
-        map._move(self._center, self._zoom, { pinch: true, round: false });
-      });
-    },
-
-    _onTouchEnd: function () {
-      if (!this._moved || !this._zooming) {
-        this._zooming = false;
-        return;
-      }
-
-      this._zooming = false;
-      this._moved = false;
-      L.Util.cancelAnimFrame(this._animRequest);
-
-      map.fire('zoomend');
-    }
-  });
-}
-
-// GHI ĐÈ SCROLL WHEEL ZOOM TRÊN LAPTOP / PC LUÔN LẤY GHIM 1/3 LÀM TÂM
-if (L.Map.ScrollWheelZoom) {
-  L.Map.ScrollWheelZoom.include({
-    _performZoom: function () {
-      var map = this._map;
-      map._stop();
-
-      var pinLatLng = getPinCenterLatLng();
-      map.setZoomAround(pinLatLng, this._zoom, { animate: true });
-    }
-  });
-}
-
 map.on('zoomstart', () => {
   if (!isFittingBounds) {
-    activeZoomPinLatLng = getPinCenterLatLng();
+    const pin = getPinCenterLatLng();
+    if (pin && !isNaN(pin.lat) && !isNaN(pin.lng)) {
+      activeZoomPinLatLng = pin;
+    }
   }
 });
 
 map.on('zoomend', () => {
-  if (activeZoomPinLatLng && !isFittingBounds) {
-    const size = map.getSize();
-    const pinPoint = L.point(size.x / 2, size.y * 0.3333);
-    const currentPoint = map.latLngToContainerPoint(activeZoomPinLatLng);
-    const delta = currentPoint.subtract(pinPoint);
-
-    if (Math.abs(delta.x) > 2 || Math.abs(delta.y) > 2) {
-      map.panBy(delta, { animate: false });
+  if (activeZoomPinLatLng && !isFittingBounds && !isNaN(activeZoomPinLatLng.lat) && !isNaN(activeZoomPinLatLng.lng)) {
+    try {
+      const size = map.getSize();
+      if (size && size.x && size.y) {
+        const pinPoint = L.point(size.x / 2, size.y * 0.3333);
+        const currentPoint = map.latLngToContainerPoint(activeZoomPinLatLng);
+        if (currentPoint && !isNaN(currentPoint.x) && !isNaN(currentPoint.y)) {
+          const delta = currentPoint.subtract(pinPoint);
+          if (Math.abs(delta.x) > 2 || Math.abs(delta.y) > 2) {
+            map.panBy(delta, { animate: false });
+          }
+        }
+      }
+    } catch (err) {
+      console.warn("Lỗi căn chỉnh ghim khi zoomend:", err);
     }
     activeZoomPinLatLng = null;
   }
@@ -278,16 +212,21 @@ function updatePinColor(color) {
 }
 
 function centerMapOnPin(latlng, zoom = null) {
-  if (!map || !latlng) return;
-  if (zoom !== null && map.getZoom() !== zoom) {
-    map.setZoom(zoom, { animate: true });
+  if (!map || !latlng || isNaN(latlng.lat) || isNaN(latlng.lng)) return;
+  try {
+    if (zoom !== null && map.getZoom() !== zoom) {
+      map.setZoom(zoom, { animate: true });
+    }
+    const size = map.getSize();
+    if (!size || !size.x || !size.y) return;
+    const pinPoint = L.point(size.x / 2, size.y * 0.3333);
+    const currentPoint = map.latLngToContainerPoint(latlng);
+    if (!currentPoint || isNaN(currentPoint.x) || isNaN(currentPoint.y)) return;
+    const delta = currentPoint.subtract(pinPoint);
+    map.panBy(delta, { animate: true, duration: 0.4 });
+  } catch (e) {
+    console.warn("Lỗi centerMapOnPin:", e);
   }
-  const size = map.getSize();
-  const pinPoint = L.point(size.x / 2, size.y * 0.3333);
-  const currentPoint = map.latLngToContainerPoint(latlng);
-  const delta = currentPoint.subtract(pinPoint);
-  
-  map.panBy(delta, { animate: true, duration: 0.4 });
 }
 
 function triggerPinSelection(type) {
@@ -346,7 +285,7 @@ function enterSelectionMode(mode) {
 }
 
 async function fetchAddressForInput(type, latlng) {
-  if (!MAPBOX_TOKEN) return;
+  if (!MAPBOX_TOKEN || !latlng || isNaN(latlng.lat) || isNaN(latlng.lng)) return;
   try {
     const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${latlng.lng},${latlng.lat}.json?access_token=${MAPBOX_TOKEN}&country=vn&language=vi&limit=1`;
     const res = await fetch(url);
@@ -414,7 +353,7 @@ function getRecentPickups() {
 }
 
 function saveRecentPickup(label, lat, lng) {
-  if (!label || !lat || !lng) return;
+  if (!label || !lat || !lng || isNaN(lat) || isNaN(lng)) return;
   let list = getRecentPickups();
   list = list.filter(item => item.label !== label && !(Math.abs(item.lat - lat) < 0.0001 && Math.abs(item.lng - lng) < 0.0001));
   list.unshift({ label, lat, lng });
@@ -461,7 +400,7 @@ function getRecentDests() {
 }
 
 function saveRecentDest(label, lat, lng) {
-  if (!label || !lat || !lng) return;
+  if (!label || !lat || !lng || isNaN(lat) || isNaN(lng)) return;
   let list = getRecentDests();
   list = list.filter(item => item.label !== label && !(Math.abs(item.lat - lat) < 0.0001 && Math.abs(item.lng - lng) < 0.0001));
   list.unshift({ label, lat, lng });
@@ -528,7 +467,6 @@ function toggleVehicleMenu() {
   }
 }
 
-/* CHỌN LOẠI XE: CHỈ CẬP NHẬT ICON LÊN NÚT BẤM */
 function selectFilter(type, element) {
   const menu = document.getElementById('vehicleMenu');
   if (menu) menu.style.display = 'none';
@@ -567,6 +505,7 @@ map.on('locationfound', (e) => {
 });
 
 function setPickupLocation(latlng, isAuto = false) {
+  if (!latlng || isNaN(latlng.lat) || isNaN(latlng.lng)) return;
   if (markerStart) map.removeLayer(markerStart);
  
   markerStart = L.marker(latlng, { icon: pickupIcon, draggable: false }).addTo(map);
@@ -585,6 +524,7 @@ function setPickupLocation(latlng, isAuto = false) {
 }
 
 function setDestLocation(latlng) {
+  if (!latlng || isNaN(latlng.lat) || isNaN(latlng.lng)) return;
   if (markerEnd) map.removeLayer(markerEnd);
 
   markerEnd = L.marker(latlng, { icon: destinationIcon, draggable: false }).addTo(map);
@@ -602,7 +542,7 @@ function setDestLocation(latlng) {
 }
 
 function useCurrentLocationAsPickup() {
-  if (userLatLng) {
+  if (userLatLng && !isNaN(userLatLng.lat) && !isNaN(userLatLng.lng)) {
     if (currentSelectionMode) {
       centerMapOnPin(userLatLng, map.getZoom());
       fetchAddressForInput(currentSelectionMode, userLatLng);
@@ -647,12 +587,12 @@ function onSearchInput(type, isDirectCall = false) {
       rawCenter = rawCenter.wrap();
     }
 
-    const lat = Number(rawCenter.lat);
-    const lng = Number(rawCenter.lng);
+    const lat = Number(rawCenter ? rawCenter.lat : 18.7034);
+    const lng = Number(rawCenter ? rawCenter.lng : 105.6832);
 
     const fetchGeocoding = async (bboxStr) => {
       let url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${MAPBOX_TOKEN}&country=vn&language=vi&limit=8`;
-      if (rawCenter && lat && lng) {
+      if (rawCenter && !isNaN(lat) && !isNaN(lng)) {
         url += `&proximity=${lng.toFixed(4)},${lat.toFixed(4)}`;
       }
       if (bboxStr) {
@@ -670,7 +610,7 @@ function onSearchInput(type, isDirectCall = false) {
 
     let features = [];
 
-    if (rawCenter && lat && lng) {
+    if (rawCenter && !isNaN(lat) && !isNaN(lng)) {
       const bbox15 = getBBox(lat, lng, 15);
       features = await fetchGeocoding(bbox15);
 
@@ -691,7 +631,7 @@ function onSearchInput(type, isDirectCall = false) {
       return;
     }
 
-    if (rawCenter && lat && lng) {
+    if (rawCenter && !isNaN(lat) && !isNaN(lng)) {
       features.sort((a, b) => {
         if (!a.geometry || !b.geometry) return 0;
         const distA = safeDistance(lat, lng, a.geometry.coordinates[1], a.geometry.coordinates[0]);
@@ -729,7 +669,7 @@ function onSearchInput(type, isDirectCall = false) {
       const [fLng, fLat] = f.geometry.coordinates;
 
       let distTag = '';
-      if (rawCenter && lat && lng) {
+      if (rawCenter && !isNaN(lat) && !isNaN(lng)) {
         const d = safeDistance(lat, lng, fLat, fLng);
         distTag = ` • Cách ${d < 1 ? Math.round(d * 1000) + 'm' : d.toFixed(1) + 'km'}`;
       }
@@ -801,6 +741,9 @@ async function calculateMapboxRoute() {
 
   const start = markerStart.getLatLng();
   const end = markerEnd.getLatLng();
+
+  if (!start || !end || isNaN(start.lat) || isNaN(start.lng) || isNaN(end.lat) || isNaN(end.lng)) return;
+
   let routePoints = null;
 
   if (MAPBOX_TOKEN) {
@@ -847,18 +790,28 @@ async function calculateMapboxRoute() {
       : 1 - Math.pow(-2 * progress + 2, 2) / 2;
 
     const count = Math.max(1, Math.floor(easeProgress * targetPoints.length));
-    routeLine.setLatLngs(targetPoints.slice(0, count));
+    const currentPoints = targetPoints.slice(0, count);
+    if (currentPoints.length > 0) {
+      routeLine.setLatLngs(currentPoints);
+    }
 
     if (progress < 1) {
       routeAnimationTimer = requestAnimationFrame(animateDrawRoute);
     } else {
       isFittingBounds = true;
-      map.flyToBounds(routeLine.getBounds(), {
-        paddingTopLeft: [30, 160],
-        paddingBottomRight: [30, 220],
-        duration: 1.2,
-        easeLinearity: 0.25
-      });
+      try {
+        const bounds = routeLine.getBounds();
+        if (bounds && bounds.isValid()) {
+          map.flyToBounds(bounds, {
+            paddingTopLeft: [30, 160],
+            paddingBottomRight: [30, 220],
+            duration: 1.2,
+            easeLinearity: 0.25
+          });
+        }
+      } catch (e) {
+        console.warn("Lỗi flyToBounds:", e);
+      }
 
       setTimeout(() => {
         isFittingBounds = false;
