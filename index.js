@@ -19,24 +19,40 @@ const map = L.map('map', {
 
 L.control.zoom({ position: 'topright' }).addTo(map);
 
-/* QUẢN LÝ PHÓNG TO / THU NHỎ LUÔN LẤY ĐIỂM MỐC 1/3 PHÍA TRÊN LÀM TÂM ZUM BẤT KỂ THAO TÁC NÀO */
-let zoomAnchorLatLng = null;
+/* HÀM TÍNH TỌA ĐỘ TẠI ĐIỂM NHỌN CỦA GHIM (MỐC 1/3 PHÍA TRÊN MÀN HÌNH) */
+function getPinCenterLatLng() {
+  if (!map) return L.latLng(18.7034, 105.6832);
+  const size = map.getSize();
+  return map.containerPointToLatLng([size.x / 2, size.y * 0.3333]);
+}
+
+/* QUẢN LÝ THU NHỎ / PHÓNG TO KHÓA CHÍNH XÁC GHIM 1/3 LÀM TÂM XUÂN */
+let activeZoomPinLatLng = null;
 
 map.on('zoomstart', () => {
-  zoomAnchorLatLng = getPinCenterLatLng();
+  activeZoomPinLatLng = getPinCenterLatLng();
 });
 
 map.on('zoomend', () => {
-  if (zoomAnchorLatLng) {
+  if (activeZoomPinLatLng) {
     const size = map.getSize();
     const pinPoint = L.point(size.x / 2, size.y * 0.3333);
-    const currentPoint = map.latLngToContainerPoint(zoomAnchorLatLng);
+    const currentPoint = map.latLngToContainerPoint(activeZoomPinLatLng);
     const delta = currentPoint.subtract(pinPoint);
-    // Animate mượt thay vì nhảy giật tức thì (animate: false)
-    map.panBy(delta, { animate: true, duration: 0.25 });
-    zoomAnchorLatLng = null;
+
+    // Chuẩn hóa sai số pixel ngay lập tức nếu có lệch do cử chỉ vuốt chạm
+    if (Math.abs(delta.x) > 0.5 || Math.abs(delta.y) > 0.5) {
+      map.panBy(delta, { animate: false });
+    }
+    activeZoomPinLatLng = null;
   }
 });
+
+// GHI ĐÈ PHƯƠNG THỨC ZOOM ĐỂ MỌI THAO TÁC (NÚT BẤM, NÉN HAI NGÓN TAY, CUỘN CHUỘT) LUÔN DÙNG GHIM 1/3 LÀM TÂM
+map.setZoom = function (zoom, options) {
+  const pinLatLng = activeZoomPinLatLng || getPinCenterLatLng();
+  return this.setZoomAround(pinLatLng, zoom, options);
+};
 
 // LỚP BẢN ĐỒ CHÍNH: GOOGLE MAPS TILES (ĐÃ TỐI ƯU MƯỢT MÀ)
 const googleLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
@@ -44,9 +60,9 @@ const googleLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&
   maxZoom: 20,
   tileSize: 256,
   zoomOffset: 0,
-  keepBuffer: 5,            // Buffer vừa đủ để không lộ mảng trắng khi trượt
-  updateWhenIdle: true,     // Đợi dừng thao tác mới nạp nét ảnh
-  updateWhenZooming: false  // Không nạp lại tile liên tục trong khi đang nén/dãn zoom
+  keepBuffer: 5,            
+  updateWhenIdle: true,     
+  updateWhenZooming: false  
 });
 
 googleLayer.on('tileerror', function() {
@@ -106,14 +122,6 @@ function getBBox(lat, lng, radiusKm) {
   const dLat = radiusKm / 111;
   const dLng = radiusKm / (111 * Math.cos(lat * Math.PI / 180));
   return `${(lng - dLng).toFixed(4)},${(lat - dLat).toFixed(4)},${(lng + dLng).toFixed(4)},${(lat + dLat).toFixed(4)}`;
-}
-
-function getPinCenterLatLng() {
-  if (!map) return L.latLng(18.7034, 105.6832);
-  const size = map.getSize();
-  const pinX = size.x / 2;
-  const pinY = size.y * 0.3333;
-  return map.containerPointToLatLng([pinX, pinY]);
 }
 
 function updatePinColor(color) {
