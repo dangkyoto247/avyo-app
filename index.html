@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>Avyo - Gọi Xe Chuẩn Grab</title>
+  <title>Avyo - Gọi Xe Tinh Gọn 0Đ</title>
 
   <link rel="icon" type="image/png" sizes="192x192" href="index.png">
   <link rel="apple-touch-icon" sizes="180x180" href="index.png">
@@ -19,89 +19,68 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/gh/ewoken/Leaflet.MovingMarker@master/MovingMarker.js"></script>
 
-  <link rel="stylesheet" href="index.css?v=80">
+  <!-- Đã đổi v=75 để ép trình duyệt nhận file CSS và JS mới -->
+  <link rel="stylesheet" href="index.css?v=75">
 </head>
 <body class="selecting-pickup">
 
-  <!-- BẢN ĐỒ CỐ ĐỊNH NỀN -->
+  <!-- BẢN ĐỒ CỐ ĐỊNH NỀN (HIỂN THỊ TRÀN 100% MÀN HÌNH) -->
   <div id="map"></div>
 
-  <!-- NÚT NỔI CHUYỂN CHẾ ĐỘ SÁNG/TỐI (Góc trên bên phải) -->
-  <button id="themeToggle" class="btn-theme-toggle-float" onclick="toggleDarkMode()" title="Chuyển chế độ Tối/Sáng">🌙</button>
-
-  <!-- THANH TÌM KIẾM ĐỔI ĐIỂM ĐÓN CHUẨN GRAB (Góc trên) -->
-  <div class="grab-top-search-bar">
-    <button class="grab-back-btn" onclick="resetRoute()" title="Quay lại">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1c2024" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <line x1="19" y1="12" x2="5" y2="12"></line>
-        <polyline points="12 19 5 12 12 5"></polyline>
-      </svg>
-    </button>
-    <div class="grab-search-input-wrapper">
-      <span class="grab-blue-dot"></span>
-      <input type="text" id="pickupInputTop" placeholder="Đón tại?" autocomplete="off" oninput="syncAndSearch('pickup', this.value)">
-    </div>
-    <button class="grab-camera-btn" title="Chụp ảnh điểm đón">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#677073" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
-        <circle cx="12" cy="13" r="4"></circle>
-      </svg>
-    </button>
+  <!-- CỤM NÚT NỔI PHÍA TRÊN BẢN ĐỒ (Thương hiệu & Nút Sáng/Tối) -->
+  <div class="top-float-bar">
+    <span class="brand-pill">💚 AVYO</span>
+    <button id="themeToggle" class="btn-theme-toggle-float" onclick="toggleDarkMode()" title="Chuyển chế độ Tối/Sáng">🌙</button>
   </div>
 
-  <!-- GHIM CỐ ĐỊNH CHÍNH GIỮA BẢN ĐỒ CHUẨN TEARDROP GRAB -->
+  <!-- GHIM CỐ ĐỊNH CHÍNH GIỮA TẠI MỐC 1/3 PHÍA TRÊN MÀN HÌNH -->
   <div id="fixedCenterPin" class="fixed-center-pin">
-    <div class="grab-pin-container">
-      <svg width="42" height="50" viewBox="0 0 44 52" fill="none" class="pin-svg">
-        <path d="M22 0C9.84974 0 0 9.84974 0 22C0 35.5 22 52 22 52C22 52 44 35.5 44 22C44 9.84974 34.1503 0 22 0Z" fill="#007aff"/>
-        <circle cx="22" cy="20" r="7" fill="white"/>
-      </svg>
-    </div>
+    <svg width="42" height="42" viewBox="0 0 24 24" fill="#dc2626" stroke="#ffffff" stroke-width="1.5" class="pin-svg">
+      <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+    </svg>
     <div class="pin-shadow"></div>
   </div>
 
-  <!-- CỤM ĐÁY MÀN HÌNH (BOTTOM SHEET CHUẨN GRAB) -->
+  <!-- CỤM ĐÁY MÀN HÌNH (BOTTOM SHEET) -->
   <div class="bottom-section">
-    <!-- NÚT GPS ĐỊNH VỊ CHUẨN ICON MỤC TIÊU GRAB -->
+    <!-- CỤM NÚT NỔI XẾP CHỒNG DỌC -->
     <div class="floating-controls-stack">
+      <!-- 1. ICON GPS / CON ĐƯỜNG -->
       <button id="gpsFloatBtn" class="btn-gps-float" onclick="handleGpsOrRouteBtnClick()" title="Vị trí hiện tại">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1c2024" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="8"></circle>
-          <line x1="12" y1="2" x2="12" y2="6"></line>
-          <line x1="12" y1="18" x2="12" y2="22"></line>
-          <line x1="2" y1="12" x2="6" y2="12"></line>
-          <line x1="18" y1="12" x2="22" y2="12"></line>
-          <circle cx="12" cy="12" r="2" fill="#1c2024"></circle>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="3 11 22 2 13 21 11 13 3 11"></polygon>
         </svg>
       </button>
 
-      <!-- MENU NỔI CHỌN LOẠI XE -->
+      <!-- 2. ICON CHỌN LOẠI XE -->
       <div style="position: relative;">
         <button id="vehicleFloatBtn" class="btn-vehicle-float" onclick="toggleVehicleMenu()" title="Chọn loại xe">
           <span id="activeVehicleLabel" style="font-size: 16px;">🛵</span> ▾
         </button>
 
+        <!-- MENU CHỌN LOẠI XE POPUP -->
         <div id="vehicleMenu" class="vehicle-menu-popover">
-          <div class="vehicle-option active" onclick="selectFilter('bike', this)">🛵 Bike Phổ Thông (6.000đ/km)</div>
-          <div class="vehicle-option" onclick="selectFilter('car', this)">🚕 GrabCar (11.000đ/km)</div>
-          <div class="vehicle-option" onclick="selectFilter('driver', this)">👤 Lái Xe Hộ (11.000đ/km)</div>
-          <div class="vehicle-option" onclick="selectFilter('truck', this)">🚚 Giao Hàng / Chở Hàng</div>
+          <div class="vehicle-option active" onclick="selectFilter('bike', this)">🛵 Xe máy (6.000đ/km)</div>
+          <div class="vehicle-option" onclick="selectFilter('car', this)">🚕 Ô tô (11.000đ/km)</div>
+          <div class="vehicle-option" onclick="selectFilter('driver', this)">👤 Lái xe hộ (11.000đ/km)</div>
+          <div class="vehicle-option" onclick="selectFilter('truck', this)">🚚 Chở hàng (Thỏa thuận)</div>
         </div>
       </div>
 
+      <!-- 3. ICON ĐẶT LẠI ĐIỂM ĐÓN/ĐẾN -->
       <button id="resetBtn" class="btn-reset-icon" onclick="resetRoute()" title="Đặt lại điểm đón/đến">🔄</button>
     </div>
 
-    <!-- NÚT XÁC NHẬN CHUẨN XANH GRAB -->
+    <!-- NÚT XÁC NHẬN VỊ TRÍ CHÍNH GIỮA -->
     <button id="confirmSelectBtn" class="btn-confirm-select" onclick="confirmAndExitSelection()">
-      Chọn điểm đón này
+      📍 CHỌN VỊ TRÍ NÀY
     </button>
 
-    <!-- KHUNG ĐỊA CHỈ DẠNG TIMELINE GRAB -->
+    <!-- KHUNG ĐỊA CHỈ DẠNG KHUÔN LIÊN KẾT (TIMELINE CARD) -->
     <div class="route-card" style="margin-bottom: 10px;">
       <div class="route-input-item pickup-group">
-        <span class="grab-icon-dot blue-dot"></span>
-        <input type="text" id="pickupInput" placeholder="Vị trí hiện tại" autocomplete="off" oninput="onSearchInput('pickup')" onfocus="showRecentPickups()">
+        <span class="route-icon pickup-icon">🔴</span>
+        <input type="text" id="pickupInput" placeholder="📍 Nhập điểm đón (VD: Sân bay Vinh)..." autocomplete="off" oninput="onSearchInput('pickup')" onfocus="showRecentPickups()">
         <div class="action-buttons-right">
           <button type="button" id="btnPickupDetail" class="btn-pickup-detail" onclick="openPickupDetailDialog()" title="Thêm ghi chú chi tiết vị trí đón">📝 Chi tiết</button>
           <button type="button" class="btn-pin-select" onclick="triggerPinSelection('pickup')" title="Chọn điểm đón trên bản đồ">📍</button>
@@ -114,8 +93,8 @@
       </div>
 
       <div class="route-input-item dest-group">
-        <span class="grab-icon-dot red-dot"></span>
-        <input type="text" id="destInput" placeholder="Đến đâu?" autocomplete="off" oninput="onSearchInput('dest')" onfocus="showRecentDests()">
+        <span class="route-icon dest-icon">🚩</span>
+        <input type="text" id="destInput" placeholder="🚩 Nhập điểm đến (VD: Bến xe Vinh)..." autocomplete="off" oninput="onSearchInput('dest')" onfocus="showRecentDests()">
         <div class="action-buttons-right">
           <button type="button" class="btn-pin-select" onclick="triggerPinSelection('dest')" title="Chọn điểm đến trên bản đồ">🚩</button>
         </div>
@@ -123,25 +102,19 @@
       </div>
     </div>
 
-    <!-- KHUNG TÀI XẾ & CƯỚC PHÍ CHUẨN THẺ GRAB -->
+    <!-- CỤM GIÁ TIỀN & 3 TÀI XẾ -->
     <div class="bottom-main-bar">
-      <div class="grab-vehicle-card-info">
-        <span id="grabVehicleIcon" style="font-size: 26px; margin-right: 10px;">🛵</span>
-        <div class="price-info">
-          <div style="font-size: 14px; font-weight: 700; color: #1c2024;" id="vehicleTypeName">Bike Phổ Thông</div>
-          <div id="rate-label" class="price-sub">Đón trong 5 phút</div>
-        </div>
-      </div>
-      <div style="text-align: right;">
+      <div class="price-info">
         <div id="price" class="price-amount">0đ</div>
-        <button type="button" id="btnToggleDrivers" class="btn-drivers-toggle" onclick="toggleTop3Drivers()" style="margin-top: 4px;">
-          <span>⚡ 3 Tài Xế</span>
-          <span id="toggleArrow" class="arrow-icon">▾</span>
-        </button>
+        <div id="rate-label" class="price-sub"></div>
       </div>
+      <button type="button" id="btnToggleDrivers" class="btn-drivers-toggle" onclick="toggleTop3Drivers()" title="Xem danh sách 3 tài xế gần nhất">
+        <span>⚡ 3 Tài Xế Gần Nhất</span>
+        <span id="toggleArrow" class="arrow-icon">▾</span>
+      </button>
     </div>
 
-    <!-- DANH SÁCH 3 TÀI XẾ GẦN NHẤT -->
+    <!-- DANH SÁCH 3 TÀI XẾ (SLIDE UP / DOWN PANEL) -->
     <div id="top3Card" class="collapsible-drivers-panel">
       <div class="panel-header">
         <span>⚡ 3 Tài Xế Gần điểm đón nhất</span>
@@ -151,13 +124,13 @@
     </div>
   </div>
 
-  <!-- MODAL CHI TIẾT ĐIỂM ĐÓN -->
+  <!-- HỘP THOẠI NHẬP CHI TIẾT NƠI ĐÓNG KHÁCH -->
   <div id="pickupDetailModalOverlay" class="custom-alert-overlay">
     <div class="custom-alert-box" style="max-width: 340px;">
       <div class="custom-alert-icon">📝</div>
       <div class="custom-alert-title">Chi Tiết Điểm Đón</div>
-      <div class="custom-alert-msg" style="margin-bottom: 12px; font-size: 13px; text-align: left;">Thêm chi tiết điểm đón (ví dụ: gần cổng, cạnh cây xăng...):</div>
-      <input type="text" id="pickupDetailInput" placeholder="VD: Cổng số 2, Cạnh cây xăng..." style="width: 100%; padding: 10px 12px; border: 1.5px solid #e5e9eb; border-radius: 12px; font-size: 13.5px; box-sizing: border-box; margin-bottom: 16px; outline: none;">
+      <div class="custom-alert-msg" style="margin-bottom: 12px; font-size: 13px; text-align: left;">Vui lòng chỉ rõ địa điểm đón cho tài xế, như Số nhà, Cổng vào, Gần địa điểm nào đó...</div>
+      <input type="text" id="pickupDetailInput" placeholder="VD: Cổng số 2, Cạnh cây xăng..." style="width: 100%; padding: 10px 12px; border: 1.5px solid #cbd5e1; border-radius: 12px; font-size: 13.5px; box-sizing: border-box; margin-bottom: 16px; outline: none; transition: border-color 0.2s;">
       <div style="display: flex; gap: 8px;">
         <button class="custom-alert-btn" style="background: #94a3b8; box-shadow: none;" onclick="closePickupDetailDialog()">HỦY</button>
         <button class="custom-alert-btn" onclick="savePickupDetail()">LƯU GHI CHÚ</button>
@@ -184,7 +157,7 @@
     </div>
   </div>
 
-  <script src="utils.js?v=80"></script>
-  <script src="index.js?v=80"></script>
+  <script src="utils.js?v=75"></script>
+  <script src="index.js?v=75"></script>
 </body>
 </html>
