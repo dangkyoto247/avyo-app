@@ -1,5 +1,5 @@
 const TILE_CACHE_NAME = 'map-tiles-v2';
-const STATIC_CACHE_NAME = 'avyo-static-v54'; // Đổi thành v54 để bù ép trình duyệt di động xóa cache
+const STATIC_CACHE_NAME = 'avyo-static-v57';
 
 const STATIC_ASSETS = [
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',

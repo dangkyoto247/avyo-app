@@ -65,6 +65,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const RECENT_PICKUPS_KEY = 'avyo_recent_pickups';
 const RECENT_DESTS_KEY = 'avyo_recent_dests';
+const VEHICLE_PREF_KEY = 'avyo_selected_vehicle';
 
 let userLatLng = null;
 let markerStart = null, markerEnd = null;
@@ -77,6 +78,9 @@ let searchTimer = null;
 let mapboxTimeout = null;
 
 let currentSelectionMode = 'pickup'; // Mặc định khi vào trang chọn điểm đón qua ghim
+
+// ĐỌC LẠI LOẠI XE ĐÃ CHỌN TỪ LẦN MỞ APP TRƯỚC (MẶC ĐỊNH LÀ 'bike')
+let activeFilter = localStorage.getItem(VEHICLE_PREF_KEY) || 'bike';
 
 function safeDistance(lat1, lon1, lat2, lon2) {
   if (typeof getHaversineDistance === 'function') {
@@ -126,7 +130,7 @@ function centerMapOnPin(latlng, zoom = null) {
   map.panBy(delta, { animate: true, duration: 0.4 });
 }
 
-/* KÍCH HOẠT CHẾ ĐỘ CHỌN GHIM PIN VÀ DỊCH CHUYỂN BẢN ĐỒ GIỮ NGUYÊN ZOOM */
+/* KÍCH HOẠT CHẾ ĐỘ CHỌN GHIM PIN, ĐỔI ĐƯỜNG VẼ CŨ SANG MÀU XÁM ĐẬM ĐỂ ĐỐI CHIẾU DỄ RÕ HƠN */
 function triggerPinSelection(type) {
   let targetLatLng = null;
 
@@ -142,8 +146,12 @@ function triggerPinSelection(type) {
   }
 
   if (routeLine) {
-    map.removeLayer(routeLine);
-    routeLine = null;
+    routeLine.setStyle({
+      color: '#475569',
+      weight: 5,
+      dashArray: '8, 8',
+      opacity: 0.85
+    });
   }
 
   enterSelectionMode(type);
@@ -357,8 +365,6 @@ const destinationIcon = L.divIcon({
   iconAnchor: [17, 34]
 });
 
-let activeFilter = 'bike';
-
 function toggleVehicleMenu() {
   const menu = document.getElementById('vehicleMenu');
   if (menu) {
@@ -367,6 +373,7 @@ function toggleVehicleMenu() {
   }
 }
 
+/* CHỌN LOẠI XE: LƯU TÙY CHỌN VÀO LOCALSTORAGE ĐỂ LẦN MỞ APP SAU TỰ KHÔI PHỤC */
 function selectFilter(type, element) {
   const menu = document.getElementById('vehicleMenu');
   if (menu) menu.style.display = 'none';
@@ -374,6 +381,8 @@ function selectFilter(type, element) {
   if (activeFilter === type) return;
   
   activeFilter = type;
+  localStorage.setItem(VEHICLE_PREF_KEY, type); // Lưu lại loại xe đã chọn
+
   document.querySelectorAll('.vehicle-option').forEach(opt => opt.classList.remove('active'));
   if (element) element.classList.add('active');
 
@@ -399,6 +408,7 @@ map.on('locationfound', (e) => {
   } else if (!markerStart) {
     setPickupLocation(e.latlng, true);
   }
+  loadDrivers();
 });
 
 /* ĐẶT ĐIỂM ĐÓN CỐ ĐỊNH, CHẠM VÀO GHIM ĐỂ MỞ BẢN ĐỒ CHỈNH SỬA VỊ TRÍ */
@@ -881,20 +891,12 @@ async function openZaloById(driverId) {
   });
 }
 
+/* TẢI DANH SÁCH TÀI XẾ: LỌC THEO LOGIC MỚI */
 async function loadDrivers() {
-  const centerPoint = markerStart ? markerStart.getLatLng() : userLatLng;
+  // Ưu tiên điểm đón (markerStart), nếu chưa chọn điểm đón thì lấy vị trí hiện tại (userLatLng/map center)
+  const centerPoint = markerStart ? markerStart.getLatLng() : (userLatLng || map.getCenter());
 
-  if (!centerPoint) {
-    const { data } = await supabaseClient
-      .from('public_drivers')
-      .select('*')
-      .eq('is_online', true)
-      .neq('is_active', false)
-      .eq('vehicle_type', activeFilter)
-      .limit(15);
-    
-    rawDriversData = data || [];
-  } else {
+  if (centerPoint) {
     let { data: nearbyData } = await supabaseClient.rpc('get_nearby_drivers', {
       user_lat: centerPoint.lat,
       user_lng: centerPoint.lng,
@@ -913,6 +915,16 @@ async function loadDrivers() {
     } else {
       rawDriversData = nearbyData;
     }
+  } else {
+    const { data } = await supabaseClient
+      .from('public_drivers')
+      .select('*')
+      .eq('is_online', true)
+      .neq('is_active', false)
+      .eq('vehicle_type', activeFilter)
+      .limit(15);
+    
+    rawDriversData = data || [];
   }
 
   if (selectedDriver) {
@@ -971,8 +983,10 @@ async function selectDriver(driver) {
   }
 }
 
+/* HIỂN THỊ TÀI XẾ: ĐÃ CÓ ĐIỂM ĐÓN -> HIỂN THỊ 3 XE GẦN NHẤT; CHƯA CÓ ĐIỂM ĐÓN -> HIỂN THỊ 15 XE GẦN VỊ TRÍ HIỆN TẠI NHẤT */
 function renderDriverMarkers() {
-  const centerPoint = markerStart ? markerStart.getLatLng() : userLatLng;
+  const hasPickup = !!markerStart;
+  const centerPoint = hasPickup ? markerStart.getLatLng() : (userLatLng || map.getCenter());
 
   let baseFiltered = rawDriversData.filter(driver => {
     if (driver.vehicle_type !== activeFilter) return false;
@@ -990,7 +1004,6 @@ function renderDriverMarkers() {
   });
 
   let isFallback = false;
-  let filteredDrivers = [];
 
   if (centerPoint) {
     baseFiltered.sort((a, b) => {
@@ -999,25 +1012,33 @@ function renderDriverMarkers() {
       return distA - distB;
     });
 
-    filteredDrivers = baseFiltered.filter(driver => {
+    let withinRadius = baseFiltered.filter(driver => {
       return safeDistance(centerPoint.lat, centerPoint.lng, driver.lat, driver.lng) <= 5;
     });
 
-    if (filteredDrivers.length === 0) {
-      filteredDrivers = baseFiltered.filter(driver => {
+    if (withinRadius.length === 0) {
+      withinRadius = baseFiltered.filter(driver => {
         return safeDistance(centerPoint.lat, centerPoint.lng, driver.lat, driver.lng) <= 15;
       });
-      if (filteredDrivers.length > 0) isFallback = true;
+      if (withinRadius.length > 0) isFallback = true;
     }
-  } else {
-    filteredDrivers = baseFiltered;
+
+    if (withinRadius.length > 0) {
+      baseFiltered = withinRadius;
+    }
   }
+
+  // Nếu ĐÃ CÓ ĐIỂM ĐÓN -> Lấy đúng 3 xe gần nhất
+  // Nếu CHƯA CÓ ĐIỂM ĐÓN -> Lấy tối đa 15 xe gần vị trí hiện tại nhất
+  const maxDisplayCount = hasPickup ? 3 : 15;
+  const filteredDrivers = baseFiltered.slice(0, maxDisplayCount);
 
   const top3Card = document.getElementById('top3Card');
   const top3List = document.getElementById('top3List');
   const radiusBadge = document.getElementById('radiusBadge');
 
-  if (centerPoint && filteredDrivers.length > 0) {
+  // Thẻ danh sách Top 3 chỉ hiển thị khi đã chọn vị trí đón
+  if (hasPickup && filteredDrivers.length > 0) {
     top3Card.style.display = 'block';
     top3List.innerHTML = '';
 
@@ -1027,8 +1048,7 @@ function renderDriverMarkers() {
       radiusBadge.innerHTML = 'Bán kính 5km';
     }
 
-    const top3 = filteredDrivers.slice(0, 3);
-    top3.forEach(driver => {
+    filteredDrivers.forEach(driver => {
       const isSelected = selectedDriver && selectedDriver.id === driver.id;
       const distKm = safeDistance(centerPoint.lat, centerPoint.lng, driver.lat, driver.lng);
       const rating = calcRating(driver);
@@ -1054,23 +1074,21 @@ function renderDriverMarkers() {
       `;
       top3List.appendChild(div);
     });
+  } else if (hasPickup && filteredDrivers.length === 0) {
+    top3Card.style.display = 'block';
+    radiusBadge.innerText = 'Bán kính 15km';
+    top3List.innerHTML = `
+      <div style="font-size:12px; color:#dc2626; text-align:center; padding:10px; background:#fef2f2; border-radius:10px; border:1px solid #fca5a5;">
+        📍 Chưa tìm thấy tài xế nào trong phạm vi 15km quanh đây.<br>
+        <small style="color:#64748b; margin-top:2px; display:block;">Vui lòng chuyển loại xe khác hoặc đổi vị trí đón.</small>
+      </div>`;
   } else {
-    if (!centerPoint) {
-      top3Card.style.display = 'none';
-    } else {
-      top3Card.style.display = 'block';
-      radiusBadge.innerText = 'Bán kính 15km';
-      top3List.innerHTML = `
-        <div style="font-size:12px; color:#dc2626; text-align:center; padding:10px; background:#fef2f2; border-radius:10px; border:1px solid #fca5a5;">
-          📍 Chưa tìm thấy tài xế nào trong phạm vi 15km quanh đây.<br>
-          <small style="color:#64748b; margin-top:2px; display:block;">Vui lòng chuyển loại xe khác hoặc đổi vị trí đón.</small>
-        </div>`;
-    }
+    top3Card.style.display = 'none';
   }
 
   const currentValidIds = new Set();
 
-  filteredDrivers.slice(0, 15).forEach(driver => {
+  filteredDrivers.forEach(driver => {
     currentValidIds.add(driver.id);
     const icon = icons[driver.vehicle_type] || icons['bike'];
     const rating = calcRating(driver);
@@ -1121,6 +1139,21 @@ function renderDriverMarkers() {
 enterSelectionMode('pickup');
 loadDrivers();
 updateGuide();
+
+// KHÔI PHỤC TRẠNG THÁI HIỂN THỊ MENU LOẠI XE THEO TÙY CHỌN ĐÃ LƯU
+document.addEventListener('DOMContentLoaded', () => {
+  const activeLabel = document.getElementById('activeVehicleLabel');
+  if (activeLabel && typeNames[activeFilter]) {
+    activeLabel.innerText = typeNames[activeFilter];
+  }
+  document.querySelectorAll('.vehicle-option').forEach(opt => {
+    if (opt.getAttribute('onclick')?.includes(`'${activeFilter}'`)) {
+      opt.classList.add('active');
+    } else {
+      opt.classList.remove('active');
+    }
+  });
+});
 
 setInterval(() => {
   if (typeof loadDrivers === 'function') {
