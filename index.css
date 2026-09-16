@@ -12,7 +12,7 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
   max-width: 480px; 
   margin: auto; 
-  touch-action: auto; /* Mở khóa cử chỉ chạm cho toàn bộ trang */
+  touch-action: auto;
   -webkit-text-size-adjust: 100%;
   box-sizing: border-box;
   position: relative;
@@ -30,7 +30,7 @@ body {
   margin: 0;
   overflow: hidden;
   transform: translateZ(0);
-  touch-action: none; /* Bắt buộc để Leaflet nhận diện đúng cử chỉ pinch-zoom */
+  touch-action: none;
 }
 
 /* KHUNG PC CHUẨN TỐI ĐA 480PX KHI XEM TRÊN MÁY TÍNH */
@@ -87,7 +87,6 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 8px;
 }
 
 .brand-logo {
@@ -115,6 +114,7 @@ body {
   display: flex;
   flex-direction: column;
   position: relative;
+  pointer-events: auto !important;
 }
 
 .route-input-item {
@@ -234,7 +234,7 @@ body {
   display: none;
   width: 100%;
   padding: 11px;
-  margin-top: 8px;
+  margin-bottom: 8px;
   background: #00b14f;
   color: white;
   border: none;
@@ -244,6 +244,7 @@ body {
   cursor: pointer;
   box-shadow: 0 4px 12px rgba(0,177,79,0.3);
   letter-spacing: 0.3px;
+  pointer-events: auto !important;
 }
 
 body.selecting-pickup .dest-group,
@@ -289,7 +290,7 @@ body.selecting-dest .bottom-section {
   transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
 }
 
-/* CỤM NÚT NỔI CỐ ĐỊNH NGAY MỐC MÉP TRÊN THẺ BOTTOM */
+/* CỤM NÚT NỔI CỐ ĐỊNH PHÍA TRÊN BOTTOM SHEET */
 .floating-controls-stack {
   position: absolute;
   bottom: 100%;
@@ -357,6 +358,35 @@ body.selecting-dest .bottom-section {
 
 .btn-vehicle-float:active {
   transform: translateY(0) scale(0.95);
+}
+
+/* NÚT ĐẶT LẠI ĐIỂM ĐÓN/ĐẾN TRONG NÚT NỔI */
+.btn-reset-icon { 
+  pointer-events: auto;
+  background: #fff7ed; 
+  border: 1px solid #ffedd5; 
+  color: #f97316; 
+  border-radius: 10px; 
+  width: 40px; 
+  height: 40px; 
+  font-size: 16px; 
+  display: none; 
+  align-items: center; 
+  justify-content: center; 
+  cursor: pointer; 
+  flex-shrink: 0; 
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.18); 
+  transition: all 0.2s ease; 
+  padding: 0; 
+}
+
+.btn-reset-icon:hover { 
+  background: #ffedd5; 
+  transform: scale(1.05); 
+}
+
+.btn-reset-icon:active { 
+  transform: scale(0.95); 
 }
 
 .vehicle-menu-popover {
@@ -604,33 +634,6 @@ body.map-moving .fixed-center-pin .pin-shadow {
   transform: scale(0.95);
 }
 
-.btn-reset-icon { 
-  background: #fff7ed; 
-  border: 1px solid #ffedd5; 
-  color: #f97316; 
-  border-radius: 20px; 
-  min-width: 32px; 
-  height: 30px; 
-  font-size: 14px; 
-  display: none; 
-  align-items: center; 
-  justify-content: center; 
-  cursor: pointer; 
-  flex-shrink: 0; 
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1); 
-  transition: all 0.2s ease; 
-  padding: 0 8px; 
-}
-
-.btn-reset-icon:hover { 
-  background: #ffedd5; 
-  transform: scale(1.05); 
-}
-
-.btn-reset-icon:active { 
-  transform: scale(0.95); 
-}
-
 .btn-theme-toggle {
   background: rgba(255, 255, 255, 0.9);
   border: 1px solid #cbd5e1;
@@ -768,7 +771,8 @@ body.dark-mode {
 }
 
 .dark-mode .btn-gps-float,
-.dark-mode .btn-vehicle-float {
+.dark-mode .btn-vehicle-float,
+.dark-mode .btn-reset-icon {
   background: rgba(30, 41, 59, 0.95);
   color: #cbd5e1;
   border-color: rgba(255, 255, 255, 0.1);

@@ -19,8 +19,8 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/gh/ewoken/Leaflet.MovingMarker@master/MovingMarker.js"></script>
 
-  <!-- Đã đổi v=70 để tải CSS và JS mới -->
-  <link rel="stylesheet" href="index.css?v=70">
+  <!-- Đã đổi v=72 để ép trình duyệt nhận file CSS và JS mới -->
+  <link rel="stylesheet" href="index.css?v=72">
 </head>
 <body class="selecting-pickup">
 
@@ -40,13 +40,48 @@
     <div class="header-brand-row">
       <span class="brand-logo">💚 AVYO</span>
       <div class="header-actions">
-        <button id="resetBtn" class="btn-reset-icon" onclick="resetRoute()" title="Đặt lại điểm đón/đến">🔄</button>
         <button id="themeToggle" class="btn-theme-toggle" onclick="toggleDarkMode()" title="Giao diện Tối/Sáng">🌙</button>
       </div>
     </div>
+  </div>
+
+  <!-- CỤM ĐÁY MÀN HÌNH (BOTTOM SHEET) -->
+  <div class="bottom-section">
+    <!-- CỤM NÚT NỔI XẾP CHỒNG DỌC -->
+    <div class="floating-controls-stack">
+      <!-- 1. ICON GPS / CON ĐƯỜNG -->
+      <button id="gpsFloatBtn" class="btn-gps-float" onclick="handleGpsOrRouteBtnClick()" title="Vị trí hiện tại">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="3 11 22 2 13 21 11 13 3 11"></polygon>
+        </svg>
+      </button>
+
+      <!-- 2. ICON CHỌN LOẠI XE -->
+      <div style="position: relative;">
+        <button id="vehicleFloatBtn" class="btn-vehicle-float" onclick="toggleVehicleMenu()" title="Chọn loại xe">
+          <span id="activeVehicleLabel" style="font-size: 16px;">🛵</span> ▾
+        </button>
+
+        <!-- MENU CHỌN LOẠI XE POPUP -->
+        <div id="vehicleMenu" class="vehicle-menu-popover">
+          <div class="vehicle-option active" onclick="selectFilter('bike', this)">🛵 Xe máy (6.000đ/km)</div>
+          <div class="vehicle-option" onclick="selectFilter('car', this)">🚕 Ô tô (11.000đ/km)</div>
+          <div class="vehicle-option" onclick="selectFilter('driver', this)">👤 Lái xe hộ (11.000đ/km)</div>
+          <div class="vehicle-option" onclick="selectFilter('truck', this)">🚚 Chở hàng (Thỏa thuận)</div>
+        </div>
+      </div>
+
+      <!-- 3. ICON ĐẶT LẠI ĐIỂM ĐÓN/ĐẾN (Nằm dưới loại xe) -->
+      <button id="resetBtn" class="btn-reset-icon" onclick="resetRoute()" title="Đặt lại điểm đón/đến">🔄</button>
+    </div>
+
+    <!-- NÚT XÁC NHẬN VỊ TRÍ CHÍNH GIỮA (Nằm ngay trên khung nhập địa chỉ) -->
+    <button id="confirmSelectBtn" class="btn-confirm-select" onclick="confirmAndExitSelection()">
+      📍 CHỌN VỊ TRÍ NÀY
+    </button>
 
     <!-- KHUNG ĐỊA CHỈ DẠNG KHUÔN LIÊN KẾT (TIMELINE CARD) -->
-    <div class="route-card">
+    <div class="route-card" style="margin-bottom: 10px;">
       <div class="route-input-item pickup-group">
         <span class="route-icon pickup-icon">🔴</span>
         <input type="text" id="pickupInput" placeholder="📍 Nhập điểm đón (VD: Sân bay Vinh)..." autocomplete="off" oninput="onSearchInput('pickup')" onfocus="showRecentPickups()">
@@ -71,39 +106,7 @@
       </div>
     </div>
 
-    <!-- NÚT XÁC NHẬN VỊ TRÍ CHÍNH GIỮA BẢN ĐỒ -->
-    <button id="confirmSelectBtn" class="btn-confirm-select" onclick="confirmAndExitSelection()">
-      📍 CHỌN VỊ TRÍ NÀY
-    </button>
-  </div>
-
-  <!-- CỤM ĐÁY MÀN HÌNH (BOTTOM SHEET) -->
-  <div class="bottom-section">
-    <!-- CỤM NÚT NỔI ĐỊNH VỊ VÀ CHỌN XE NẰM ĐÚNG MÉP TRÊN -->
-    <div class="floating-controls-stack">
-      <!-- 1. ICON GPS / CON ĐƯỜNG ĐIỀU HƯỚNG LINH HOẠT -->
-      <button id="gpsFloatBtn" class="btn-gps-float" onclick="handleGpsOrRouteBtnClick()" title="Vị trí hiện tại">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <polygon points="3 11 22 2 13 21 11 13 3 11"></polygon>
-        </svg>
-      </button>
-
-      <!-- 2. ICON CHỌN LOẠI XE -->
-      <div style="position: relative;">
-        <button id="vehicleFloatBtn" class="btn-vehicle-float" onclick="toggleVehicleMenu()" title="Chọn loại xe">
-          <span id="activeVehicleLabel" style="font-size: 16px;">🛵</span> ▾
-        </button>
-
-        <!-- MENU CHỌN LOẠI XE POPUP -->
-        <div id="vehicleMenu" class="vehicle-menu-popover">
-          <div class="vehicle-option active" onclick="selectFilter('bike', this)">🛵 Xe máy (6.000đ/km)</div>
-          <div class="vehicle-option" onclick="selectFilter('car', this)">🚕 Ô tô (11.000đ/km)</div>
-          <div class="vehicle-option" onclick="selectFilter('driver', this)">👤 Lái xe hộ (11.000đ/km)</div>
-          <div class="vehicle-option" onclick="selectFilter('truck', this)">🚚 Chở hàng (Thỏa thuận)</div>
-        </div>
-      </div>
-    </div>
-
+    <!-- CỤM GIÁ TIỀN & 3 TÀI XẾ -->
     <div class="bottom-main-bar">
       <div class="price-info">
         <div id="price" class="price-amount">0đ</div>
@@ -158,8 +161,7 @@
     </div>
   </div>
 
-  <!-- Đổi v=70 để tải JS mới -->
-  <script src="utils.js?v=70"></script>
-  <script src="index.js?v=70"></script>
+  <script src="utils.js?v=72"></script>
+  <script src="index.js?v=72"></script>
 </body>
 </html>

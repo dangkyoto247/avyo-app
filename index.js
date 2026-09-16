@@ -177,8 +177,8 @@ function zoomToRouteOverview() {
       const topEl = document.querySelector('.top-section');
       const bottomEl = document.querySelector('.bottom-section');
 
-      const paddingTop = (topEl ? topEl.offsetHeight : 150) + 25;
-      const paddingBottom = (bottomEl ? bottomEl.offsetHeight : 150) + 25;
+      const paddingTop = (topEl ? topEl.offsetHeight : 60) + 20;
+      const paddingBottom = (bottomEl ? bottomEl.offsetHeight : 220) + 20;
 
       map.flyToBounds(bounds, {
         paddingTopLeft: [30, paddingTop],
