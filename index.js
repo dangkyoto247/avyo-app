@@ -31,15 +31,15 @@ map.on('zoomend', () => {
   }
 });
 
-// LỚP BẢN ĐỒ CHÍNH: GOOGLE MAPS TILES
+// LỚP BẢN ĐỒ CHÍNH: GOOGLE MAPS TILES (ĐÃ TỐI ƯU MƯỢT MÀ)
 const googleLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
   subdomains: ['0', '1', '2', '3'],
   maxZoom: 20,
   tileSize: 256,
   zoomOffset: 0,
-  keepBuffer: 15,
-  updateWhenIdle: false,
-  updateWhenZooming: true
+  keepBuffer: 3,            // Giảm từ 15 xuống 3
+  updateWhenIdle: true,     // Đợi dừng thao tác mới load ảnh mới
+  updateWhenZooming: false  // Không load ảnh trong lúc đang zoom
 });
 
 googleLayer.on('tileerror', function() {
@@ -48,16 +48,17 @@ googleLayer.on('tileerror', function() {
     L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/{z}/{x}/{y}?access_token=${MAPBOX_TOKEN}`, {
       maxZoom: 19,
       tileSize: 512,
-      zoomOffset: -1
+      zoomOffset: -1,
+      keepBuffer: 3,
+      updateWhenIdle: true,
+      updateWhenZooming: false
     }).addTo(map);
   }
 });
 googleLayer.addTo(map);
 
 setTimeout(() => { if (map) map.invalidateSize(); }, 300);
-
 window.addEventListener('resize', () => { if (map) map.invalidateSize(); });
-map.on('moveend resize', () => { if (map) map.invalidateSize(); });
 
 const SUPABASE_URL = 'https://yvucyqkglbgxvozrznir.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl2dWN5cWtnbGJneHZvenJ6bmlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkxMzA3ODAsImV4cCI6MjEwNDcwNjc4MH0.Zagl4i2LPmxW3w9ih0h4LRsrm-OOGtPcWgvEs2vHBqo';
@@ -244,7 +245,6 @@ map.on('movestart', () => {
 
 map.on('moveend', () => {
   document.body.classList.remove('map-moving');
-  if (map) map.invalidateSize();
 
   if (currentSelectionMode) {
     fetchAddressForInput(currentSelectionMode, getPinCenterLatLng());
