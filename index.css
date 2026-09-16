@@ -815,7 +815,18 @@ body.dark-mode {
   background-color: #121212 !important;
 }
 
-/* TỐI ƯU HIỆU NĂNG PHÓNG TO THU NHỎ (HARDWARE ACCELERATION) */
+/* TỐI ƯU GPU HARDWARE ACCELERATION PHÓNG TO THU NHỎ NHƯ GRAB */
+.leaflet-map-pane,
+.leaflet-tile,
+.leaflet-marker-icon,
+.leaflet-popup {
+  will-change: transform;
+  -webkit-transform: translate3d(0, 0, 0);
+  transform: translate3d(0, 0, 0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+
 .leaflet-tile-container {
   will-change: transform;
 }
@@ -823,12 +834,5 @@ body.dark-mode {
 .leaflet-zoom-anim .leaflet-zoom-animated {
   will-change: transform;
   transition-property: transform;
-  transition-timing-function: cubic-bezier(0.25, 0.1, 0.25, 1);
-}
-
-.leaflet-tile {
-  outline: 1px solid transparent;
-  -webkit-backface-visibility: hidden;
-  backface-visibility: hidden;
-  transform: translateZ(0);
+  transition-timing-function: cubic-bezier(0.2, 0, 0.2, 1);
 }

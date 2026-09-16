@@ -1,14 +1,20 @@
 // MAPBOX ACCESS TOKEN CỦA BẠN
 const MAPBOX_TOKEN = 'pk.eyJ1IjoidHVhbmFuaDM0MTYyMyIsImEiOiJjbXUycmMxa2UwMjd4MnlxeWZ2ZDV5NGF5In0.o10B_hdnfqOIn1jNfbpY2w';
 
-// Khởi tạo bản đồ Leaflet
+// Khởi tạo bản đồ Leaflet chuẩn Grab (Zoom phân đoạn mượt + Quán tính)
 const map = L.map('map', { 
   preferCanvas: true,
   attributionControl: false,
   zoomControl: false,
   fadeAnimation: true,
-  zoomSnap: 1,
-  zoomDelta: 1
+  zoomAnimation: true,
+  zoomSnap: 0.5,             // Zoom mượt theo tỉ lệ nhỏ (chuẩn Grab)
+  zoomDelta: 0.5,
+  wheelDebounceTime: 40,     // Khử độ trễ cuộn chuột
+  wheelPxPerZoomLevel: 120,
+  bounceAtZoomLimits: false,
+  inertia: true,
+  inertiaDeceleration: 3000
 }).setView([18.7034, 105.6832], 13);
 
 L.control.zoom({ position: 'topright' }).addTo(map);
@@ -26,7 +32,8 @@ map.on('zoomend', () => {
     const pinPoint = L.point(size.x / 2, size.y * 0.3333);
     const currentPoint = map.latLngToContainerPoint(zoomAnchorLatLng);
     const delta = currentPoint.subtract(pinPoint);
-    map.panBy(delta, { animate: false });
+    // Animate mượt thay vì nhảy giật tức thì (animate: false)
+    map.panBy(delta, { animate: true, duration: 0.25 });
     zoomAnchorLatLng = null;
   }
 });
@@ -37,9 +44,9 @@ const googleLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&
   maxZoom: 20,
   tileSize: 256,
   zoomOffset: 0,
-  keepBuffer: 3,            // Giảm từ 15 xuống 3
-  updateWhenIdle: true,     // Đợi dừng thao tác mới load ảnh mới
-  updateWhenZooming: false  // Không load ảnh trong lúc đang zoom
+  keepBuffer: 5,            // Buffer vừa đủ để không lộ mảng trắng khi trượt
+  updateWhenIdle: true,     // Đợi dừng thao tác mới nạp nét ảnh
+  updateWhenZooming: false  // Không nạp lại tile liên tục trong khi đang nén/dãn zoom
 });
 
 googleLayer.on('tileerror', function() {
@@ -49,7 +56,7 @@ googleLayer.on('tileerror', function() {
       maxZoom: 19,
       tileSize: 512,
       zoomOffset: -1,
-      keepBuffer: 3,
+      keepBuffer: 5,
       updateWhenIdle: true,
       updateWhenZooming: false
     }).addTo(map);
@@ -78,9 +85,8 @@ let rawDriversData = [];
 let searchTimer = null;
 let mapboxTimeout = null;
 
-let currentSelectionMode = 'pickup'; // Mặc định khi vào trang chọn điểm đón qua ghim
+let currentSelectionMode = 'pickup';
 
-// ĐỌC LẠI LOẠI XE ĐÃ CHỌN TỪ LẦN MỞ APP TRƯỚC (MẶC ĐỊNH LÀ 'bike')
 let activeFilter = localStorage.getItem(VEHICLE_PREF_KEY) || 'bike';
 
 function safeDistance(lat1, lon1, lat2, lon2) {
@@ -102,26 +108,23 @@ function getBBox(lat, lng, radiusKm) {
   return `${(lng - dLng).toFixed(4)},${(lat - dLat).toFixed(4)},${(lng + dLng).toFixed(4)},${(lat + dLat).toFixed(4)}`;
 }
 
-/* HÀM TÍNH TỌA ĐỘ TẠI ĐIỂM NHỌN CỦA GHIM (MỐC 1/3 PHÍA TRÊN MÀN HÌNH) */
 function getPinCenterLatLng() {
   if (!map) return L.latLng(18.7034, 105.6832);
   const size = map.getSize();
   const pinX = size.x / 2;
-  const pinY = size.y * 0.3333; // Mốc 1/3 phía trên chiều cao bản đồ
+  const pinY = size.y * 0.3333;
   return map.containerPointToLatLng([pinX, pinY]);
 }
 
-/* HÀM CẬP NHẬT MÀU MẮT GHIM LINH HOẠT THEO TRẠNG THÁI THAO TÁC */
 function updatePinColor(color) {
   const pinSvg = document.querySelector('.fixed-center-pin .pin-svg');
   if (pinSvg) pinSvg.setAttribute('fill', color);
 }
 
-/* HÀM ĐẶT BẢN ĐỒ SAO CHO TỌA ĐỘ NẰM ĐÚNG VỊ TRÍ GHIM 1/3 */
 function centerMapOnPin(latlng, zoom = null) {
   if (!map || !latlng) return;
   if (zoom !== null && map.getZoom() !== zoom) {
-    map.setZoom(zoom, { animate: false });
+    map.setZoom(zoom, { animate: true });
   }
   const size = map.getSize();
   const pinPoint = L.point(size.x / 2, size.y * 0.3333);
@@ -131,7 +134,6 @@ function centerMapOnPin(latlng, zoom = null) {
   map.panBy(delta, { animate: true, duration: 0.4 });
 }
 
-/* KÍCH HOẠT CHẾ ĐỘ CHỌN GHIM PIN, ĐỔI ĐƯỜNG VẼ CŨ SANG MÀU XÁM ĐẬM ĐỂ ĐỐI CHIẾU DỄ RÕ HƠN */
 function triggerPinSelection(type) {
   let targetLatLng = null;
 
@@ -162,7 +164,6 @@ function triggerPinSelection(type) {
   }
 }
 
-/* QUẢN LÝ QUY TRÌNH CHỌN ĐIỂM ĐÓN / ĐẾN QUA BẢN ĐỒ CỐ ĐỊNH + THAY ĐỔI MÀU GHIM */
 function enterSelectionMode(mode) {
   currentSelectionMode = mode;
   document.body.classList.remove('selecting-pickup', 'selecting-dest');
@@ -171,7 +172,7 @@ function enterSelectionMode(mode) {
 
   if (mode === 'pickup') {
     document.body.classList.add('selecting-pickup');
-    updatePinColor('#dc2626'); // Đỏ cho Điểm Đón
+    updatePinColor('#dc2626');
     if (confirmBtn) confirmBtn.innerText = "📍 CHỌN ĐIỂM ĐÓN NÀY";
     if (markerStart) {
       map.removeLayer(markerStart);
@@ -179,7 +180,7 @@ function enterSelectionMode(mode) {
     }
   } else if (mode === 'dest') {
     document.body.classList.add('selecting-dest');
-    updatePinColor('#2563eb'); // Xanh cho Điểm Đến
+    updatePinColor('#2563eb');
     if (confirmBtn) confirmBtn.innerText = "🚩 CHỌN ĐIỂM ĐẾN NÀY";
     if (markerEnd) {
       map.removeLayer(markerEnd);
@@ -208,7 +209,6 @@ async function fetchAddressForInput(type, latlng) {
   }
 }
 
-/* XÁC NHẬN CHỌN GHIM PIN: CHUYỂN SANG ĐIỂM ĐẾN NẾU CHƯA CÓ ĐIỂM ĐẾN */
 function confirmAndExitSelection() {
   const pinLatLng = getPinCenterLatLng();
 
@@ -231,14 +231,13 @@ function confirmAndExitSelection() {
 function exitSelectionMode() {
   currentSelectionMode = null;
   document.body.classList.remove('selecting-pickup', 'selecting-dest');
-  updatePinColor('#00b14f'); // Xanh lá Avyo khi duyệt xem bản đồ/xem đường đi
+  updatePinColor('#00b14f');
   
   if (markerStart && markerEnd) {
     calculateMapboxRoute();
   }
 }
 
-/* SỰ KIỆN DI CHUYỂN BẢN ĐỒ */
 map.on('movestart', () => {
   document.body.classList.add('map-moving');
 });
@@ -373,7 +372,6 @@ function toggleVehicleMenu() {
   }
 }
 
-/* CHỌN LOẠI XE: LƯU TÙY CHỌN VÀO LOCALSTORAGE ĐỂ LẦN MỞ APP SAU TỰ KHÔI PHỤC */
 function selectFilter(type, element) {
   const menu = document.getElementById('vehicleMenu');
   if (menu) menu.style.display = 'none';
@@ -381,7 +379,7 @@ function selectFilter(type, element) {
   if (activeFilter === type) return;
   
   activeFilter = type;
-  localStorage.setItem(VEHICLE_PREF_KEY, type); // Lưu lại loại xe đã chọn
+  localStorage.setItem(VEHICLE_PREF_KEY, type);
 
   document.querySelectorAll('.vehicle-option').forEach(opt => opt.classList.remove('active'));
   if (element) element.classList.add('active');
@@ -411,7 +409,6 @@ map.on('locationfound', (e) => {
   loadDrivers();
 });
 
-/* ĐẶT ĐIỂM ĐÓN CỐ ĐỊNH, CHẠM VÀO GHIM ĐỂ MỞ BẢN ĐỒ CHỈNH SỬA VỊ TRÍ */
 function setPickupLocation(latlng, isAuto = false) {
   if (markerStart) map.removeLayer(markerStart);
  
@@ -430,7 +427,6 @@ function setPickupLocation(latlng, isAuto = false) {
   updateGuide();
 }
 
-/* ĐẶT ĐIỂM ĐẾN CỐ ĐỊNH, CHẠM VÀO GHIM ĐỂ MỞ BẢN ĐỒ CHỈNH SỬA VỊ TRÍ */
 function setDestLocation(latlng) {
   if (markerEnd) map.removeLayer(markerEnd);
 
@@ -454,7 +450,7 @@ function useCurrentLocationAsPickup() {
       centerMapOnPin(userLatLng, map.getZoom());
       fetchAddressForInput(currentSelectionMode, userLatLng);
     } else {
-      map.setView(userLatLng, 15);
+      map.setView(userLatLng, 15, { animate: true });
       setPickupLocation(userLatLng, true);
       const labelText = "Vị trí hiện tại của bạn";
       document.getElementById('pickupInput').value = labelText;
@@ -642,7 +638,6 @@ function calculateFastRoute() {
   updatePrice();
 }
 
-/* TÍNH TOÁN LỘ TRÌNH VÀ TỰ ĐỘNG THU NHỎ BẢN ĐỒ KHÔNG CÓ HIỆU ỨNG TRƯỢT KÉO DÀI (ANIMATE: FALSE) */
 async function calculateMapboxRoute() {
   if (!markerStart || !markerEnd) return;
 
@@ -688,10 +683,9 @@ async function calculateMapboxRoute() {
     }).addTo(map);
   }
 
-  // TẮT CHUYỂN CẢNH KÉO DÀI ĐỂ ÔM TOÀN CẢNH TỨC THÌ
   map.fitBounds(routeLine.getBounds(), { 
     padding: [60, 60],
-    animate: false 
+    animate: true 
   });
 
   updatePrice();
@@ -891,9 +885,7 @@ async function openZaloById(driverId) {
   });
 }
 
-/* TẢI DANH SÁCH TÀI XẾ: LỌC THEO LOGIC MỚI */
 async function loadDrivers() {
-  // Ưu tiên điểm đón (markerStart), nếu chưa chọn điểm đón thì lấy vị trí hiện tại (userLatLng/map center)
   const centerPoint = markerStart ? markerStart.getLatLng() : (userLatLng || map.getCenter());
 
   if (centerPoint) {
@@ -978,12 +970,11 @@ async function selectDriver(driver) {
   renderDriverMarkers();
 
   if (driverMarkers[driver.id]) {
-    map.panTo([driver.lat, driver.lng]);
+    map.panTo([driver.lat, driver.lng], { animate: true });
     driverMarkers[driver.id].openPopup();
   }
 }
 
-/* HIỂN THỊ TÀI XẾ: ĐÃ CÓ ĐIỂM ĐÓN -> HIỂN THỊ 3 XE GẦN NHẤT; CHƯA CÓ ĐIỂM ĐÓN -> HIỂN THỊ 15 XE GẦN VỊ TRÍ HIỆN TẠI NHẤT */
 function renderDriverMarkers() {
   const hasPickup = !!markerStart;
   const centerPoint = hasPickup ? markerStart.getLatLng() : (userLatLng || map.getCenter());
@@ -1028,8 +1019,6 @@ function renderDriverMarkers() {
     }
   }
 
-  // Nếu ĐÃ CÓ ĐIỂM ĐÓN -> Lấy đúng 3 xe gần nhất
-  // Nếu CHƯA CÓ ĐIỂM ĐÓN -> Lấy tối đa 15 xe gần vị trí hiện tại nhất
   const maxDisplayCount = hasPickup ? 3 : 15;
   const filteredDrivers = baseFiltered.slice(0, maxDisplayCount);
 
@@ -1037,7 +1026,6 @@ function renderDriverMarkers() {
   const top3List = document.getElementById('top3List');
   const radiusBadge = document.getElementById('radiusBadge');
 
-  // Thẻ danh sách Top 3 chỉ hiển thị khi đã chọn vị trí đón
   if (hasPickup && filteredDrivers.length > 0) {
     top3Card.style.display = 'block';
     top3List.innerHTML = '';
@@ -1135,12 +1123,10 @@ function renderDriverMarkers() {
   });
 }
 
-// Bật mặc định chọn ghim điểm đón ngay khi tải trang
 enterSelectionMode('pickup');
 loadDrivers();
 updateGuide();
 
-// KHÔI PHỤC TRẠNG THÁI HIỂN THỊ MENU LOẠI XE THEO TÙY CHỌN ĐÃ LƯU
 document.addEventListener('DOMContentLoaded', () => {
   const activeLabel = document.getElementById('activeVehicleLabel');
   if (activeLabel && typeNames[activeFilter]) {
@@ -1163,7 +1149,6 @@ setInterval(() => {
 
 document.addEventListener('gesturestart', function (e) { e.preventDefault(); });
 
-/* TỰ ĐỘNG LÀM MỚI KHI CÓ PHIÊN BẢN CẮT CACHE MỚI */
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').then((reg) => {
     console.log("App đã sẵn sàng hoạt động!");
