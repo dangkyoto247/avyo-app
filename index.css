@@ -599,24 +599,27 @@ body.selecting-dest .btn-confirm-select {
 
 .btn-vehicle-float {
   pointer-events: auto;
+  width: 40px;
   height: 40px;
-  border-radius: 20px;
+  border-radius: 10px;
   background: rgba(255, 255, 255, 0.96);
-  color: #0f172a;
-  border: 1.5px solid #00b14f;
+  color: #334155;
+  border: 1px solid rgba(0, 0, 0, 0.12);
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.18);
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 3px;
-  padding: 0 10px;
-  font-size: 13px;
+  justify-content: center;
+  gap: 2px;
+  padding: 0;
+  font-size: 14px;
   font-weight: 700;
-  transition: all 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .btn-vehicle-float:hover {
   background: #ffffff;
+  color: #00b14f;
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.22);
 }
@@ -627,30 +630,31 @@ body.selecting-dest .btn-confirm-select {
 
 .btn-reset-icon { 
   pointer-events: auto;
-  background: #fff7ed; 
-  border: 1px solid #ffedd5; 
-  color: #f97316; 
+  background: rgba(255, 255, 255, 0.96); 
+  border: 1px solid rgba(0, 0, 0, 0.12); 
+  color: #334155; 
   border-radius: 10px; 
   width: 40px; 
   height: 40px; 
-  font-size: 16px; 
   display: none; 
   align-items: center; 
   justify-content: center; 
   cursor: pointer; 
   flex-shrink: 0; 
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.18); 
-  transition: all 0.2s ease; 
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   padding: 0; 
 }
 
 .btn-reset-icon:hover { 
-  background: #ffedd5; 
-  transform: scale(1.05); 
+  background: #ffffff; 
+  color: #00b14f;
+  transform: translateY(-2px); 
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.22);
 }
 
 .btn-reset-icon:active { 
-  transform: scale(0.95); 
+  transform: translateY(0) scale(0.95); 
 }
 
 .vehicle-menu-popover {
