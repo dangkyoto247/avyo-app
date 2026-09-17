@@ -12,6 +12,13 @@ document.addEventListener('gestureend', function (e) {
 // MAPBOX ACCESS TOKEN CỦA BẠN
 const MAPBOX_TOKEN = 'pk.eyJ1IjoidHVhbmFuaDM0MTYyMyIsImEiOiJjbXUycmMxa2UwMjd4MnlxeWZ2ZDV5NGF5In0.o10B_hdnfqOIn1jNfbpY2w';
 
+// 1. LẤY VỊ TRÍ GẦN NHẤT TỪ LOCALSTORAGE ĐỂ MỞ BẢN ĐỒ TẠI ĐÓ NGAY LẬP TỨC
+const savedLat = localStorage.getItem('avyo_last_lat');
+const savedLng = localStorage.getItem('avyo_last_lng');
+const initialCenter = (savedLat && savedLng) 
+  ? [parseFloat(savedLat), parseFloat(savedLng)] 
+  : [18.7034, 105.6832];
+
 // Khởi tạo bản đồ Leaflet - Tối ưu Zoom mượt mà nguyên bản
 const map = L.map('map', { 
   preferCanvas: true,
@@ -28,11 +35,12 @@ const map = L.map('map', {
   bounceAtZoomLimits: false,
   inertia: true,
   inertiaDeceleration: 3000
-}).setView([18.7034, 105.6832], 13);
+}).setView(initialCenter, 15);
 
 let swapDegree = 0;
 let activeSuggestionIndex = -1;
 let mapMoveDebounceTimer = null;
+let isFirstLocationLoad = true;
 
 /* HÀM CHUYỂN TAB ĐÁY MAXIM STYLE */
 function switchTab(tabName, event) {
@@ -510,11 +518,11 @@ function updatePinColor(color) {
 }
 
 /* HÀM CĂN MÀN HÌNH BẢN ĐỒ DỰA TRÊN TỌA ĐỘ VÀ KHOẢNG BÙ NỔI POPUP (OFFSETY) */
-function centerMapOnPin(latlng, zoom = null, offsetY = 0) {
+function centerMapOnPin(latlng, zoom = null, offsetY = 0, animate = true) {
   if (!map || !latlng || !Number.isFinite(latlng.lat) || !Number.isFinite(latlng.lng)) return;
   try {
     if (zoom !== null && map.getZoom() !== zoom) {
-      map.setZoom(zoom, { animate: true });
+      map.setZoom(zoom, { animate: animate });
     }
     const size = map.getSize();
     if (!size || !size.x || !size.y) return;
@@ -522,7 +530,7 @@ function centerMapOnPin(latlng, zoom = null, offsetY = 0) {
     const currentPoint = map.latLngToContainerPoint(latlng);
     if (!currentPoint || !Number.isFinite(currentPoint.x) || !Number.isFinite(currentPoint.y)) return;
     const delta = currentPoint.subtract(pinPoint);
-    map.panBy(delta, { animate: true, duration: 0.6, easeLinearity: 0.25 });
+    map.panBy(delta, { animate: animate, duration: animate ? 0.6 : 0, easeLinearity: 0.25 });
   } catch (e) {
     console.warn("Lỗi centerMapOnPin:", e);
   }
@@ -814,19 +822,29 @@ function selectFilter(type, element) {
   updatePrice();
 }
 
-// BẬT TỰ ĐỘNG ĐỊNH VỊ VỊ TRÍ HIỆN TẠI VỚI ĐỘ CHÍNH XÁC CAO KHI MỞ APP BAN ĐẦU
+// BẬT ĐỊNH VỊ BAN ĐẦU VỚI TỐI ƯU KHÔNG DÙNG HIỆU ỨNG CHỐNG CHÓNG MẶT
 map.locate({ setView: false, maxZoom: 15, enableHighAccuracy: true });
 
 map.on('locationfound', (e) => {
   userLatLng = e.latlng;
   
-  // Tự động căn vị trí GPS hiện tại về ghim 1/3 và điền tên địa chỉ vào ô điểm đón
-  if (currentSelectionMode) {
-    centerMapOnPin(e.latlng, 15);
+  // Lưu tọa độ GPS vào LocalStorage cho các lần mở app sau
+  localStorage.setItem('avyo_last_lat', e.latlng.lat);
+  localStorage.setItem('avyo_last_lng', e.latlng.lng);
+
+  if (isFirstLocationLoad) {
+    // Lần đầu mở: Căn vị trí TỨC THÌ (animate = false) để không bị trượt bản đồ gây chóng mặt
+    centerMapOnPin(e.latlng, 15, 0, false);
+    
+    if (!markerStart) {
+      setPickupLocation(e.latlng, true);
+    }
     fetchAddressForInput('pickup', e.latlng);
-  } else if (!markerStart) {
-    setPickupLocation(e.latlng, true);
-    fetchAddressForInput('pickup', e.latlng);
+    isFirstLocationLoad = false;
+  } else {
+    if (currentSelectionMode) {
+      centerMapOnPin(e.latlng, 15);
+    }
   }
   loadDrivers();
 });
@@ -851,7 +869,7 @@ function setPickupLocation(latlng, isAuto = false) {
   
   if (markerEnd) {
     calculateMapboxRoute();
-  } else {
+  } else if (!isAuto) {
     setTimeout(() => {
       centerMapOnPin(latlng);
     }, 150);
