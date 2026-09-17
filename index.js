@@ -32,6 +32,7 @@ const map = L.map('map', {
 
 let swapDegree = 0;
 let activeSuggestionIndex = -1;
+let mapMoveDebounceTimer = null;
 
 /* HÀM HOÁN ĐỔI ĐIỂM ĐÓN VÀ ĐIỂM ĐẾN (CÓ HIỆU ỨNG XOAY 180°) */
 function swapRoute() {
@@ -142,6 +143,11 @@ function enterFocusInputMode(type) {
   } else if (type === 'dest') {
     document.body.classList.add('focus-dest');
   }
+
+  // Ép trình duyệt không tự động cuộn làm lệch ô nhập khi bật bàn phím
+  window.scrollTo(0, 0);
+  setTimeout(() => window.scrollTo(0, 0), 50);
+  setTimeout(() => window.scrollTo(0, 0), 200);
 }
 
 /* HÀM THOÁT CHẾ ĐỘ FOCUS QUAY VỀ GIAO DIỆN BAN ĐẦU */
@@ -160,6 +166,13 @@ function exitFocusInputMode(type) {
   }
   activeSuggestionIndex = -1;
 }
+
+// KHÓA CUỘN TRANG KHI ĐANG Ở CHẾ ĐỘ FOCUS
+window.addEventListener('scroll', () => {
+  if (document.body.classList.contains('focus-pickup') || document.body.classList.contains('focus-dest')) {
+    window.scrollTo(0, 0);
+  }
+});
 
 /* THOÁT CHẾ ĐỘ FOCUS KHI BẤM PHÍM ESC (DÀNH CHO PC) */
 document.addEventListener('keydown', (e) => {
@@ -570,13 +583,18 @@ function exitSelectionMode() {
 
 map.on('movestart', () => {
   document.body.classList.add('map-moving');
+  clearTimeout(mapMoveDebounceTimer);
 });
 
+/* DEBOUNCE 300MS KHI THẢ GHIM BẢN ĐỒ */
 map.on('moveend', () => {
   document.body.classList.remove('map-moving');
+  clearTimeout(mapMoveDebounceTimer);
 
   if (currentSelectionMode) {
-    fetchAddressForInput(currentSelectionMode, getPinCenterLatLng());
+    mapMoveDebounceTimer = setTimeout(() => {
+      fetchAddressForInput(currentSelectionMode, getPinCenterLatLng());
+    }, 300);
   }
 });
 
@@ -823,7 +841,6 @@ function onSearchInput(type, isDirectCall = false) {
     return;
   }
 
-  // Bật trạng thái "Đang tìm..." ngay lập tức khi gõ từ ký tự thứ 2
   listEl.innerHTML = '<div class="suggestion-loading">⏳ Đang tìm địa chỉ...</div>';
   listEl.style.display = 'block';
 
