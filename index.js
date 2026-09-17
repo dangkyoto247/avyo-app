@@ -34,6 +34,30 @@ let swapDegree = 0;
 let activeSuggestionIndex = -1;
 let mapMoveDebounceTimer = null;
 
+/* HÀM KIỂM TRA VÀ CẬP NHẬT TRẠNG THÁI MẠNG OFFLINE/ONLINE THỜI GIAN THỰC */
+function updateNetworkStatus() {
+  const bar = document.getElementById('networkOfflineBar');
+  if (!bar) return;
+
+  if (!navigator.onLine) {
+    bar.innerText = '⚠️ Mất kết nối Internet. Đang chờ sóng 4G/Wifi...';
+    bar.classList.remove('online-back');
+    bar.classList.add('show');
+  } else {
+    if (bar.classList.contains('show')) {
+      bar.innerText = '✅ Đã kết nối lại Internet';
+      bar.classList.add('online-back');
+      setTimeout(() => {
+        bar.classList.remove('show', 'online-back');
+      }, 2500);
+    }
+  }
+}
+
+window.addEventListener('offline', updateNetworkStatus);
+window.addEventListener('online', updateNetworkStatus);
+document.addEventListener('DOMContentLoaded', updateNetworkStatus);
+
 /* HÀM HOÁN ĐỔI ĐIỂM ĐÓN VÀ ĐIỂM ĐẾN (CÓ HIỆU ỨNG XOAY 180°) */
 function swapRoute() {
   const swapBtn = document.querySelector('.btn-swap-route');
@@ -783,7 +807,6 @@ function setPickupLocation(latlng, isAuto = false) {
   if (markerEnd) {
     calculateMapboxRoute();
   } else {
-    // Cuộn mượt mà đưa điểm đón về đúng 1/3 ghim cố định phía trên màn hình
     setTimeout(() => {
       centerMapOnPin(latlng);
     }, 150);
@@ -810,7 +833,6 @@ function setDestLocation(latlng) {
   if (markerStart && markerEnd) {
     calculateMapboxRoute();
   } else {
-    // Cuộn mượt mà đưa điểm đến về đúng 1/3 ghim cố định phía trên màn hình
     setTimeout(() => {
       centerMapOnPin(latlng);
     }, 150);
@@ -1087,6 +1109,7 @@ async function calculateMapboxRoute() {
   updateGuide();
 }
 
+/* HÀM TÍNH GIÁ CƯỚC - HIỂN THỊ "THỎA THUẬN" KHI XE HÀNG HOẶC QUÃNG ĐƯỜNG VƯỢT QUÁ 100KM */
 function updatePrice() {
   const priceEl = document.getElementById('price');
   const rateLabelEl = document.getElementById('rate-label');
@@ -1100,16 +1123,18 @@ function updatePrice() {
   }
 
   const type = activeFilter;
+  const distVal = parseFloat(currentDistance);
 
-  if (type === 'truck') {
+  // Nếu là xe chở hàng HOẶC quãng đường vượt quá 100km -> Hiển thị "Thỏa thuận"
+  if (type === 'truck' || distVal > 100) {
     priceEl.innerText = 'Thỏa thuận';
     rateLabelEl.innerText = `(${currentDistance} km)`;
     return;
   }
 
   let rateVal = (type === 'car' || type === 'driver') ? 11000 : 6000;
-  const isMinFare = parseFloat(currentDistance) < 3.0;
-  const calcDistance = isMinFare ? 3.0 : parseFloat(currentDistance);
+  const isMinFare = distVal < 3.0;
+  const calcDistance = isMinFare ? 3.0 : distVal;
 
   currentPrice = Math.round(calcDistance * rateVal);
   priceEl.innerText = currentPrice.toLocaleString('vi-VN') + 'đ';
@@ -1271,6 +1296,7 @@ async function openZaloById(driverId) {
   await supabaseClient.rpc('increment_driver_zalo', { target_id: driver.id });
 
   const typeName = typeNames[driver.vehicle_type] || 'Tài xế';
+  const distVal = parseFloat(currentDistance);
   let msg = `Chào ${typeName}, tôi muốn sử dụng dịch vụ Avyo:\n`;
 
   if (markerStart) {
@@ -1282,7 +1308,7 @@ async function openZaloById(driverId) {
   if (markerEnd) {
     msg += `\n🚩 Điểm đến: https://maps.google.com/?q=${markerEnd.getLatLng().lat.toFixed(5)},${markerEnd.getLatLng().lng.toFixed(5)}`;
     msg += `\n📏 Quãng đường: ${currentDistance} km`;
-    msg += `\n💰 Cước phí: ${driver.vehicle_type === 'truck' ? 'Thỏa thuận' : currentPrice.toLocaleString('vi-VN') + 'đ'}`;
+    msg += `\n💰 Cước phí: ${(driver.vehicle_type === 'truck' || distVal > 100) ? 'Thỏa thuận' : currentPrice.toLocaleString('vi-VN') + 'đ'}`;
   }
 
   try {

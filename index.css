@@ -21,6 +21,38 @@ body {
   position: relative;
 }
 
+/* THANH CẢNH BÁO MẤT MẠNG KHI SÓNG YẾU/OFFLINE */
+.network-offline-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  background: #ef4444;
+  color: #ffffff;
+  text-align: center;
+  padding: 8px 12px;
+  font-size: 12.5px;
+  font-weight: 700;
+  z-index: 1000000;
+  box-shadow: 0 2px 12px rgba(239, 68, 68, 0.4);
+  transform: translateY(-100%);
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.3s ease;
+  pointer-events: none;
+  box-sizing: border-box;
+}
+
+.network-offline-bar.show {
+  transform: translateY(0);
+}
+
+.network-offline-bar.online-back {
+  background: #22c55e;
+  box-shadow: 0 2px 12px rgba(34, 197, 94, 0.4);
+}
+
 /* KHÓA BODY CỐ ĐỊNH KHI FOCUS TRÁNH BÀN PHÍM ẢO ĐẨY TRÔI KHUNG NHẬP */
 body.focus-pickup,
 body.focus-dest {
@@ -1199,9 +1231,7 @@ body.dark-mode {
   transition-timing-function: cubic-bezier(0.2, 0, 0.2, 1);
 }
 
-/* ==========================================================================
-   QUY TẮC BẮT BUỘC: ĐẶT Ở CUỐI FILE VỚI ĐỘ ƯU TIÊN CAO NHẤT KHI MỞ CHẾ ĐỘ FOCUS
-   ========================================================================== */
+/* ẨN TUYỆT ĐỐI NÚT XANH VÀ CÁC PHẦN BỊ ĐÈ KHI Ở CHẾ ĐỘ FOCUS */
 body.focus-pickup .btn-confirm-select,
 body.focus-dest .btn-confirm-select,
 body.selecting-pickup.focus-pickup .btn-confirm-select,
