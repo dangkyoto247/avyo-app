@@ -1,7 +1,8 @@
 const TILE_CACHE_NAME = 'map-tiles-v2';
-const STATIC_CACHE_NAME = 'avyo-static-v94'; // ĐỒNG BỘ NÂNG PHIÊN BẢN v93
+const STATIC_CACHE_NAME = 'avyo-static-v96';
 
 const STATIC_ASSETS = [
+  'https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;800&display=swap',
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',

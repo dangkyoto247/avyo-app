@@ -92,7 +92,7 @@ function swapRoute() {
   const swapBtn = document.querySelector('.btn-swap-route');
   if (swapBtn) {
     swapDegree += 180;
-    swapBtn.style.transform = `translateY(-50%) rotate(${swapDegree}deg)`;
+    swapBtn.style.transform = `rotate(${swapDegree}deg)`;
   }
 
   const pickupInput = document.getElementById('pickupInput');
@@ -575,7 +575,7 @@ function enterSelectionMode(mode) {
   } else if (mode === 'dest') {
     document.body.classList.add('selecting-dest');
     updatePinColor('#2563eb');
-    if (confirmBtn) confirmBtn.innerText = "🚩 CHỌN ĐIỂM ĐẾN NÀY";
+    if (confirmBtn) confirmBtn.innerText = "📍 CHỌN ĐIỂM ĐẾN NÀY";
     if (markerEnd) {
       map.removeLayer(markerEnd);
       markerEnd = null;

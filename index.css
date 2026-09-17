@@ -11,13 +11,17 @@ html, body {
 }
 
 body { 
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+  font-family: 'Google Sans', Roboto, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; 
   max-width: 480px; 
   margin: auto; 
   touch-action: manipulation;
   -webkit-text-size-adjust: 100%;
   box-sizing: border-box;
   position: relative;
+}
+
+input, button, select, textarea {
+  font-family: 'Google Sans', Roboto, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
 }
 
 /* THANH CẢNH BÁO MẤT MẠNG KHI SÓNG YẾU/OFFLINE */
@@ -247,7 +251,8 @@ body.focus-dest .dest-group {
 /* ẨN NÚT CHI TIẾT VÀ NÚT CHỌN BẢN ĐỒ KHI Ở CHẾ ĐỘ FOCUS */
 body.focus-pickup .pickup-group #btnPickupDetail,
 body.focus-pickup .pickup-group .btn-pin-select,
-body.focus-dest .dest-group .btn-pin-select {
+body.focus-dest .dest-group .btn-pin-select,
+body.focus-dest .dest-group .btn-swap-route {
   display: none !important;
 }
 
@@ -304,6 +309,9 @@ body.focus-dest .dest-group .suggestions-list {
   font-size: 13px;
   margin-right: 8px;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .route-input-item input {
@@ -311,7 +319,7 @@ body.focus-dest .dest-group .suggestions-list {
   border: none;
   background: transparent;
   font-size: 13.5px;
-  font-weight: 600;
+  font-weight: 500;
   color: #0f172a;
   outline: none;
   padding: 8px 0;
@@ -323,7 +331,7 @@ body.focus-dest .dest-group .suggestions-list {
 }
 
 .dest-group input {
-  padding-right: 66px !important;
+  padding-right: 98px !important;
 }
 
 .action-buttons-right {
@@ -387,28 +395,24 @@ body.focus-dest .dest-group .suggestions-list {
   border-radius: 2px;
 }
 
-/* NÚT HOÁN ĐỔI NƠI ĐÓN ⇄ NƠI ĐẾN (MẶC ĐỊNH ẨN, CHỈ HIỆN KHI CÓ ĐỦ 2 ĐIỂM) */
+/* NÚT HOÁN ĐỔI NƠI ĐÓN ⇄ NƠI ĐẾN */
 .btn-swap-route {
-  position: absolute;
-  left: -32px;
-  top: 50%;
-  transform: translateY(-50%);
   background: #ffffff;
   border: 1px solid #cbd5e1;
-  border-radius: 50%;
-  width: 23px;
-  height: 23px;
+  border-radius: 8px;
+  width: 28px;
+  height: 28px;
   display: none;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: bold;
   color: #00b14f;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
-  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s;
-  z-index: 30;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s, border-color 0.2s;
   padding: 0;
+  flex-shrink: 0;
 }
 
 .btn-swap-route:hover {
@@ -417,7 +421,6 @@ body.focus-dest .dest-group .suggestions-list {
 }
 
 .btn-swap-route:active {
-  transform: translateY(-50%) scale(0.9);
   background: #dcfce7;
 }
 
@@ -500,7 +503,7 @@ body.focus-dest .dest-group .suggestions-list {
   color: white;
   border: none;
   border-radius: 12px;
-  font-weight: 800;
+  font-weight: 700;
   font-size: 14px;
   cursor: pointer;
   box-shadow: 0 4px 12px rgba(0,177,79,0.3);
@@ -522,7 +525,7 @@ body.selecting-dest .btn-confirm-select {
   display: block !important;
 }
 
-/* CỤM ĐÁY MÀN HÌNH - PHỦ KÍN NỀN TRẮNG ĐÁY MÀN HÌNH */
+/* CỤM ĐÁY MÀN HÌNH */
 .bottom-section {
   position: fixed;
   bottom: 0;
@@ -543,7 +546,6 @@ body.selecting-dest .btn-confirm-select {
   transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
 }
 
-/* PHỦ KÍN VÙNG ĐÁY BẰNG NỀN TRẮNG TRIỆT TẤT CẢ VỆT XÁM */
 .bottom-section::after {
   content: "";
   position: absolute;
@@ -672,7 +674,7 @@ body.selecting-dest .btn-confirm-select {
   padding: 8px 12px;
   border-radius: 10px;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   color: #334155;
   cursor: pointer;
   transition: all 0.15s ease;
@@ -729,7 +731,7 @@ body.selecting-dest .btn-confirm-select {
   padding: 8px 12px;
   border-radius: 10px;
   font-size: 12.5px;
-  font-weight: 800;
+  font-weight: 700;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -739,7 +741,6 @@ body.selecting-dest .btn-confirm-select {
   white-space: nowrap;
 }
 
-/* CHẤM XANH NHẤP NHÁY THỜI GIAN THỰC (REAL-TIME INDICATOR) */
 .live-dot {
   width: 8px;
   height: 8px;
@@ -808,7 +809,7 @@ body.selecting-dest .btn-confirm-select {
 
 .panel-header {
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 700;
   color: #334155;
   margin-bottom: 8px;
   display: flex;
@@ -857,7 +858,6 @@ body.map-moving .fixed-center-pin .pin-shadow {
   opacity: 0.15;
 }
 
-/* DANH SÁCH GỢI Ý MẶC ĐỊNH */
 .suggestions-list { 
   position: absolute; 
   top: 100% !important; 
@@ -1190,7 +1190,7 @@ body.dark-mode {
 
 .custom-alert-title {
   font-size: 17px;
-  font-weight: 800;
+  font-weight: 700;
   color: #0f172a;
   margin-bottom: 8px;
 }
@@ -1251,7 +1251,6 @@ body.dark-mode {
   transition-timing-function: cubic-bezier(0.2, 0, 0.2, 1);
 }
 
-/* ẨN TUYỆT ĐỐI NÚT XANH VÀ CÁC PHẦN BỊ ĐÈ KHI Ở CHẾ ĐỘ FOCUS */
 body.focus-pickup .btn-confirm-select,
 body.focus-dest .btn-confirm-select,
 body.selecting-pickup.focus-pickup .btn-confirm-select,
@@ -1273,7 +1272,6 @@ body.focus-dest .pickup-group {
   display: none !important;
 }
 
-/* CSS CHO MENU XỔ XUỐNG GÓC TRÊN CÙNG BÊN PHẢI */
 .top-menu-popover {
   pointer-events: auto;
   position: absolute;
@@ -1310,7 +1308,6 @@ body.focus-dest .pickup-group {
   color: #00b14f;
 }
 
-/* HIỆU ỨNG DARK MODE CHO MENU MỚI */
 .dark-mode .top-menu-popover {
   background: #1e293b;
   border-color: #334155;
