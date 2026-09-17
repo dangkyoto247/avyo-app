@@ -243,7 +243,7 @@ body.focus-dest .dest-group .suggestions-list {
   border-radius: 14px !important;
 }
 
-/* PHƯƠNG ÁN 1: ẨN LOGO AVYO & NÚT SÁNG TỐI CÙNG CÁC PHẦN DƯỚI KHI FOCUS ĐỂ DÒNG NHẬP NẰM TRÊN CÙNG MÀN HÌNH */
+/* ẨN NÚT VÀ PHẦN DƯỚI KHI FOCUS */
 body.focus-pickup .top-float-bar,
 body.focus-dest .top-float-bar,
 body.focus-pickup .route-divider,
@@ -363,13 +363,13 @@ body.focus-dest .collapsible-drivers-panel {
   font-weight: bold;
   color: #00b14f;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
-  transition: all 0.2s ease;
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s;
   z-index: 25;
   padding: 0;
 }
 
 .btn-swap-route:active {
-  transform: translateY(-50%) scale(0.88);
+  background: #f1f5f9;
 }
 
 .dark-mode .btn-swap-route {
@@ -794,15 +794,22 @@ body.map-moving .fixed-center-pin .pin-shadow {
   border-bottom: 1px solid #f1f5f9; 
   cursor: pointer; 
   color: #334155; 
+  transition: background-color 0.15s ease;
 }
 
 .suggestion-item:last-child { 
   border-bottom: none; 
 }
 
-.suggestion-item:hover { 
+.suggestion-item:hover,
+.suggestion-item.highlighted { 
   background: #f0fdf4; 
   color: #16a34a; 
+}
+
+.dark-mode .suggestion-item.highlighted {
+  background: #064e3b;
+  color: #6ee7b7;
 }
 
 .btn-action-zalo {
@@ -948,12 +955,6 @@ body.dark-mode {
 
 .dark-mode .suggestion-loading {
   color: #94a3b8;
-}
-
-.dark-mode .btn-swap-route {
-  background: #334155;
-  border-color: #475569;
-  color: #6ee7b7;
 }
 
 .dark-mode .bottom-main-bar {

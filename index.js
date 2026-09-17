@@ -30,8 +30,17 @@ const map = L.map('map', {
   inertiaDeceleration: 3000
 }).setView([18.7034, 105.6832], 13);
 
-/* HÀM HOÁN ĐỔI ĐIỂM ĐÓN VÀ ĐIỂM ĐẾN */
+let swapDegree = 0;
+let activeSuggestionIndex = -1;
+
+/* HÀM HOÁN ĐỔI ĐIỂM ĐÓN VÀ ĐIỂM ĐẾN (CÓ HIỆU ỨNG XOAY 180°) */
 function swapRoute() {
+  const swapBtn = document.querySelector('.btn-swap-route');
+  if (swapBtn) {
+    swapDegree += 180;
+    swapBtn.style.transform = `translateY(-50%) rotate(${swapDegree}deg)`;
+  }
+
   const pickupInput = document.getElementById('pickupInput');
   const destInput = document.getElementById('destInput');
 
@@ -74,19 +83,55 @@ function swapRoute() {
   }
 }
 
-/* HÀM XỬ LÝ BẤM PHÍM ENTER ĐỂ CHỌN NHANH KẾT QUẢ ĐẦU TIÊN */
+/* HÀM ĐIỀU HƯỚNG BÀN PHÍM (MŨI TÊN TĂNG/GIẢM VÀ ENTER/ESC) */
 function handleInputEnter(event, type) {
-  if (event.key === 'Enter') {
-    event.preventDefault();
-    const listEl = document.getElementById(type + 'Suggestions');
-    const firstItem = listEl ? listEl.querySelector('.suggestion-item') : null;
+  const listEl = document.getElementById(type + 'Suggestions');
+  const isListVisible = listEl && listEl.style.display !== 'none';
 
-    if (firstItem) {
-      firstItem.click();
+  if (!isListVisible) {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      onSearchInput(type, true);
+    }
+    return;
+  }
+
+  const items = listEl.querySelectorAll('.suggestion-item');
+  if (items.length === 0) return;
+
+  if (event.key === 'ArrowDown') {
+    event.preventDefault();
+    activeSuggestionIndex = (activeSuggestionIndex + 1) % items.length;
+    updateHighlightedSuggestion(items);
+  } else if (event.key === 'ArrowUp') {
+    event.preventDefault();
+    activeSuggestionIndex = (activeSuggestionIndex - 1 + items.length) % items.length;
+    updateHighlightedSuggestion(items);
+  } else if (event.key === 'Enter') {
+    event.preventDefault();
+    if (activeSuggestionIndex >= 0 && activeSuggestionIndex < items.length) {
+      items[activeSuggestionIndex].click();
+    } else if (items.length > 0) {
+      items[0].click();
     } else {
       onSearchInput(type, true);
     }
+    activeSuggestionIndex = -1;
+  } else if (event.key === 'Escape') {
+    exitFocusInputMode();
+    activeSuggestionIndex = -1;
   }
+}
+
+function updateHighlightedSuggestion(items) {
+  items.forEach((item, idx) => {
+    if (idx === activeSuggestionIndex) {
+      item.classList.add('highlighted');
+      item.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    } else {
+      item.classList.remove('highlighted');
+    }
+  });
 }
 
 /* HÀM MỞ CHẾ ĐỘ FOCUS ĐẨY NGUYÊN DÒNG NHẬP LÊN ĐẦU MÀN HÌNH */
@@ -113,6 +158,7 @@ function exitFocusInputMode(type) {
     document.getElementById('pickupSuggestions').style.display = 'none';
     document.getElementById('destSuggestions').style.display = 'none';
   }
+  activeSuggestionIndex = -1;
 }
 
 /* THOÁT CHẾ ĐỘ FOCUS KHI BẤM PHÍM ESC (DÀNH CHO PC) */
@@ -766,6 +812,7 @@ function cleanAddressText(text) {
 
 function onSearchInput(type, isDirectCall = false) {
   clearTimeout(searchTimer);
+  activeSuggestionIndex = -1;
   const query = document.getElementById(type + 'Input').value.trim().substring(0, 200);
   const listEl = document.getElementById(type + 'Suggestions');
  
@@ -827,7 +874,8 @@ function onSearchInput(type, isDirectCall = false) {
     }
 
     if (features.length === 0) {
-      listEl.style.display = 'none';
+      listEl.innerHTML = '<div class="suggestion-loading">❌ Không tìm thấy địa chỉ phù hợp</div>';
+      listEl.style.display = 'block';
       return;
     }
 
@@ -930,6 +978,11 @@ async function calculateMapboxRoute() {
   const end = markerEnd.getLatLng();
 
   if (!start || !end || !Number.isFinite(start.lat) || !Number.isFinite(start.lng) || !Number.isFinite(end.lat) || !Number.isFinite(end.lng)) return;
+
+  const directDistKm = safeDistance(start.lat, start.lng, end.lat, end.lng);
+  if (directDistKm < 0.05) {
+    alert("⚠️ Điểm đón và điểm đến đang ở quá gần nhau (dưới 50m). Vui lòng kiểm tra lại lộ trình!");
+  }
 
   let routePoints = null;
 
