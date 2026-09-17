@@ -1760,7 +1760,7 @@ window.alert = function(message) {
   });
 };
 
-/* --- XỬ LÝ BÓC TÁCH LINK GOOGLE MAPS VỚI LUỒNG DỰ PHÒNG (ƯU TIÊN SUPABASE EDGE) --- */
+/* --- XỬ LÝ BÓC TÁCH LINK GOOGLE MAPS VỚI TỰ ĐỘNG CHUYỂN ĐỔI TÊN ĐỊA DANH THẬT --- */
 
 window.openGoogleMapsToCopy = function() {
   window.open('https://www.google.com/maps/dir/', '_blank');
@@ -1771,7 +1771,14 @@ window.handleGgmapLinkInput = function() {
 
   const inputEl = document.getElementById('ggmapLinkInput');
   const clearBtn = document.getElementById('clearGgmapBtn');
-  const rawUrl = inputEl ? inputEl.value.trim() : '';
+  let rawUrl = inputEl ? inputEl.value.trim() : '';
+
+  // BÓC TÁCH LINK VÀ CẮT BỎ ĐUÔI RÁC ?g_st=ic NẾU CÓ
+  const urlRegex = /(https?:\/\/[^\s]+)/;
+  const match = rawUrl.match(urlRegex);
+  if (match) {
+    rawUrl = match[1].split('?')[0]; 
+  }
 
   if (clearBtn) {
     clearBtn.style.display = rawUrl.length > 0 ? 'flex' : 'none';
@@ -1798,18 +1805,15 @@ window.handleGgmapLinkInput = function() {
 
       // TẦNG 1: Gọi Supabase Edge Function (Ưu tiên 1)
       try {
-        const sbRes = await fetch(`${SUPABASE_URL}/functions/v1/unshorten?url=${encodeURIComponent(rawUrl)}`, {
-          headers: {
-            'Authorization': `Bearer ${SUPABASE_KEY}`,
-            'apikey': SUPABASE_KEY
-          }
-        });
+        const sbRes = await fetch(`https://yvucyqkglbgxvozrznir.supabase.co/functions/v1/dynamic-action?url=${encodeURIComponent(rawUrl)}`);
+        
         if (sbRes.ok) {
           const sbData = await sbRes.json();
           if (sbData.expandedUrl) {
             targetUrl = sbData.expandedUrl;
             fullHtmlContent = sbData.content || "";
             resolved = true;
+            console.log("✅ Giải mã thành công qua Tầng 1 (Supabase Edge Function)");
           }
         }
       } catch (e) {
@@ -1826,6 +1830,7 @@ window.handleGgmapLinkInput = function() {
               targetUrl = cfData.expandedUrl;
               fullHtmlContent = cfData.content || "";
               resolved = true;
+              console.log("✅ Giải mã thành công qua Tầng 2 (Cloudflare Worker)");
             }
           }
         } catch (e) {
@@ -1833,7 +1838,7 @@ window.handleGgmapLinkInput = function() {
         }
       }
 
-      // TẦNG 3: Gọi Public Proxies (Dự phòng 2)
+// TẦNG 3: Gọi Public Proxies (Dự phòng cuối cùng)
       if (!resolved) {
         const proxyList = [
           async (u) => {
@@ -1843,10 +1848,10 @@ window.handleGgmapLinkInput = function() {
             return { url: u, content: text };
           },
           async (u) => {
-            const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(u)}`);
-            if (!res.ok) throw new Error("AllOrigins bận");
-            const data = await res.json();
-            return { url: data.status?.url || u, content: data.contents || "" };
+            const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(u)}`);
+            if (!res.ok) throw new Error("CORSProxy bận");
+            const text = await res.text();
+            return { url: res.url || u, content: text };
           }
         ];
 
@@ -1857,6 +1862,7 @@ window.handleGgmapLinkInput = function() {
             fullHtmlContent = result.content;
             if (fullHtmlContent || targetUrl !== rawUrl) {
               resolved = true;
+              console.log("✅ Giải mã thành công qua Tầng 3 (Public Proxy)");
               break;
             }
           } catch (err) {
@@ -1881,8 +1887,17 @@ window.handleGgmapLinkInput = function() {
     const textMatch = targetUrl.match(/\/dir\/([^\/@]+)\/([^\/@]+)\//);
     if (textMatch) {
       try {
-        pickupName = cleanAddressText(decodeURIComponent(textMatch[1].replace(/\+/g, ' ')));
-        destName = cleanAddressText(decodeURIComponent(textMatch[2].replace(/\+/g, ' ')));
+        let rawPickup = cleanAddressText(decodeURIComponent(textMatch[1].replace(/\+/g, ' ')));
+        let rawDest = cleanAddressText(decodeURIComponent(textMatch[2].replace(/\+/g, ' ')));
+
+        // Kiểm tra lọc bỏ nếu tên địa danh chỉ là dãy số tọa độ
+        const isCoordRegex = /^-?\d+\.\d+,\s*-?\d+\.\d+$/;
+        if (!isCoordRegex.test(rawPickup)) {
+          pickupName = rawPickup;
+        }
+        if (!isCoordRegex.test(rawDest)) {
+          destName = rawDest;
+        }
       } catch (e) {
         console.warn("Lỗi đọc tên địa danh từ URL:", e);
       }
@@ -1921,14 +1936,14 @@ window.handleGgmapLinkInput = function() {
       }
     }
 
-    // 4. Thiết lập vị trí và vẽ lộ trình
+    // 4. Thiết lập vị trí, lấy tên đường thật qua Mapbox và vẽ lộ trình
     if (pickupLat && pickupLng && destLat && destLng) {
       const pickupLatLng = L.latLng(pickupLat, pickupLng);
       const destLatLng = L.latLng(destLat, destLng);
 
       exitSelectionMode();
 
-      // Điểm đón
+      // Điểm đón: Nếu có chữ tên đường thì dùng luôn, nếu là tọa độ số thì gọi Mapbox đổi tên
       setPickupLocation(pickupLatLng);
       if (pickupName) {
         const pInput = document.getElementById('pickupInput');
@@ -1939,7 +1954,7 @@ window.handleGgmapLinkInput = function() {
         fetchAddressForInput('pickup', pickupLatLng);
       }
 
-      // Điểm đến
+      // Điểm đến: Tự động đổi tên thật nếu thiếu
       setDestLocation(destLatLng);
       if (destName) {
         const dInput = document.getElementById('destInput');
