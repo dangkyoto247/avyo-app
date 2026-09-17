@@ -183,6 +183,7 @@ body.focus-dest {
   margin-bottom: 8px !important;
 }
 
+/* THIẾT LẬP FLEXBOX ĐỂ DÒNG NHẬP VÀ CỤM NÚT NẰM TÁCH BIỆT NHAU */
 .route-input-item {
   display: flex;
   align-items: center;
@@ -190,6 +191,7 @@ body.focus-dest {
   min-height: 38px;
   z-index: 10;
   box-sizing: border-box;
+  width: 100%;
 }
 
 .pickup-group {
@@ -256,12 +258,6 @@ body.focus-dest .dest-group .btn-swap-route {
   display: none !important;
 }
 
-/* ĐIỀU CHỈNH PADDING PHẢI ĐỂ CẢNH QUAN Ô NHẬP HIỂN THỊ TRÀN FULL MÀN HÌNH */
-body.focus-pickup .pickup-group input,
-body.focus-dest .dest-group input {
-  padding-right: 32px !important;
-}
-
 /* ĐỊNH VỊ CHUẨN TRÊN MÀN HÌNH MÁY TÍNH (PC) KHI FOCUS */
 @media (min-width: 481px) {
   body.focus-pickup .pickup-group,
@@ -314,8 +310,11 @@ body.focus-dest .dest-group .suggestions-list {
   justify-content: center;
 }
 
+/* Ô NHẬP VĂN BẢN TỰ ĐỘNG CO GIÃN, DỪNG LẠI TRƯỚC CỤM NÚT */
 .route-input-item input {
-  width: 100%;
+  flex: 1;
+  min-width: 0;
+  width: auto;
   border: none;
   background: transparent;
   font-size: 13.5px;
@@ -326,22 +325,19 @@ body.focus-dest .dest-group .suggestions-list {
   box-sizing: border-box;
 }
 
-.pickup-group input {
-  padding-right: 140px !important;
-}
-
+.pickup-group input,
 .dest-group input {
-  padding-right: 98px !important;
+  padding-right: 0 !important;
 }
 
+/* CỤM NÚT BẤM BÊN PHẢI TÁCH BẬC TỰ DO KHỎI Ô INPUT */
 .action-buttons-right {
-  position: absolute;
-  right: 8px !important;
-  top: 50%;
-  transform: translateY(-50%);
   display: flex;
   align-items: center;
   gap: 4px;
+  flex-shrink: 0;
+  margin-left: 6px;
+  z-index: 30;
 }
 
 /* NÚT XÓA 1 LẦN (NÚT X) */
@@ -349,8 +345,8 @@ body.focus-dest .dest-group .suggestions-list {
   background: #e2e8f0;
   border: none;
   border-radius: 50%;
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -395,13 +391,13 @@ body.focus-dest .dest-group .suggestions-list {
   background: #ffffff;
   border: 1px solid #cbd5e1;
   border-radius: 8px;
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   display: none;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: bold;
   color: #00b14f;
   box-shadow: 0 1px 2px rgba(0,0,0,0.06);
@@ -441,13 +437,13 @@ body.focus-dest .dest-group .suggestions-list {
   background: #ffffff;
   border: 1px solid #cbd5e1;
   border-radius: 8px;
-  height: 28px;
-  padding: 0 7px;
+  height: 32px;
+  padding: 0 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 700;
   color: #334155;
   transition: all 0.2s ease;
@@ -471,16 +467,17 @@ body.focus-dest .dest-group .suggestions-list {
   background: #ffffff;
   border: 1px solid #cbd5e1;
   border-radius: 8px;
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 15px;
   transition: all 0.2s ease;
   padding: 0;
   box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+  flex-shrink: 0;
 }
 
 .btn-pin-select:hover {
@@ -1223,18 +1220,16 @@ body.dark-mode {
   transform: scale(0.97);
 }
 
+/* TỐI ƯU CẤU HÌNH RENDER BẢN ĐỒ - TẠO BỘ ĐỆM ĐỒ HỌA NHẸ */
 .leaflet-container {
-  background-color: #e5e3df !important;
+  background-color: #f1f5f9 !important;
 }
 
 .dark-mode .leaflet-container {
   background-color: #121212 !important;
 }
 
-.leaflet-map-pane,
-.leaflet-tile,
-.leaflet-marker-icon,
-.leaflet-popup {
+.leaflet-map-pane {
   will-change: transform;
   -webkit-transform: translate3d(0, 0, 0);
   transform: translate3d(0, 0, 0);

@@ -12,7 +12,7 @@ document.addEventListener('gestureend', function (e) {
 // MAPBOX ACCESS TOKEN CỦA BẠN
 const MAPBOX_TOKEN = 'pk.eyJ1IjoidHVhbmFuaDM0MTYyMyIsImEiOiJjbXUycmMxa2UwMjd4MnlxeWZ2ZDV5NGF5In0.o10B_hdnfqOIn1jNfbpY2w';
 
-// Khởi tạo bản đồ Leaflet
+// Khởi tạo bản đồ Leaflet - Tối ưu Zoom mượt mà nguyên bản
 const map = L.map('map', { 
   preferCanvas: true,
   attributionControl: false,
@@ -21,8 +21,8 @@ const map = L.map('map', {
   dragging: true,
   fadeAnimation: true,
   zoomAnimation: true,
-  zoomSnap: 0.5,             
-  zoomDelta: 0.5,
+  zoomSnap: 1,             
+  zoomDelta: 1,
   wheelDebounceTime: 40,     
   wheelPxPerZoomLevel: 120,
   bounceAtZoomLimits: false,
@@ -305,8 +305,8 @@ map.on('zoomend', () => {
         const currentPoint = map.latLngToContainerPoint(activeZoomPinLatLng);
         if (!currentPoint || !Number.isFinite(currentPoint.x) || !Number.isFinite(currentPoint.y)) return;
         const delta = currentPoint.subtract(pinPoint);
-        if (Math.abs(delta.x) > 2 || Math.abs(delta.y) > 2) {
-          map.panBy(delta, { animate: true, duration: 0.35, easeLinearity: 0.25 });
+        if (Math.abs(delta.x) > 10 || Math.abs(delta.y) > 10) {
+          map.panBy(delta, { animate: false });
         }
       }
     } catch (err) {
@@ -316,15 +316,15 @@ map.on('zoomend', () => {
   }
 });
 
-// LỚP BẢN ĐỒ CHÍNH: GOOGLE MAPS TILES
+// LỚP BẢN ĐỒ CHÍNH: GOOGLE MAPS TILES - CẤU HÌNH TẢI Ô TỨC THÌ (BỎ VÙNG XÁM)
 const googleLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
   subdomains: ['0', '1', '2', '3'],
   maxZoom: 20,
   tileSize: 256,
   zoomOffset: 0,
-  keepBuffer: 5,            
-  updateWhenIdle: true,     
-  updateWhenZooming: false  
+  keepBuffer: 12,            
+  updateWhenIdle: false,     
+  updateWhenZooming: true    
 });
 
 googleLayer.on('tileerror', function() {
@@ -334,9 +334,9 @@ googleLayer.on('tileerror', function() {
       maxZoom: 19,
       tileSize: 512,
       zoomOffset: -1,
-      keepBuffer: 5,
-      updateWhenIdle: true,
-      updateWhenZooming: false
+      keepBuffer: 12,
+      updateWhenIdle: false,
+      updateWhenZooming: true
     }).addTo(map);
   }
 });
@@ -367,10 +367,11 @@ let pickupDetailNote = '';
 let currentSelectionMode = 'pickup';
 let activeFilter = localStorage.getItem(VEHICLE_PREF_KEY) || 'bike';
 
+// DÙNG ICON SVG MÀU XANH LÁ #00b14f CHUẨN ĐỒ HỌA DÀNH CHO "LÁI XE HỘ"
 const typeIcons = {
   'bike': '🛵',
   'car': '🚕',
-  'driver': '👤',
+  'driver': '<svg width="20" height="20" viewBox="0 0 24 24" fill="#00b14f"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>',
   'truck': '🚚'
 };
 
@@ -802,7 +803,7 @@ function selectFilter(type, element) {
 
   const activeLabel = document.getElementById('activeVehicleLabel');
   if (activeLabel && typeIcons[type]) {
-    activeLabel.innerText = typeIcons[type];
+    activeLabel.innerHTML = typeIcons[type];
   }
 
   if (selectedDriver && selectedDriver.vehicle_type !== activeFilter) {
@@ -1631,7 +1632,7 @@ updateGuide();
 document.addEventListener('DOMContentLoaded', () => {
   const activeLabel = document.getElementById('activeVehicleLabel');
   if (activeLabel && typeIcons[activeFilter]) {
-    activeLabel.innerText = typeIcons[activeFilter];
+    activeLabel.innerHTML = typeIcons[activeFilter];
   }
   document.querySelectorAll('.vehicle-option').forEach(opt => {
     if (opt.getAttribute('onclick')?.includes(`'${activeFilter}'`)) {
