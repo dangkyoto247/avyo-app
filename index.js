@@ -74,6 +74,21 @@ function swapRoute() {
   }
 }
 
+/* HÀM XỬ LÝ BẤM PHÍM ENTER ĐỂ CHỌN NHANH KẾT QUẢ ĐẦU TIÊN */
+function handleInputEnter(event, type) {
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    const listEl = document.getElementById(type + 'Suggestions');
+    const firstItem = listEl ? listEl.querySelector('.suggestion-item') : null;
+
+    if (firstItem) {
+      firstItem.click();
+    } else {
+      onSearchInput(type, true);
+    }
+  }
+}
+
 /* HÀM MỞ CHẾ ĐỘ FOCUS ĐẨY NGUYÊN DÒNG NHẬP LÊN ĐẦU MÀN HÌNH */
 function enterFocusInputMode(type) {
   document.body.classList.remove('focus-pickup', 'focus-dest');
@@ -99,6 +114,18 @@ function exitFocusInputMode(type) {
     document.getElementById('destSuggestions').style.display = 'none';
   }
 }
+
+/* THOÁT CHẾ ĐỘ FOCUS KHI BẤM PHÍM ESC (DÀNH CHO PC) */
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    exitFocusInputMode();
+  }
+});
+
+/* THOÁT CHẾ ĐỘ FOCUS KHI NHẤP VÀO BẢN ĐỒ */
+map.on('click', () => {
+  exitFocusInputMode();
+});
 
 /* HÀM ẨN/HIỆN NÚT XÓA CHỮ X TRONG Ô NHẬP */
 function toggleClearButton(type) {
@@ -542,7 +569,7 @@ function showRecentPickups() {
     div.className = 'suggestion-item';
     div.innerHTML = `🕒 <b>${item.label}</b>`;
     div.onclick = () => {
-      if (document.activeElement) document.activeElement.blur(); // Thu bàn phím ảo
+      if (document.activeElement) document.activeElement.blur();
       document.getElementById('pickupInput').value = item.label;
       toggleClearButton('pickup');
       listEl.style.display = 'none';
@@ -592,7 +619,7 @@ function showRecentDests() {
     div.className = 'suggestion-item';
     div.innerHTML = `🕒 <b>${item.label}</b>`;
     div.onclick = () => {
-      if (document.activeElement) document.activeElement.blur(); // Thu bàn phím ảo
+      if (document.activeElement) document.activeElement.blur();
       document.getElementById('destInput').value = item.label;
       toggleClearButton('dest');
       listEl.style.display = 'none';
@@ -818,7 +845,7 @@ function onSearchInput(type, isDirectCall = false) {
       const placeName = cleanAddressText(topResult.text || topResult.place_name);
       const [resLng, resLat] = topResult.geometry.coordinates;
       
-      if (document.activeElement) document.activeElement.blur(); // Thu bàn phím ảo
+      if (document.activeElement) document.activeElement.blur();
       document.getElementById(type + 'Input').value = placeName;
       toggleClearButton(type);
       listEl.style.display = 'none';
@@ -856,7 +883,7 @@ function onSearchInput(type, isDirectCall = false) {
       div.innerHTML = `📍 <b>${mainTitle}</b> <small style="color:#64748b; font-size:11px;">(${addressSub}<b style="color:#00b14f;">${distTag}</b>)</small>`;
       
       div.onclick = () => {
-        if (document.activeElement) document.activeElement.blur(); // Thu bàn phím ảo lập tức
+        if (document.activeElement) document.activeElement.blur();
         document.getElementById(type + 'Input').value = mainTitle;
         toggleClearButton(type);
         listEl.style.display = 'none';

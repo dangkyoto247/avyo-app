@@ -19,7 +19,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/gh/ewoken/Leaflet.MovingMarker@master/MovingMarker.js"></script>
 
-  <link rel="stylesheet" href="index.css?v=82">
+  <link rel="stylesheet" href="index.css?v=83">
 </head>
 <body class="selecting-pickup">
 
@@ -77,7 +77,7 @@
       <div class="route-input-item pickup-group">
         <button type="button" class="btn-back-focus" onclick="exitFocusInputMode('pickup')" title="Quay lại">←</button>
         <span class="route-icon pickup-icon">🔴</span>
-        <input type="text" id="pickupInput" placeholder="📍 Nhập điểm đón (VD: Sân bay Vinh)..." autocomplete="off" oninput="onSearchInput('pickup'); toggleClearButton('pickup');" onfocus="enterFocusInputMode('pickup'); showRecentPickups(); toggleClearButton('pickup');">
+        <input type="text" id="pickupInput" placeholder="📍 Nhập điểm đón (VD: Sân bay Vinh)..." autocomplete="off" oninput="onSearchInput('pickup'); toggleClearButton('pickup');" onfocus="enterFocusInputMode('pickup'); showRecentPickups(); toggleClearButton('pickup');" onkeydown="handleInputEnter(event, 'pickup')">
         <div class="action-buttons-right">
           <button type="button" id="clearPickupBtn" class="btn-clear-input" onclick="clearInput('pickup')" title="Xóa hết chữ" style="display: none;">✕</button>
           <button type="button" id="btnPickupDetail" class="btn-pickup-detail" onclick="openPickupDetailDialog()" title="Thêm ghi chú chi tiết vị trí đón">📝 Chi tiết</button>
@@ -96,7 +96,7 @@
       <div class="route-input-item dest-group">
         <button type="button" class="btn-back-focus" onclick="exitFocusInputMode('dest')" title="Quay lại">←</button>
         <span class="route-icon dest-icon">🚩</span>
-        <input type="text" id="destInput" placeholder="🚩 Nhập điểm đến (VD: Bến xe Vinh)..." autocomplete="off" oninput="onSearchInput('dest'); toggleClearButton('dest');" onfocus="enterFocusInputMode('dest'); showRecentDests(); toggleClearButton('dest');">
+        <input type="text" id="destInput" placeholder="🚩 Nhập điểm đến (VD: Bến xe Vinh)..." autocomplete="off" oninput="onSearchInput('dest'); toggleClearButton('dest');" onfocus="enterFocusInputMode('dest'); showRecentDests(); toggleClearButton('dest');" onkeydown="handleInputEnter(event, 'dest')">
         <div class="action-buttons-right">
           <button type="button" id="clearDestBtn" class="btn-clear-input" onclick="clearInput('dest')" title="Xóa hết chữ" style="display: none;">✕</button>
           <button type="button" class="btn-pin-select" onclick="triggerPinSelection('dest')" title="Chọn điểm đến trên bản đồ">🚩</button>
@@ -160,7 +160,7 @@
     </div>
   </div>
 
-  <script src="utils.js?v=82"></script>
-  <script src="index.js?v=82"></script>
+  <script src="utils.js?v=83"></script>
+  <script src="index.js?v=83"></script>
 </body>
 </html>
