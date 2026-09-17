@@ -267,7 +267,7 @@ function clearInput(type) {
   }
 }
 
-/* HÀM TÍNH TỌA ĐỘ TẠI ĐIỂM NHỌN CỦA GHIM */
+/* HÀM TÍNH TỌA ĐỘ TẠI ĐIỂM NHỌN CỦA GHIM CÓ THỂ ĐIỀU CHỈNH ĐỘ LỆCH THEO ĐƠN VỊ PIXEL (OFFSETY) */
 function getPinCenterLatLng() {
   if (!map) return L.latLng(18.7034, 105.6832);
   try {
@@ -509,8 +509,8 @@ function updatePinColor(color) {
   if (pinSvg) pinSvg.setAttribute('fill', color);
 }
 
-/* HÀM CĂN MÀN HÌNH BẢN ĐỒ ĐƯA TỌA ĐỘ VỀ ĐÚNG GHIM 1/3 TRÊN MÀN HÌNH MỘT CÁCH MƯỢT MÀ */
-function centerMapOnPin(latlng, zoom = null) {
+/* HÀM CĂN MÀN HÌNH BẢN ĐỒ DỰA TRÊN TỌA ĐỘ VÀ KHOẢNG BÙ NỔI POPUP (OFFSETY) */
+function centerMapOnPin(latlng, zoom = null, offsetY = 0) {
   if (!map || !latlng || !Number.isFinite(latlng.lat) || !Number.isFinite(latlng.lng)) return;
   try {
     if (zoom !== null && map.getZoom() !== zoom) {
@@ -518,7 +518,7 @@ function centerMapOnPin(latlng, zoom = null) {
     }
     const size = map.getSize();
     if (!size || !size.x || !size.y) return;
-    const pinPoint = L.point(size.x / 2, size.y * 0.3333);
+    const pinPoint = L.point(size.x / 2, (size.y * 0.3333) + offsetY);
     const currentPoint = map.latLngToContainerPoint(latlng);
     if (!currentPoint || !Number.isFinite(currentPoint.x) || !Number.isFinite(currentPoint.y)) return;
     const delta = currentPoint.subtract(pinPoint);
@@ -814,16 +814,25 @@ function selectFilter(type, element) {
   updatePrice();
 }
 
-map.locate({ setView: true, maxZoom: 15 });
+// BẬT TỰ ĐỘNG ĐỊNH VỊ VỊ TRÍ HIỆN TẠI VỚI ĐỘ CHÍNH XÁC CAO KHI MỞ APP BAN ĐẦU
+map.locate({ setView: false, maxZoom: 15, enableHighAccuracy: true });
 
 map.on('locationfound', (e) => {
   userLatLng = e.latlng;
+  
+  // Tự động căn vị trí GPS hiện tại về ghim 1/3 và điền tên địa chỉ vào ô điểm đón
   if (currentSelectionMode) {
     centerMapOnPin(e.latlng, 15);
+    fetchAddressForInput('pickup', e.latlng);
   } else if (!markerStart) {
     setPickupLocation(e.latlng, true);
+    fetchAddressForInput('pickup', e.latlng);
   }
   loadDrivers();
+});
+
+map.on('locationerror', (e) => {
+  console.warn("Không thể lấy vị trí GPS hiện tại:", e.message);
 });
 
 /* HÀM THIẾT LẬP ĐIỂM ĐÓN - TỰ ĐỘNG CUỘN BẢN ĐỒ VỀ VỊ TRÍ GHIM 1/3 MƯỢT MÀ KHI CHƯA CÓ ĐIỂM ĐẾN */
@@ -894,7 +903,7 @@ function useCurrentLocationAsPickup() {
       saveRecentPickup(labelText, userLatLng.lat, userLatLng.lng);
     }
   } else {
-    map.locate({ setView: true, maxZoom: 15 });
+    map.locate({ setView: true, maxZoom: 15, enableHighAccuracy: true });
   }
 }
 
@@ -1480,8 +1489,12 @@ async function selectDriver(driver) {
   updatePrice();
   renderDriverMarkers();
 
+  // ĐƯA BIỂU TƯỢNG TÀI XẾ DI CHUYỂN CHÍNH XÁC VỀ VỊ TRÍ ĐẦU GHIM PIN CỐ ĐỊNH 1/3 PHÍA TRÊN MÀN HÌNH
+  if (driver && driver.lat && driver.lng) {
+    centerMapOnPin(L.latLng(driver.lat, driver.lng), null, 0);
+  }
+
   if (driverMarkers[driver.id]) {
-    map.panTo([driver.lat, driver.lng], { animate: true });
     driverMarkers[driver.id].openPopup();
   }
 }
