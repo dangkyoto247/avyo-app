@@ -79,6 +79,9 @@ function swapRoute() {
       }
       currentDistance = 0;
       updatePrice();
+      if (markerStart) {
+        setTimeout(() => centerMapOnPin(markerStart.getLatLng()), 150);
+      }
     }
     loadDrivers();
   }
@@ -144,7 +147,6 @@ function enterFocusInputMode(type) {
     document.body.classList.add('focus-dest');
   }
 
-  // Ép trình duyệt không tự động cuộn làm lệch ô nhập khi bật bàn phím
   window.scrollTo(0, 0);
   setTimeout(() => window.scrollTo(0, 0), 50);
   setTimeout(() => window.scrollTo(0, 0), 200);
@@ -453,6 +455,7 @@ function updatePinColor(color) {
   if (pinSvg) pinSvg.setAttribute('fill', color);
 }
 
+/* HÀM CĂN MÀN HÌNH BẢN ĐỒ ĐƯA TỌA ĐỘ VỀ ĐÚNG GHIM 1/3 TRÊN MÀN HÌNH MỘT CÁCH MƯỢT MÀ */
 function centerMapOnPin(latlng, zoom = null) {
   if (!map || !latlng || !Number.isFinite(latlng.lat) || !Number.isFinite(latlng.lng)) return;
   try {
@@ -465,7 +468,7 @@ function centerMapOnPin(latlng, zoom = null) {
     const currentPoint = map.latLngToContainerPoint(latlng);
     if (!currentPoint || !Number.isFinite(currentPoint.x) || !Number.isFinite(currentPoint.y)) return;
     const delta = currentPoint.subtract(pinPoint);
-    map.panBy(delta, { animate: true, duration: 0.4 });
+    map.panBy(delta, { animate: true, duration: 0.6, easeLinearity: 0.25 });
   } catch (e) {
     console.warn("Lỗi centerMapOnPin:", e);
   }
@@ -763,6 +766,7 @@ map.on('locationfound', (e) => {
   loadDrivers();
 });
 
+/* HÀM THIẾT LẬP ĐIỂM ĐÓN - TỰ ĐỘNG CUỘN BẢN ĐỒ VỀ VỊ TRÍ GHIM 1/3 MƯỢT MÀ KHI CHƯA CÓ ĐIỂM ĐẾN */
 function setPickupLocation(latlng, isAuto = false) {
   if (!latlng || !Number.isFinite(latlng.lat) || !Number.isFinite(latlng.lng)) return;
   if (markerStart) map.removeLayer(markerStart);
@@ -776,12 +780,20 @@ function setPickupLocation(latlng, isAuto = false) {
   const resetBtn = document.getElementById('resetBtn');
   if (resetBtn) resetBtn.style.display = 'inline-flex';
   
-  if (markerEnd) calculateMapboxRoute();
+  if (markerEnd) {
+    calculateMapboxRoute();
+  } else {
+    // Cuộn mượt mà đưa điểm đón về đúng 1/3 ghim cố định phía trên màn hình
+    setTimeout(() => {
+      centerMapOnPin(latlng);
+    }, 150);
+  }
 
   loadDrivers();
   updateGuide();
 }
 
+/* HÀM THIẾT LẬP ĐIỂM ĐẾN - TỰ ĐỘNG CUỘN BẢN ĐỒ VỀ VỊ TRÍ GHIM 1/3 MƯỢT MÀ KHI CHƯA CÓ ĐIỂM ĐÓN */
 function setDestLocation(latlng) {
   if (!latlng || !Number.isFinite(latlng.lat) || !Number.isFinite(latlng.lng)) return;
   if (markerEnd) map.removeLayer(markerEnd);
@@ -795,7 +807,15 @@ function setDestLocation(latlng) {
   const resetBtn = document.getElementById('resetBtn');
   if (resetBtn) resetBtn.style.display = 'inline-flex';
   
-  calculateMapboxRoute();
+  if (markerStart && markerEnd) {
+    calculateMapboxRoute();
+  } else {
+    // Cuộn mượt mà đưa điểm đến về đúng 1/3 ghim cố định phía trên màn hình
+    setTimeout(() => {
+      centerMapOnPin(latlng);
+    }, 150);
+  }
+
   loadDrivers();
   updateGuide();
 }
