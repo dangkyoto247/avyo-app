@@ -285,11 +285,10 @@ map.on('zoomend', () => {
       if (size && size.x && size.y) {
         const pinPoint = L.point(size.x / 2, size.y * 0.3333);
         const currentPoint = map.latLngToContainerPoint(activeZoomPinLatLng);
-        if (currentPoint && Number.isFinite(currentPoint.x) && Number.isFinite(currentPoint.y)) {
-          const delta = currentPoint.subtract(pinPoint);
-          if (Math.abs(delta.x) > 2 || Math.abs(delta.y) > 2) {
-            map.panBy(delta, { animate: true, duration: 0.35, easeLinearity: 0.25 });
-          }
+        if (!currentPoint || !Number.isFinite(currentPoint.x) || !Number.isFinite(currentPoint.y)) return;
+        const delta = currentPoint.subtract(pinPoint);
+        if (Math.abs(delta.x) > 2 || Math.abs(delta.y) > 2) {
+          map.panBy(delta, { animate: true, duration: 0.35, easeLinearity: 0.25 });
         }
       }
     } catch (err) {
