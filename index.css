@@ -235,6 +235,19 @@ body.focus-dest .dest-group {
   box-sizing: border-box !important;
 }
 
+/* ẨN NÚT CHI TIẾT VÀ NÚT CHỌN BẢN ĐỒ KHI Ở CHẾ ĐỘ FOCUS */
+body.focus-pickup .pickup-group #btnPickupDetail,
+body.focus-pickup .pickup-group .btn-pin-select,
+body.focus-dest .dest-group .btn-pin-select {
+  display: none !important;
+}
+
+/* ĐIỀU CHỈNH PADDING PHẢI ĐỂ CẢNH QUAN Ô NHẬP HIỂN THỊ TRÀN FULL MÀN HÌNH */
+body.focus-pickup .pickup-group input,
+body.focus-dest .dest-group input {
+  padding-right: 32px !important;
+}
+
 /* ĐỊNH VỊ CHUẨN TRÊN MÀN HÌNH MÁY TÍNH (PC) KHI FOCUS */
 @media (min-width: 481px) {
   body.focus-pickup .pickup-group,

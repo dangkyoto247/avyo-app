@@ -668,7 +668,11 @@ function showRecentPickups() {
       setPickupLocation(latlng);
       saveRecentPickup(item.label, item.lat, item.lng);
       exitFocusInputMode('pickup');
-      exitSelectionMode();
+      if (!markerEnd) {
+        enterSelectionMode('dest');
+      } else {
+        exitSelectionMode();
+      }
     };
     listEl.appendChild(div);
   });
@@ -962,7 +966,11 @@ function onSearchInput(type, isDirectCall = false) {
         setPickupLocation(latlng);
         saveRecentPickup(placeName, resLat, resLng);
         exitFocusInputMode('pickup');
-        exitSelectionMode();
+        if (!markerEnd) {
+          enterSelectionMode('dest');
+        } else {
+          exitSelectionMode();
+        }
       } else {
         setDestLocation(latlng);
         saveRecentDest(placeName, resLat, resLng);
@@ -1001,7 +1009,11 @@ function onSearchInput(type, isDirectCall = false) {
           setPickupLocation(latlng);
           saveRecentPickup(mainTitle, fLat, fLng);
           exitFocusInputMode('pickup');
-          exitSelectionMode();
+          if (!markerEnd) {
+            enterSelectionMode('dest');
+          } else {
+            exitSelectionMode();
+          }
         } else {
           setDestLocation(latlng);
           saveRecentDest(mainTitle, fLat, fLng);
