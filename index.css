@@ -522,7 +522,7 @@ body.selecting-dest .btn-confirm-select {
   display: block !important;
 }
 
-/* CỤM ĐÁY MÀN HÌNH - PHỦ KÍN NỀN ĐÁY TRÀN THANH ĐIỀU HƯỚNG MAXIM STYLE */
+/* CỤM ĐÁY MÀN HÌNH - PHỦ KÍN NỀN TRẮNG ĐÁY MÀN HÌNH */
 .bottom-section {
   position: fixed;
   bottom: 0;
@@ -533,7 +533,7 @@ body.selecting-dest .btn-confirm-select {
   margin: 0 auto;
   z-index: 100;
   background: #ffffff;
-  padding: 12px 14px 0 14px;
+  padding: 12px 14px max(16px, env(safe-area-inset-bottom, 16px)) 14px;
   border-radius: 20px 20px 0 0;
   box-shadow: 0 -6px 25px rgba(0, 0, 0, 0.15);
   box-sizing: border-box;
@@ -543,14 +543,14 @@ body.selecting-dest .btn-confirm-select {
   transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
 }
 
-/* TẠO LỚP PHỦ NỀN Đ TRÀN XUỐNG DƯỚI ĐÁY MÀN HÌNH TRIỆT TẤT CẢ VỆT MÀU XÁM */
+/* PHỦ KÍN VÙNG ĐÁY BẰNG NỀN TRẮNG TRIỆT TẤT CẢ VỆT XÁM */
 .bottom-section::after {
   content: "";
   position: absolute;
   top: 100%;
   left: 0;
   right: 0;
-  height: 200px;
+  height: 500px;
   background: #ffffff;
   pointer-events: none;
 }
@@ -820,73 +820,6 @@ body.selecting-dest .btn-confirm-select {
   font-size: 11px;
   color: #64748b;
   font-weight: normal;
-}
-
-/* THANH ĐIỀU HƯỚNG ĐÁY MÀN HÌNH CHUẨN APP MAXIM - ĐỐI PHÓ SAFE AREA THIẾT BỊ DI ĐỘNG */
-.app-bottom-nav {
-  order: 5;
-  display: flex;
-  align-items: center;
-  justify-content: space-around;
-  padding-top: 8px;
-  padding-bottom: max(10px, env(safe-area-inset-bottom, 10px));
-  margin-top: 8px;
-  margin-left: -14px;
-  margin-right: -14px;
-  margin-bottom: -1px;
-  width: calc(100% + 28px);
-  border-top: 1px solid #f1f5f9;
-  background: #ffffff;
-  box-sizing: border-box;
-}
-
-.nav-item {
-  background: transparent;
-  border: none;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  cursor: pointer;
-  flex: 1;
-  color: #64748b;
-  padding: 4px 0 2px 0;
-  font-family: inherit;
-  transition: color 0.15s ease;
-}
-
-.nav-item .nav-icon {
-  font-size: 17px;
-  line-height: 1;
-}
-
-.nav-item .nav-label {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: -0.2px;
-}
-
-.nav-item.active {
-  color: #00b14f;
-}
-
-.nav-item.active .nav-label {
-  color: #00b14f;
-  font-weight: 800;
-}
-
-.dark-mode .app-bottom-nav {
-  background: #1e1e1e;
-  border-top-color: #334155;
-}
-
-.dark-mode .nav-item {
-  color: #94a3b8;
-}
-
-.dark-mode .nav-item.active,
-.dark-mode .nav-item.active .nav-label {
-  color: #00b14f;
 }
 
 .fixed-center-pin {
@@ -1336,9 +1269,7 @@ body.focus-dest .collapsible-drivers-panel,
 body.focus-pickup .route-divider,
 body.focus-dest .route-divider,
 body.focus-pickup .dest-group,
-body.focus-dest .pickup-group,
-body.focus-pickup .app-bottom-nav,
-body.focus-dest .app-bottom-nav {
+body.focus-dest .pickup-group {
   display: none !important;
 }
 
