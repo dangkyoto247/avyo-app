@@ -1018,10 +1018,25 @@ function onSearchInput(type, isDirectCall = false) {
   else searchTimer = setTimeout(executeSearch, 300);
 }
 
+// BẬT/TẮT MENU GÓC TRÊN
+function toggleTopMenu() {
+  const menu = document.getElementById('topMenuPopover');
+  if (menu) {
+    const isVisible = menu.style.display === 'flex' || menu.style.display === 'block';
+    menu.style.display = isVisible ? 'none' : 'flex';
+  }
+}
+
 document.addEventListener('click', (e) => {
   if (!e.target.closest('#vehicleFloatBtn') && !e.target.closest('#vehicleMenu')) {
     const menu = document.getElementById('vehicleMenu');
     if (menu) menu.style.display = 'none';
+  }
+
+  // Đóng top menu (menu sáng tối/yêu thích)
+  if (!e.target.closest('#topMenuBtn') && !e.target.closest('#topMenuPopover')) {
+    const topMenu = document.getElementById('topMenuPopover');
+    if (topMenu) topMenu.style.display = 'none';
   }
 
   if (!e.target.closest('.route-card')) {
@@ -1612,14 +1627,15 @@ if ('serviceWorker' in navigator) {
   });
 }
 
+// THAY ĐỔI THEME VÀ CẬP NHẬT CHỮ TRONG MENU XỔ XUỐNG
 window.toggleDarkMode = function() {
   const body = document.body;
-  const themeToggleBtn = document.getElementById('themeToggle');
+  const themeToggleText = document.getElementById('themeToggleText');
   const isDark = body.classList.toggle('dark-mode');
   
   localStorage.setItem('avyo_theme', isDark ? 'dark' : 'light');
-  if (themeToggleBtn) {
-    themeToggleBtn.innerText = isDark ? '☀️' : '🌙';
+  if (themeToggleText) {
+    themeToggleText.innerText = isDark ? '☀️ Chế độ sáng' : '🌙 Chế độ tối';
   }
 };
 
@@ -1632,9 +1648,9 @@ window.toggleDarkMode = function() {
 
 document.addEventListener('DOMContentLoaded', () => {
   const savedTheme = localStorage.getItem('avyo_theme');
-  const themeToggleBtn = document.getElementById('themeToggle');
-  if (savedTheme === 'dark' && themeToggleBtn) {
-    themeToggleBtn.innerText = '☀️';
+  const themeToggleText = document.getElementById('themeToggleText');
+  if (savedTheme === 'dark' && themeToggleText) {
+    themeToggleText.innerText = '☀️ Chế độ sáng';
   }
 });
 

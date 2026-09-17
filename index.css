@@ -126,24 +126,9 @@ body.focus-dest {
   z-index: 900;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   pointer-events: none;
   box-sizing: border-box;
-}
-
-.brand-pill {
-  pointer-events: auto;
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  border-radius: 20px;
-  padding: 6px 14px;
-  font-size: 13px;
-  font-weight: 800;
-  color: #00b14f;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
-  letter-spacing: 0.5px;
 }
 
 .btn-theme-toggle-float {
@@ -163,6 +148,7 @@ body.focus-dest {
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
   transition: all 0.2s ease;
   padding: 0;
+  color: #334155;
 }
 
 .btn-theme-toggle-float:active {
@@ -968,14 +954,9 @@ body.dark-mode {
   box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.5);
 }
 
-.dark-mode .brand-pill,
 .dark-mode .btn-theme-toggle-float {
   background: rgba(30, 41, 59, 0.92);
   border-color: rgba(255, 255, 255, 0.12);
-  color: #00b14f;
-}
-
-.dark-mode .btn-theme-toggle-float {
   color: #f8fafc;
 }
 
@@ -1251,4 +1232,56 @@ body.focus-dest .route-divider,
 body.focus-pickup .dest-group,
 body.focus-dest .pickup-group {
   display: none !important;
+}
+
+/* CSS CHO MENU XỔ XUỐNG GÓC TRÊN CÙNG BÊN PHẢI */
+.top-menu-popover {
+  pointer-events: auto;
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 110;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 14px;
+  padding: 6px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+  display: none;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 210px;
+}
+
+.top-menu-option {
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.top-menu-option:hover {
+  background: #f1f5f9;
+  color: #00b14f;
+}
+
+/* HIỆU ỨNG DARK MODE CHO MENU MỚI */
+.dark-mode .top-menu-popover {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+.dark-mode .top-menu-option {
+  color: #cbd5e1;
+}
+
+.dark-mode .top-menu-option:hover {
+  background: #334155;
+  color: #6ee7b7;
 }

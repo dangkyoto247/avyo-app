@@ -19,7 +19,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/gh/ewoken/Leaflet.MovingMarker@master/MovingMarker.js"></script>
 
-  <link rel="stylesheet" href="index.css?v=88">
+  <link rel="stylesheet" href="index.css?v=89">
 </head>
 <body class="selecting-pickup">
 
@@ -33,8 +33,27 @@
 
   <!-- CỤM NÚT NỔI PHÍA TRÊN BẢN ĐỒ -->
   <div class="top-float-bar">
-    <span class="brand-pill">💚 AVYO</span>
-    <button id="themeToggle" class="btn-theme-toggle-float" onclick="toggleDarkMode()" title="Chuyển chế độ Tối/Sáng">🌙</button>
+    <div style="position: relative;">
+      <!-- Nút mũi tên mở menu -->
+      <button id="topMenuBtn" class="btn-theme-toggle-float" onclick="toggleTopMenu()" title="Menu">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+      </button>
+      
+      <!-- Menu xổ xuống chứa 3 mục -->
+      <div id="topMenuPopover" class="top-menu-popover">
+        <div class="top-menu-option" onclick="toggleDarkMode(); toggleTopMenu();">
+          <span id="themeToggleText">🌙 Chế độ tối</span>
+        </div>
+        <div class="top-menu-option" onclick="alert('Tính năng này đang phát triển!'); toggleTopMenu();">
+          ⭐ Địa chỉ Yêu thích
+        </div>
+        <div class="top-menu-option" onclick="alert('Tính năng này đang phát triển!'); toggleTopMenu();">
+          📞 Tài xế liên hệ gần đây
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- GHIM CỐ ĐỊNH CHÍNH GIỮA TẠI MỐC 1/3 PHÍA TRÊN MÀN HÌNH -->
@@ -166,7 +185,7 @@
     </div>
   </div>
 
-  <script src="utils.js?v=88"></script>
-  <script src="index.js?v=88"></script>
+  <script src="utils.js?v=89"></script>
+  <script src="index.js?v=89"></script>
 </body>
 </html>
