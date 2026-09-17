@@ -1,5 +1,5 @@
 const TILE_CACHE_NAME = 'map-tiles-v2';
-const STATIC_CACHE_NAME = 'avyo-static-v91'; // ĐÃ NÂNG LÊN V10 ĐỂ ĐỒNG BỘ VỚI PROMPT V91
+const STATIC_CACHE_NAME = 'avyo-static-v92'; // ĐÃ ĐỒNG BỘ PHIÊN BẢN v92
 
 const STATIC_ASSETS = [
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
