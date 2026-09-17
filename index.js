@@ -34,6 +34,24 @@ let swapDegree = 0;
 let activeSuggestionIndex = -1;
 let mapMoveDebounceTimer = null;
 
+/* HÀM CHUYỂN TAB ĐÁY MAXIM STYLE */
+function switchTab(tabName, event) {
+  if (event) event.preventDefault();
+  document.querySelectorAll('.app-bottom-nav .nav-item').forEach(btn => btn.classList.remove('active'));
+  
+  if (event && event.currentTarget) {
+    event.currentTarget.classList.add('active');
+  }
+
+  if (tabName === 'trips') {
+    alert('🚗 Tính năng Các cuốc xe đang được phát triển!');
+  } else if (tabName === 'favorites') {
+    alert('⭐ Tính năng Địa chỉ Yêu thích đang được phát triển!');
+  } else if (tabName === 'menu') {
+    toggleTopMenu();
+  }
+}
+
 /* HÀM CẬP NHẬT ẨN/HIỆN NÚT ĐỔI CHIỀU CHỈ KHI ĐÃ CHỌN ĐỦ 2 ĐIỂM */
 function updateSwapButtonVisibility() {
   const swapBtn = document.querySelector('.btn-swap-route');

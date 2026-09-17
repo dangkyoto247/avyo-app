@@ -19,8 +19,8 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/gh/ewoken/Leaflet.MovingMarker@master/MovingMarker.js"></script>
 
-  <!-- ĐỒNG BỘ PHIÊN BẢN v92 -->
-  <link rel="stylesheet" href="index.css?v=92">
+  <!-- ĐỒNG BỘ PHIÊN BẢN v93 -->
+  <link rel="stylesheet" href="index.css?v=93">
 </head>
 <body class="selecting-pickup">
 
@@ -97,7 +97,7 @@
     </button>
 
     <!-- KHUNG ĐỊA CHỈ DẠNG KHUÔN LIÊN KẾT (TIMELINE CARD) -->
-    <div class="route-card" style="margin-bottom: 10px;">
+    <div class="route-card">
       <!-- DÒNG ĐIỂM ĐÓN -->
       <div class="route-input-item pickup-group">
         <button type="button" class="btn-back-focus" onclick="exitFocusInputMode('pickup')" title="Quay lại">←</button>
@@ -151,6 +151,26 @@
       </div>
       <div id="top3List" class="drivers-list"></div>
     </div>
+
+    <!-- THANH ĐIỀU HƯỚNG ĐÁY MÀN HÌNH (TAB BAR MAXIM STYLE) -->
+    <div class="app-bottom-nav">
+      <button type="button" class="nav-item active" onclick="switchTab('main', event)">
+        <span class="nav-icon">🔴</span>
+        <span class="nav-label">Thông tin chính</span>
+      </button>
+      <button type="button" class="nav-item" onclick="switchTab('trips', event)">
+        <span class="nav-icon">🚕</span>
+        <span class="nav-label">Các cuốc xe</span>
+      </button>
+      <button type="button" class="nav-item" onclick="switchTab('favorites', event)">
+        <span class="nav-icon">⭐</span>
+        <span class="nav-label">Yêu thích</span>
+      </button>
+      <button type="button" class="nav-item" onclick="switchTab('menu', event)">
+        <span class="nav-icon">☰</span>
+        <span class="nav-label">Menu</span>
+      </button>
+    </div>
   </div>
 
   <!-- HỘP THOẠI NHẬP CHI TIẾT NƠI ĐÓNG KHÁCH -->
@@ -186,7 +206,7 @@
     </div>
   </div>
 
-  <script src="utils.js?v=92"></script>
-  <script src="index.js?v=92"></script>
+  <script src="utils.js?v=93"></script>
+  <script src="index.js?v=93"></script>
 </body>
 </html>

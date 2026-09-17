@@ -495,7 +495,7 @@ body.focus-dest .dest-group .suggestions-list {
   display: none;
   width: 100%;
   padding: 12px;
-  margin-bottom: 0 !important;
+  margin-bottom: 8px !important;
   background: #00b14f;
   color: white;
   border: none;
@@ -522,7 +522,7 @@ body.selecting-dest .btn-confirm-select {
   display: block !important;
 }
 
-/* CỤM ĐÁY MÀN HÌNH - PHỦ KÍN NỀN SÁT MÀN HÌNH DƯỚI (TRIỆT TIÊU 100% KHOẢNG XÁM) */
+/* CỤM ĐÁY MÀN HÌNH - PHỦ KÍN NỀN ĐÁY TRÀN THANH ĐIỀU HƯỚNG MAXIM STYLE */
 .bottom-section {
   position: fixed;
   bottom: 0;
@@ -533,8 +533,8 @@ body.selecting-dest .btn-confirm-select {
   margin: 0 auto;
   z-index: 100;
   background: #ffffff;
-  padding: 12px 14px;
-  padding-bottom: max(12px, env(safe-area-inset-bottom, 0px));
+  padding: 12px 14px 0 14px;
+  padding-bottom: max(6px, env(safe-area-inset-bottom, 0px));
   border-radius: 20px 20px 0 0;
   box-shadow: 0 -6px 25px rgba(0, 0, 0, 0.15);
   box-sizing: border-box;
@@ -809,6 +809,68 @@ body.selecting-dest .btn-confirm-select {
   font-size: 11px;
   color: #64748b;
   font-weight: normal;
+}
+
+/* THANH ĐIỀU HƯỚNG ĐÁY MÀN HÌNH CHUẨN APP MAXIM */
+.app-bottom-nav {
+  order: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding-top: 8px;
+  margin-top: 8px;
+  border-top: 1px solid #f1f5f9;
+  width: 100%;
+  background: #ffffff;
+}
+
+.nav-item {
+  background: transparent;
+  border: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  cursor: pointer;
+  flex: 1;
+  color: #64748b;
+  padding: 4px 0;
+  font-family: inherit;
+  transition: color 0.15s ease;
+}
+
+.nav-item .nav-icon {
+  font-size: 17px;
+  line-height: 1;
+}
+
+.nav-item .nav-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+}
+
+.nav-item.active {
+  color: #00b14f;
+}
+
+.nav-item.active .nav-label {
+  color: #00b14f;
+  font-weight: 800;
+}
+
+.dark-mode .app-bottom-nav {
+  background: #1e1e1e;
+  border-top-color: #334155;
+}
+
+.dark-mode .nav-item {
+  color: #94a3b8;
+}
+
+.dark-mode .nav-item.active,
+.dark-mode .nav-item.active .nav-label {
+  color: #00b14f;
 }
 
 .fixed-center-pin {
@@ -1254,7 +1316,9 @@ body.focus-dest .collapsible-drivers-panel,
 body.focus-pickup .route-divider,
 body.focus-dest .route-divider,
 body.focus-pickup .dest-group,
-body.focus-dest .pickup-group {
+body.focus-dest .pickup-group,
+body.focus-pickup .app-bottom-nav,
+body.focus-dest .app-bottom-nav {
   display: none !important;
 }
 
