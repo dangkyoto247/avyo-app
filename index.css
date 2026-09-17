@@ -1317,3 +1317,52 @@ body.focus-dest .pickup-group {
   background: #334155;
   color: #6ee7b7;
 }
+
+/* --- STYLE CHO KHUNG GOOGLE MAPS --- */
+.btn-ggmap {
+  background: #e8f5e9;
+  border: 1px solid #4caf50;
+  color: #2e7d32;
+  border-radius: 8px;
+  padding: 6px 8px;
+  margin-right: 8px;
+  margin-left: 4px;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.btn-ggmap:active {
+  transform: scale(0.95);
+}
+
+.dark-mode .btn-ggmap {
+  background: #064e3b;
+  border-color: #059669;
+  color: #6ee7b7;
+}
+
+.ggmap-divider {
+  border-bottom: 1px dashed #cbd5e1;
+  background: transparent !important;
+  height: 0 !important;
+  margin: 4px 14px !important;
+}
+
+.dark-mode .ggmap-divider {
+  border-bottom-color: #475569;
+}
+
+/* Ẩn nguyên cụm GG Maps khi người dùng đang bấm vào ô nhập điểm đón/điểm đến */
+body.focus-pickup .ggmap-group,
+body.focus-dest .ggmap-group,
+body.focus-pickup .ggmap-divider,
+body.focus-dest .ggmap-divider {
+  display: none !important;
+}

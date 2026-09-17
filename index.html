@@ -24,8 +24,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/gh/ewoken/Leaflet.MovingMarker@master/MovingMarker.js"></script>
 
-  <!-- ĐỒNG BỘ PHIÊN BẢN v104 ĐỂ TỰ ĐỘNG XÓA CACHE TRÊN ĐIỆN THOẠI -->
-  <link rel="stylesheet" href="index.css?v=111">
+  <link rel="stylesheet" href="index.css?v=113">
 </head>
 <body class="selecting-pickup">
 
@@ -40,14 +39,12 @@
   <!-- CỤM NÚT NỔI PHÍA TRÊN BẢN ĐỒ -->
   <div class="top-float-bar">
     <div style="position: relative;">
-      <!-- Nút mũi tên mở menu -->
       <button id="topMenuBtn" class="btn-theme-toggle-float" onclick="toggleTopMenu()" title="Menu">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="6 9 12 15 18 9"></polyline>
         </svg>
       </button>
       
-      <!-- Menu xổ xuống chứa 3 mục -->
       <div id="topMenuPopover" class="top-menu-popover">
         <div class="top-menu-option" onclick="toggleDarkMode(); toggleTopMenu();">
           <span id="themeToggleText">🌙 Chế độ tối</span>
@@ -113,6 +110,22 @@
 
     <!-- KHUNG ĐỊA CHỈ DẠNG KHUÔN LIÊN KẾT (TIMELINE CARD) -->
     <div class="route-card">
+
+      <!-- DÒNG LẤY LỘ TRÌNH GOOGLE MAPS -->
+      <div class="route-input-item ggmap-group">
+        <button type="button" class="btn-ggmap" onclick="openGoogleMapsToCopy()" title="Mở Google Maps để tìm đường">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+          Lấy lộ trình GGMap
+        </button>
+        <input type="text" id="ggmapLinkInput" placeholder="Dán link Google Map vào đây..." autocomplete="off" oninput="handleGgmapLinkInput()">
+        
+        <div class="action-buttons-right">
+          <button type="button" id="clearGgmapBtn" class="btn-clear-input" onclick="clearGgmapInput()" title="Xóa link" style="display: none;">✕</button>
+        </div>
+      </div>
+
+      <div class="route-divider ggmap-divider"></div>
+
       <!-- DÒNG ĐIỂM ĐÓN -->
       <div class="route-input-item pickup-group">
         <button type="button" class="btn-back-focus" onclick="exitFocusInputMode('pickup')" title="Quay lại">←</button>
@@ -210,7 +223,7 @@
     </div>
   </div>
 
-  <script src="utils.js?v=111"></script>
-  <script src="index.js?v=111"></script>
+  <script src="utils.js?v=113"></script>
+  <script src="index.js?v=113"></script>
 </body>
 </html>

@@ -41,6 +41,7 @@ let swapDegree = 0;
 let activeSuggestionIndex = -1;
 let mapMoveDebounceTimer = null;
 let isFirstLocationLoad = true;
+let ggmapInputTimer = null;
 
 /* HÀM HỖ TRỢ SAO CHÉP CHUẨN TƯƠNG THÍCH HOÀN HẢO CẢ TRÊN ĐIỆN THOẠI LẪN PC */
 function copyToClipboard(text) {
@@ -141,7 +142,6 @@ function swapRoute() {
   const pickupInput = document.getElementById('pickupInput');
   const destInput = document.getElementById('destInput');
 
-  // 1. Hoán đổi văn bản giữa 2 ô nhập
   const tempVal = pickupInput.value;
   pickupInput.value = destInput.value;
   destInput.value = tempVal;
@@ -149,7 +149,6 @@ function swapRoute() {
   toggleClearButton('pickup');
   toggleClearButton('dest');
 
-  // 2. Hoán đổi Marker & Tọa độ Điểm đón ⇄ Điểm đến
   if (markerStart || markerEnd) {
     const tempMarker = markerStart;
     markerStart = markerEnd;
@@ -266,26 +265,22 @@ function exitFocusInputMode(type) {
   activeSuggestionIndex = -1;
 }
 
-// KHÓA CUỘN TRANG KHI ĐANG Ở CHẾ ĐỘ FOCUS
 window.addEventListener('scroll', () => {
   if (document.body.classList.contains('focus-pickup') || document.body.classList.contains('focus-dest')) {
     window.scrollTo(0, 0);
   }
 });
 
-/* THOÁT CHẾ ĐỘ FOCUS KHI BẤM PHÍM ESC (DÀNH CHO PC) */
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
     exitFocusInputMode();
   }
 });
 
-/* THOÁT CHẾ ĐỘ FOCUS KHI NHẤP VÀO BẢN ĐỒ */
 map.on('click', () => {
   exitFocusInputMode();
 });
 
-/* HÀM ẨN/HIỆN NÚT XÓA CHỮ X TRONG Ô NHẬP */
 function toggleClearButton(type) {
   const inputEl = document.getElementById(type + 'Input');
   const clearBtn = document.getElementById(type === 'pickup' ? 'clearPickupBtn' : 'clearDestBtn');
@@ -294,7 +289,6 @@ function toggleClearButton(type) {
   }
 }
 
-/* HÀM XÓA TOÀN BỘ CHỮ 1 LẦN */
 function clearInput(type) {
   enterFocusInputMode(type);
   const inputEl = document.getElementById(type + 'Input');
@@ -310,7 +304,6 @@ function clearInput(type) {
   }
 }
 
-/* HÀM TÍNH TỌA ĐỘ TẠI ĐIỂM NHỌN CỦA GHIM CÓ THỂ ĐIỀU CHỈNH ĐỘ LỆCH THEO ĐƠN VỊ PIXEL (OFFSETY) */
 function getPinCenterLatLng() {
   if (!map) return L.latLng(18.7034, 105.6832);
   try {
@@ -359,7 +352,6 @@ map.on('zoomend', () => {
   }
 });
 
-// LỚP BẢN ĐỒ CHÍNH: GOOGLE MAPS TILES - CẤU HÌNH TẢI Ô TỨC THÌ (BỎ VÙNG XÁM)
 const googleLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
   subdomains: ['0', '1', '2', '3'],
   maxZoom: 20,
@@ -410,7 +402,6 @@ let pickupDetailNote = '';
 let currentSelectionMode = 'pickup';
 let activeFilter = localStorage.getItem(VEHICLE_PREF_KEY) || 'bike';
 
-// DÙNG ICON SVG MÀU XANH LÁ #00b14f CHUẨN ĐỒ HỌA DÀNH CHO "LÁI XE HỘ"
 const typeIcons = {
   'bike': '🛵',
   'car': '🚕',
@@ -420,7 +411,7 @@ const typeIcons = {
 
 const typeNames = { 
   'bike': '🛵 Xe máy (4.500đ/km)', 
-  'car': '🚕 Ô tô (9.000đ/km)', 
+  'car': '🚕 Ô ô (9.000đ/km)', 
   'driver': '👤 Lái xe hộ (10.000đ/km)', 
   'truck': '🚚 Chở hàng (Thỏa thuận)'
 };
@@ -552,7 +543,6 @@ function updatePinColor(color) {
   if (pinSvg) pinSvg.setAttribute('fill', color);
 }
 
-/* HÀM CĂN MÀN HÌNH BẢN ĐỒ DỰA TRÊN TỌA ĐỘ VÀ KHOẢNG BÙ NỔI POPUP (OFFSETY) */
 function centerMapOnPin(latlng, zoom = null, offsetY = 0, animate = true) {
   if (!map || !latlng || !Number.isFinite(latlng.lat) || !Number.isFinite(latlng.lng)) return;
   try {
@@ -688,7 +678,6 @@ map.on('movestart', () => {
   clearTimeout(mapMoveDebounceTimer);
 });
 
-/* DEBOUNCE 300MS KHI THẢ GHIM BẢN ĐỒ */
 map.on('moveend', () => {
   document.body.classList.remove('map-moving');
   clearTimeout(mapMoveDebounceTimer);
@@ -857,18 +846,15 @@ function selectFilter(type, element) {
   updatePrice();
 }
 
-// BẬT ĐỊNH VỊ BAN ĐẦU VỚI TỐI ƯU KHÔNG DÙNG HIỆU ỨNG CHỐNG CHÓNG MẶT
 map.locate({ setView: false, maxZoom: 15, enableHighAccuracy: true });
 
 map.on('locationfound', (e) => {
   userLatLng = e.latlng;
   
-  // Lưu tọa độ GPS vào LocalStorage cho các lần mở app sau
   localStorage.setItem('avyo_last_lat', e.latlng.lat);
   localStorage.setItem('avyo_last_lng', e.latlng.lng);
 
   if (isFirstLocationLoad) {
-    // Lần đầu mở: Căn vị trí TỨC THÌ (animate = false) để không bị trượt bản đồ gây chóng mặt
     centerMapOnPin(e.latlng, 15, 0, false);
     
     if (!markerStart) {
@@ -888,7 +874,6 @@ map.on('locationerror', (e) => {
   console.warn("Không thể lấy vị trí GPS hiện tại:", e.message);
 });
 
-/* HÀM THIẾT LẬP ĐIỂM ĐÓN - TỰ ĐỘNG CUỘN BẢN ĐỒ VỀ VỊ TRÍ GHIM 1/3 MƯỢT MÀ KHI CHƯA CÓ ĐIỂM ĐẾN */
 function setPickupLocation(latlng, isAuto = false) {
   if (!latlng || !Number.isFinite(latlng.lat) || !Number.isFinite(latlng.lng)) return;
   if (markerStart) map.removeLayer(markerStart);
@@ -915,7 +900,6 @@ function setPickupLocation(latlng, isAuto = false) {
   updateGuide();
 }
 
-/* HÀM THIẾT LẬP ĐIỂM ĐẾN - TỰ ĐỘNG CUỘN BẢN ĐỒ VỀ VỊ TRÍ GHIM 1/3 MƯỢT MÀ KHI CHƯA CÓ ĐIỂM ĐÓN */
 function setDestLocation(latlng) {
   if (!latlng || !Number.isFinite(latlng.lat) || !Number.isFinite(latlng.lng)) return;
   if (markerEnd) map.removeLayer(markerEnd);
@@ -1126,7 +1110,6 @@ function onSearchInput(type, isDirectCall = false) {
   else searchTimer = setTimeout(executeSearch, 300);
 }
 
-// BẬT/TẮT MENU GÓC TRÊN
 function toggleTopMenu() {
   const menu = document.getElementById('topMenuPopover');
   if (menu) {
@@ -1141,7 +1124,6 @@ document.addEventListener('click', (e) => {
     if (menu) menu.style.display = 'none';
   }
 
-  // Đóng top menu (menu sáng tối/yêu thích)
   if (!e.target.closest('#topMenuBtn') && !e.target.closest('#topMenuPopover')) {
     const topMenu = document.getElementById('topMenuPopover');
     if (topMenu) topMenu.style.display = 'none';
@@ -1232,7 +1214,6 @@ async function calculateMapboxRoute() {
   updateGuide();
 }
 
-/* HÀM TÍNH GIÁ CƯỚC - HIỂN THỊ "THỎA THUẬN" KHI XE HÀNG HOẶC QUÃNG ĐƯỜNG VƯỢT QUÁ 100KM */
 function updatePrice() {
   const priceEl = document.getElementById('price');
   const rateLabelEl = document.getElementById('rate-label');
@@ -1248,7 +1229,6 @@ function updatePrice() {
   const type = activeFilter;
   const distVal = parseFloat(currentDistance);
 
-  // Nếu là xe chở hàng HOẶC quãng đường vượt quá 100km -> Hiển thị "Thỏa thuận"
   if (type === 'truck' || distVal > 100) {
     priceEl.innerText = 'Thỏa thuận';
     rateLabelEl.innerText = `(${currentDistance} km)`;
@@ -1368,7 +1348,6 @@ async function openZaloById(driverId) {
     const eLat = markerEnd.getLatLng().lat.toFixed(5);
     const eLng = markerEnd.getLatLng().lng.toFixed(5);
 
-    // TẠO LINK CHỈ ĐƯỜNG TRỰC TIẾP TRÊN GOOGLE MAPS (ĐIỂM ĐI -> ĐIỂM ĐẾN)
     const mapRouteUrl = `https://www.google.com/maps/dir/?api=1&origin=${sLat},${sLng}&destination=${eLat},${eLng}&travelmode=driving`;
 
     msg += `\n🗺️ Lộ trình Google Maps: ${mapRouteUrl}`;
@@ -1386,7 +1365,6 @@ async function openZaloById(driverId) {
     }
   }
 
-  // THỰC HIỆN SAO CHÉP NGAY TẠI THỜI ĐIỂM NGƯỜI DÙNG BẤM NÚT (TƯƠNG THÍCH MỌI ĐIỆN THOẠI)
   copyToClipboard(msg);
 
   if (!selectedDriver || selectedDriver.id !== driver.id) {
@@ -1493,7 +1471,6 @@ async function selectDriver(driver) {
   updatePrice();
   renderDriverMarkers();
 
-  // ĐƯA BIỂU TƯỢNG TÀI XẾ DI CHUYỂN CHÍNH XÁC VỀ VỊ TRÍ ĐẦU GHIM PIN CỐ ĐỊNH 1/3 PHÍA TRÊN MÀN HÌNH
   if (driver && driver.lat && driver.lng) {
     centerMapOnPin(L.latLng(driver.lat, driver.lng), null, 0);
   }
@@ -1702,7 +1679,6 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-// THAY ĐỔI THEME VÀ CẬP NHẬT CHỮ TRONG MENU XỔ XUỐNG
 window.toggleDarkMode = function() {
   const body = document.body;
   const themeToggleText = document.getElementById('themeToggleText');
@@ -1756,13 +1732,15 @@ window.alert = function(message) {
     let displayTitle = "Thông báo";
     let displayMsg = String(message || '');
 
-    const emojiMatch = displayMsg.match(/^([\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|⚡|💡|⚠️|✅|⭐|🌟|📍|🎉)\s*/u);
+    const emojiMatch = displayMsg.match(/^([\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|⚡|💡|⚠️|✅|⭐|🌟|📍|🎉|❌|⏳)\s*/u);
     if (emojiMatch) {
       displayIcon = emojiMatch[1];
       displayMsg = displayMsg.replace(emojiMatch[0], '');
       
       if (displayIcon === '⚠️') displayTitle = 'Lưu ý';
       else if (displayIcon === '✅' || displayIcon === '🎉') displayTitle = 'Thành công';
+      else if (displayIcon === '❌') displayTitle = 'Lỗi';
+      else if (displayIcon === '⏳') displayTitle = 'Đang xử lý';
       else if (displayIcon === '⭐' || displayIcon === '🌟') displayTitle = 'Đánh giá';
     }
 
@@ -1780,4 +1758,184 @@ window.alert = function(message) {
 
     btnEl.onclick = closeAlert;
   });
+};
+
+/* --- XỬ LÝ BÓC TÁCH LINK GOOGLE MAPS ĐẦY ĐỦ VÀ RÚT GỌN --- */
+
+window.openGoogleMapsToCopy = function() {
+  window.open('https://www.google.com/maps/dir/', '_blank');
+};
+
+window.handleGgmapLinkInput = function() {
+  clearTimeout(ggmapInputTimer);
+
+  const inputEl = document.getElementById('ggmapLinkInput');
+  const clearBtn = document.getElementById('clearGgmapBtn');
+  const rawUrl = inputEl ? inputEl.value.trim() : '';
+
+  if (clearBtn) {
+    clearBtn.style.display = rawUrl.length > 0 ? 'flex' : 'none';
+  }
+
+  if (!rawUrl) return;
+
+  // Tránh bắn thông báo liên tục nếu người dùng gõ tay dở dang
+  if (!rawUrl.includes('google.com') && !rawUrl.includes('goo.gl')) {
+    if (rawUrl.startsWith('http') || rawUrl.length > 25) {
+      alert("⚠️ Link dán vào không thuộc định dạng Google Maps!");
+    }
+    return;
+  }
+
+  ggmapInputTimer = setTimeout(async () => {
+    alert("⏳ Đang giải mã và lấy vị trí từ Google Maps...");
+
+    let targetUrl = rawUrl;
+    let fullHtmlContent = "";
+
+    // 1. Giải mã link rút gọn (maps.app.goo.gl) qua danh sách Proxy dự phòng
+    if (rawUrl.includes('maps.app.goo.gl') || rawUrl.includes('goo.gl')) {
+      const proxyList = [
+        async (u) => {
+          const res = await fetch(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`);
+          if (!res.ok) throw new Error("Proxy CodeTabs bận");
+          const text = await res.text();
+          return { url: u, content: text };
+        },
+        async (u) => {
+          const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(u)}`);
+          if (!res.ok) throw new Error("Proxy AllOrigins bận");
+          const data = await res.json();
+          return { url: data.status?.url || u, content: data.contents || "" };
+        },
+        async (u) => {
+          const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(u)}`);
+          if (!res.ok) throw new Error("Proxy CORSProxy bận");
+          const text = await res.text();
+          return { url: res.url || u, content: text };
+        }
+      ];
+
+      let success = false;
+      for (const fetchProxy of proxyList) {
+        try {
+          const result = await fetchProxy(rawUrl);
+          targetUrl = result.url;
+          fullHtmlContent = result.content;
+          if (fullHtmlContent || targetUrl !== rawUrl) {
+            success = true;
+            break;
+          }
+        } catch (err) {
+          console.warn("Thử proxy tiếp theo do lỗi:", err);
+        }
+      }
+
+      if (!success) {
+        alert("❌ Dịch vụ giải mã link đang bận. Vui lòng thử lại sau giây lát!");
+        return;
+      }
+    }
+
+    const parseText = targetUrl + " " + fullHtmlContent;
+
+    let pickupLat = null, pickupLng = null;
+    let destLat = null, destLng = null;
+    let pickupName = "", destName = "";
+
+    // 2. Tách tên địa danh trực tiếp từ cấu trúc URL (/dir/Tên_Đón/Tên_Đến/)
+    const textMatch = targetUrl.match(/\/dir\/([^\/@]+)\/([^\/@]+)\//);
+    if (textMatch) {
+      try {
+        pickupName = cleanAddressText(decodeURIComponent(textMatch[1].replace(/\+/g, ' ')));
+        destName = cleanAddressText(decodeURIComponent(textMatch[2].replace(/\+/g, ' ')));
+      } catch (e) {
+        console.warn("Lỗi đọc tên địa danh:", e);
+      }
+    }
+
+    // 3. Trích xuất Tọa độ
+    // MẪU A: Đọc từ cụm data=!2m2!1d[LNG]!2d[LAT] (Chuẩn Google Maps đầy đủ)
+    const dataMatches = [...parseText.matchAll(/!2m2!1d(-?\d+\.\d+)!2d(-?\d+\.\d+)/g)];
+    if (dataMatches.length >= 2) {
+      pickupLng = parseFloat(dataMatches[0][1]);
+      pickupLat = parseFloat(dataMatches[0][2]);
+
+      destLng = parseFloat(dataMatches[1][1]);
+      destLat = parseFloat(dataMatches[1][2]);
+    }
+
+    // MẪU B: Đọc từ dạng /dir/Lat1,Lng1/Lat2,Lng2
+    if (!pickupLat || !destLat) {
+      const dirCoordMatch = parseText.match(/\/dir\/(-?\d+\.\d+),\s*(-?\d+\.\d+)\/(-?\d+\.\d+),\s*(-?\d+\.\d+)/);
+      if (dirCoordMatch) {
+        pickupLat = parseFloat(dirCoordMatch[1]);
+        pickupLng = parseFloat(dirCoordMatch[2]);
+        destLat = parseFloat(dirCoordMatch[3]);
+        destLng = parseFloat(dirCoordMatch[4]);
+      }
+    }
+
+    // MẪU C: Đọc từ dạng origin=...&destination=...
+    if (!pickupLat || !destLat) {
+      const queryMatch = parseText.match(/(?:origin|saddr)=(-?\d+\.\d+),\s*(-?\d+\.\d+).*(?:destination|daddr)=(-?\d+\.\d+),\s*(-?\d+\.\d+)/);
+      if (queryMatch) {
+        pickupLat = parseFloat(queryMatch[1]);
+        pickupLng = parseFloat(queryMatch[2]);
+        destLat = parseFloat(queryMatch[3]);
+        destLng = parseFloat(queryMatch[4]);
+      }
+    }
+
+    // 4. Thiết lập vị trí và vẽ lộ trình
+    if (pickupLat && pickupLng && destLat && destLng) {
+      const pickupLatLng = L.latLng(pickupLat, pickupLng);
+      const destLatLng = L.latLng(destLat, destLng);
+
+      exitSelectionMode();
+
+      // Thiết lập Điểm Đón
+      setPickupLocation(pickupLatLng);
+      if (pickupName) {
+        const pInput = document.getElementById('pickupInput');
+        if (pInput) pInput.value = pickupName;
+        toggleClearButton('pickup');
+        saveRecentPickup(pickupName, pickupLat, pickupLng);
+      } else {
+        fetchAddressForInput('pickup', pickupLatLng);
+      }
+
+      // Thiết lập Điểm Đến
+      setDestLocation(destLatLng);
+      if (destName) {
+        const dInput = document.getElementById('destInput');
+        if (dInput) dInput.value = destName;
+        toggleClearButton('dest');
+        saveRecentDest(destName, destLat, destLng);
+      } else {
+        fetchAddressForInput('dest', destLatLng);
+      }
+
+      // Vẽ tuyến đường
+      calculateMapboxRoute();
+
+      // THÔNG BÁO THÀNH CÔNG
+      alert("✅ ĐÃ TRÍCH XUẤT THÀNH CÔNG LỘ TRÌNH!\n\nVị trí điểm đi, điểm đến và tuyến đường đã được thiết lập trên bản đồ.");
+    } else {
+      alert("❌ Không tìm thấy tọa độ lộ trình trong liên kết này. Vui lòng đảm bảo bạn dán đúng link chỉ đường của Google Maps!");
+    }
+  }, 400);
+};
+
+window.clearGgmapInput = function() {
+  const inputEl = document.getElementById('ggmapLinkInput');
+  const clearBtn = document.getElementById('clearGgmapBtn');
+  
+  if (inputEl) {
+    inputEl.value = '';
+    inputEl.focus();
+  }
+  if (clearBtn) {
+    clearBtn.style.display = 'none';
+  }
 };
