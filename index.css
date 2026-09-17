@@ -149,6 +149,7 @@ body.focus-dest {
   pointer-events: auto !important;
   z-index: 105;
   overflow: visible !important;
+  box-sizing: border-box;
 }
 
 .route-input-item {
@@ -157,6 +158,7 @@ body.focus-dest {
   position: relative;
   min-height: 38px;
   z-index: 10;
+  box-sizing: border-box;
 }
 
 .pickup-group {
@@ -212,6 +214,7 @@ body.focus-dest .dest-group {
   padding: 4px 10px !important;
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.18) !important;
   min-height: 42px !important;
+  box-sizing: border-box !important;
 }
 
 /* ĐỊNH VỊ CHUẨN TRÊN MÀN HÌNH MÁY TÍNH (PC) KHI FOCUS */
@@ -221,7 +224,7 @@ body.focus-dest .dest-group {
     left: 50% !important;
     right: auto !important;
     transform: translateX(-50%) !important;
-    width: 100% !important;
+    width: calc(100% - 28px) !important;
     max-width: 452px !important;
   }
 }
@@ -299,7 +302,7 @@ body.focus-dest .collapsible-drivers-panel {
 
 .action-buttons-right {
   position: absolute;
-  right: 0;
+  right: 8px !important;
   top: 50%;
   transform: translateY(-50%);
   display: flex;
