@@ -260,9 +260,13 @@ body.focus-dest .dest-group .suggestions-list {
   border-radius: 14px !important;
 }
 
-/* ẨN NÚT VÀ PHẦN DƯỚI KHI FOCUS */
+/* ẨN NÚT XÁC NHẬN XANH, NÚT NỔI VÀ TOÀN BỘ PHẦN ĐÁY MÀN HÌNH KHI Ở CHẾ ĐỘ FOCUS */
 body.focus-pickup .top-float-bar,
 body.focus-dest .top-float-bar,
+body.focus-pickup .btn-confirm-select,
+body.focus-dest .btn-confirm-select,
+body.focus-pickup .floating-controls-stack,
+body.focus-dest .floating-controls-stack,
 body.focus-pickup .route-divider,
 body.focus-pickup .dest-group,
 body.focus-pickup .bottom-main-bar,
