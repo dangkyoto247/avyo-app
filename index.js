@@ -376,9 +376,9 @@ const typeIcons = {
 };
 
 const typeNames = { 
-  'bike': '🛵 Xe máy (6.000đ/km)', 
-  'car': '🚕 Ô tô (11.000đ/km)', 
-  'driver': '👤 Lái xe hộ (11.000đ/km)', 
+  'bike': '🛵 Xe máy (4.500đ/km)', 
+  'car': '🚕 Ô tô (9.000đ/km)', 
+  'driver': '👤 Lái xe hộ (10.000đ/km)', 
   'truck': '🚚 Chở hàng (Thỏa thuận)'
 };
 
@@ -1193,11 +1193,21 @@ function updatePrice() {
     return;
   }
 
-  let rateVal = (type === 'car' || type === 'driver') ? 11000 : 6000;
-  const isMinFare = distVal < 3.0;
-  const calcDistance = isMinFare ? 3.0 : distVal;
+  let rateVal = 4500;
+  let minFare = 12000;
 
-  currentPrice = Math.round(calcDistance * rateVal);
+  if (type === 'car') {
+    rateVal = 9000;
+    minFare = 24000;
+  } else if (type === 'driver') {
+    rateVal = 10000;
+    minFare = 50000;
+  } else if (type === 'bike') {
+    rateVal = 4500;
+    minFare = 12000;
+  }
+
+  currentPrice = Math.max(minFare, Math.round(distVal * rateVal));
   priceEl.innerText = currentPrice.toLocaleString('vi-VN') + 'đ';
   rateLabelEl.innerText = `(${currentDistance} km)`;
 }
