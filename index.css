@@ -385,14 +385,9 @@ body.focus-dest .dest-group .suggestions-list {
   margin: 0 4px 0 32px;
 }
 
+/* ẨN HOÀN TOÀN ĐƯỜNG KẺ NỐI DỌC DƯỚI ICON ĐỎ */
 .connector-line {
-  position: absolute;
-  top: -16px;
-  left: -21px;
-  width: 2px;
-  height: 16px;
-  background: #cbd5e1;
-  border-radius: 2px;
+  display: none !important;
 }
 
 /* NÚT HOÁN ĐỔI NƠI ĐÓN ⇄ NƠI ĐẾN */
@@ -711,6 +706,8 @@ body.selecting-dest .btn-confirm-select {
 .price-info {
   display: flex;
   flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
 }
 
 .price-amount {

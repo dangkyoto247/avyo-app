@@ -24,8 +24,8 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/gh/ewoken/Leaflet.MovingMarker@master/MovingMarker.js"></script>
 
-  <!-- ĐỒNG BỘ PHIÊN BẢN v97 ĐỂ TỰ ĐỘNG XÓA CACHE TRÊN ĐIỆN THOẠI -->
-  <link rel="stylesheet" href="index.css?v=97">
+  <!-- ĐỒNG BỘ PHIÊN BẢN v100 ĐỂ TỰ ĐỘNG XÓA CACHE TRÊN ĐIỆN THOẠI -->
+  <link rel="stylesheet" href="index.css?v=100">
 </head>
 <body class="selecting-pickup">
 
@@ -127,10 +127,8 @@
         <div id="pickupSuggestions" class="suggestions-list"></div>
       </div>
 
-      <!-- ĐƯỜNG KẺ NỐI -->
-      <div class="route-divider">
-        <span class="connector-line"></span>
-      </div>
+      <!-- ĐƯỜNG KẺ NỐI KHANH NẰM CẮT NGANG -->
+      <div class="route-divider"></div>
 
       <!-- DÒNG ĐIỂM ĐẾN -->
       <div class="route-input-item dest-group">
@@ -152,15 +150,16 @@
 
     <!-- CỤM GIÁ TIỀN & 3 TÀI XẾ -->
     <div class="bottom-main-bar">
-      <div class="price-info">
-        <div id="price" class="price-amount">0đ</div>
-        <div id="rate-label" class="price-sub"></div>
-      </div>
       <button type="button" id="btnToggleDrivers" class="btn-drivers-toggle" onclick="toggleTop3Drivers()" title="Xem danh sách 3 tài xế gần nhất">
         <span class="live-dot" title="Vị trí tài xế cập nhật trực tiếp"></span>
         <span>⚡ 3 Tài Xế Gần Nhất</span>
         <span id="toggleArrow" class="arrow-icon">▾</span>
       </button>
+
+      <div class="price-info">
+        <div id="price" class="price-amount">0đ</div>
+        <div id="rate-label" class="price-sub"></div>
+      </div>
     </div>
 
     <!-- DANH SÁCH 3 TÀI XẾ -->
@@ -206,7 +205,7 @@
     </div>
   </div>
 
-  <script src="utils.js?v=97"></script>
-  <script src="index.js?v=97"></script>
+  <script src="utils.js?v=100"></script>
+  <script src="index.js?v=100"></script>
 </body>
 </html>
