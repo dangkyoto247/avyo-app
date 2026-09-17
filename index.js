@@ -1331,63 +1331,6 @@ const icons = {
   'truck': L.divIcon({ html: '<div class="vehicle-icon">🚚</div>', className: 'custom-icon', iconSize: [30, 30], iconAnchor: [15, 15] })
 };
 
-/* [TẠM ẨN CÁC HÀM XỬ LÝ POPUP ĐÁNH GIÁ TÀI XẾ - BỎ COMMENT KHI CẦN KÍCH HOẠT LẠI]
-function showRatingModal(driver) {
-  if (!driver) return;
-  const todayStr = new Date().toDateString();
-  const ratedKey = `avyo_rated_date_${driver.id}`;
-  if (localStorage.getItem(ratedKey) === todayStr) {
-    return;
-  }
-  ratingDriverTarget = driver;
-  const titleEl = document.getElementById('ratingModalTitle');
-  if (titleEl) titleEl.innerText = `Đánh Giá Tài Xế ${driver.name}`;
-  
-  highlightModalStars(0);
-
-  const overlay = document.getElementById('ratingModalOverlay');
-  if (overlay) overlay.classList.add('active');
-}
-
-function closeRatingModal() {
-  const overlay = document.getElementById('ratingModalOverlay');
-  if (overlay) overlay.classList.remove('active');
-}
-
-function highlightModalStars(count) {
-  const stars = document.querySelectorAll('#modalStarBox .star-btn');
-  stars.forEach((star) => {
-    const starVal = parseInt(star.getAttribute('data-star'), 10);
-    if (starVal <= count) star.classList.add('active');
-    else star.classList.remove('active');
-  });
-}
-
-async function submitModalRating(stars) {
-  if (!ratingDriverTarget) return;
-  const driver = ratingDriverTarget;
-  closeRatingModal();
-
-  const todayStr = new Date().toDateString();
-  const ratedKey = `avyo_rated_date_${driver.id}`;
-
-  const { data: isSuccess, error } = await supabaseClient.rpc('add_driver_rating', { 
-    target_id: driver.id, 
-    stars: stars 
-  });
-
-  if (error || isSuccess === false) {
-    return alert("⚠️ Tài xế này đã đạt giới hạn tối đa 50 lượt đánh giá trong ngày hôm nay!");
-  }
-
-  localStorage.setItem(ratedKey, todayStr);
-  driver.rating_sum = (driver.rating_sum || 25) + stars;
-  driver.rating_count = (driver.rating_count || 5) + 1;
-
-  alert(`🌟 Cảm ơn bạn đã đánh giá ${stars} sao cho tài xế ${driver.name}!`);
-}
-*/
-
 async function trackCallById(event, driverId) {
   if (event) event.preventDefault();
   const driver = rawDriversData.find(d => d.id === driverId) || selectedDriver;
@@ -1407,9 +1350,7 @@ async function trackCallById(event, driverId) {
 
   localStorage.setItem(`avyo_unlocked_rating_${driver.id}`, 'true');
   await supabaseClient.rpc('increment_driver_call', { target_id: driver.id });
-  
-  // [TẠM ẨN ĐÁNH GIÁ TÀI XẾ KHỎI SỰ KIỆN GỌI ĐIỆN]
-  // setTimeout(() => showRatingModal(driver), 1000);
+
   window.location.href = `tel:${driver.phone}`;
 }
 
@@ -1421,16 +1362,28 @@ async function openZaloById(driverId) {
   const distVal = parseFloat(currentDistance);
   let msg = `Chào ${typeName}, tôi muốn sử dụng dịch vụ Avyo:\n`;
 
-  if (markerStart) {
-    msg += `\n📍 Điểm đi: https://maps.google.com/?q=${markerStart.getLatLng().lat.toFixed(5)},${markerStart.getLatLng().lng.toFixed(5)}`;
+  if (markerStart && markerEnd) {
+    const sLat = markerStart.getLatLng().lat.toFixed(5);
+    const sLng = markerStart.getLatLng().lng.toFixed(5);
+    const eLat = markerEnd.getLatLng().lat.toFixed(5);
+    const eLng = markerEnd.getLatLng().lng.toFixed(5);
+
+    // TẠO LINK CHỈ ĐƯỜNG TRỰC TIẾP TRÊN GOOGLE MAPS (ĐIỂM ĐI -> ĐIỂM ĐẾN)
+    const mapRouteUrl = `https://www.google.com/maps/dir/?api=1&origin=${sLat},${sLng}&destination=${eLat},${eLng}&travelmode=driving`;
+
+    msg += `\n🗺️ Lộ trình Google Maps: ${mapRouteUrl}`;
     if (pickupDetailNote) {
       msg += `\n📝 Chi tiết điểm đón: ${pickupDetailNote}`;
     }
-  }
-  if (markerEnd) {
-    msg += `\n🚩 Điểm đến: https://maps.google.com/?q=${markerEnd.getLatLng().lat.toFixed(5)},${markerEnd.getLatLng().lng.toFixed(5)}`;
     msg += `\n📏 Quãng đường: ${currentDistance} km`;
     msg += `\n💰 Cước phí: ${(driver.vehicle_type === 'truck' || distVal > 100) ? 'Thỏa thuận' : currentPrice.toLocaleString('vi-VN') + 'đ'}`;
+  } else if (markerStart) {
+    const sLat = markerStart.getLatLng().lat.toFixed(5);
+    const sLng = markerStart.getLatLng().lng.toFixed(5);
+    msg += `\n📍 Điểm đi: https://maps.google.com/?q=${sLat},${sLng}`;
+    if (pickupDetailNote) {
+      msg += `\n📝 Chi tiết điểm đón: ${pickupDetailNote}`;
+    }
   }
 
   // THỰC HIỆN SAO CHÉP NGAY TẠI THỜI ĐIỂM NGƯỜI DÙNG BẤM NÚT (TƯƠNG THÍCH MỌI ĐIỆN THOẠI)
@@ -1454,9 +1407,6 @@ async function openZaloById(driverId) {
   await alert("✅ ĐÃ COPY LỘ TRÌNH!\n\nHệ thống mở Zalo ngay bây giờ. Bạn hãy dán (Paste) nội dung tin nhắn gửi cho tài xế nhé!");
 
   window.open(`https://zalo.me/${driver.phone}`, '_blank');
-
-  // [TẠM ẨN ĐÁNH GIÁ TÀI XẾ KHỎI SỰ KIỆN ZALO]
-  // setTimeout(() => showRatingModal(driver), 1000);
 }
 
 async function loadDrivers() {
