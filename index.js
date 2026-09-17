@@ -42,6 +42,41 @@ let activeSuggestionIndex = -1;
 let mapMoveDebounceTimer = null;
 let isFirstLocationLoad = true;
 
+/* HÀM HỖ TRỢ SAO CHÉP CHUẨN TƯƠNG THÍCH HOÀN HẢO CẢ TRÊN ĐIỆN THOẠI LẪN PC */
+function copyToClipboard(text) {
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text).catch(() => {
+      fallbackCopyTextToClipboard(text);
+    });
+  } else {
+    fallbackCopyTextToClipboard(text);
+  }
+}
+
+function fallbackCopyTextToClipboard(text) {
+  const textArea = document.createElement("textarea");
+  textArea.value = text;
+  textArea.style.position = "fixed";
+  textArea.style.top = "0";
+  textArea.style.left = "0";
+  textArea.style.width = "2em";
+  textArea.style.height = "2em";
+  textArea.style.padding = "0";
+  textArea.style.border = "none";
+  textArea.style.outline = "none";
+  textArea.style.boxShadow = "none";
+  textArea.style.background = "transparent";
+  document.body.appendChild(textArea);
+  textArea.focus();
+  textArea.select();
+  try {
+    document.execCommand('copy');
+  } catch (err) {
+    console.warn('Lỗi sao chép thủ công:', err);
+  }
+  document.body.removeChild(textArea);
+}
+
 /* HÀM CHUYỂN TAB ĐÁY MAXIM STYLE */
 function switchTab(tabName, event) {
   if (event) event.preventDefault();
@@ -1296,6 +1331,7 @@ const icons = {
   'truck': L.divIcon({ html: '<div class="vehicle-icon">🚚</div>', className: 'custom-icon', iconSize: [30, 30], iconAnchor: [15, 15] })
 };
 
+/* [TẠM ẨN CÁC HÀM XỬ LÝ POPUP ĐÁNH GIÁ TÀI XẾ - BỎ COMMENT KHI CẦN KÍCH HOẠT LẠI]
 function showRatingModal(driver) {
   if (!driver) return;
   const todayStr = new Date().toDateString();
@@ -1350,6 +1386,7 @@ async function submitModalRating(stars) {
 
   alert(`🌟 Cảm ơn bạn đã đánh giá ${stars} sao cho tài xế ${driver.name}!`);
 }
+*/
 
 async function trackCallById(event, driverId) {
   if (event) event.preventDefault();
@@ -1371,28 +1408,14 @@ async function trackCallById(event, driverId) {
   localStorage.setItem(`avyo_unlocked_rating_${driver.id}`, 'true');
   await supabaseClient.rpc('increment_driver_call', { target_id: driver.id });
   
-  setTimeout(() => showRatingModal(driver), 1000);
+  // [TẠM ẨN ĐÁNH GIÁ TÀI XẾ KHỎI SỰ KIỆN GỌI ĐIỆN]
+  // setTimeout(() => showRatingModal(driver), 1000);
   window.location.href = `tel:${driver.phone}`;
 }
 
 async function openZaloById(driverId) {
   const driver = rawDriversData.find(d => d.id === driverId) || selectedDriver;
   if (!driver) return;
-
-  if (!selectedDriver || selectedDriver.id !== driver.id) {
-    await selectDriver(driver);
-  }
-
-  const centerPoint = markerStart ? markerStart.getLatLng() : userLatLng;
-  if (centerPoint) {
-    const distKm = safeDistance(centerPoint.lat, centerPoint.lng, driver.lat, driver.lng);
-    if (distKm > 15) {
-      return alert(`⚠️ Tài xế đang ở cách bạn ${distKm.toFixed(1)}km (ngoài bán kính 15km). Hãy chọn tài xế ở gần hơn!`);
-    }
-  }
-
-  localStorage.setItem(`avyo_unlocked_rating_${driver.id}`, 'true');
-  await supabaseClient.rpc('increment_driver_zalo', { target_id: driver.id });
 
   const typeName = typeNames[driver.vehicle_type] || 'Tài xế';
   const distVal = parseFloat(currentDistance);
@@ -1410,17 +1433,30 @@ async function openZaloById(driverId) {
     msg += `\n💰 Cước phí: ${(driver.vehicle_type === 'truck' || distVal > 100) ? 'Thỏa thuận' : currentPrice.toLocaleString('vi-VN') + 'đ'}`;
   }
 
-  try {
-    await navigator.clipboard.writeText(msg);
-  } catch (err) {
-    console.warn('Lỗi tự động sao chép:', err);
+  // THỰC HIỆN SAO CHÉP NGAY TẠI THỜI ĐIỂM NGƯỜI DÙNG BẤM NÚT (TƯƠNG THÍCH MỌI ĐIỆN THOẠI)
+  copyToClipboard(msg);
+
+  if (!selectedDriver || selectedDriver.id !== driver.id) {
+    await selectDriver(driver);
   }
+
+  const centerPoint = markerStart ? markerStart.getLatLng() : userLatLng;
+  if (centerPoint) {
+    const distKm = safeDistance(centerPoint.lat, centerPoint.lng, driver.lat, driver.lng);
+    if (distKm > 15) {
+      return alert(`⚠️ Tài xế đang ở cách bạn ${distKm.toFixed(1)}km (ngoài bán kính 15km). Hãy chọn tài xế ở gần hơn!`);
+    }
+  }
+
+  localStorage.setItem(`avyo_unlocked_rating_${driver.id}`, 'true');
+  await supabaseClient.rpc('increment_driver_zalo', { target_id: driver.id });
 
   await alert("✅ ĐÃ COPY LỘ TRÌNH!\n\nHệ thống mở Zalo ngay bây giờ. Bạn hãy dán (Paste) nội dung tin nhắn gửi cho tài xế nhé!");
 
   window.open(`https://zalo.me/${driver.phone}`, '_blank');
 
-  setTimeout(() => showRatingModal(driver), 1000);
+  // [TẠM ẨN ĐÁNH GIÁ TÀI XẾ KHỎI SỰ KIỆN ZALO]
+  // setTimeout(() => showRatingModal(driver), 1000);
 }
 
 async function loadDrivers() {
