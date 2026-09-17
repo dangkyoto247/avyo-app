@@ -9,8 +9,12 @@ document.addEventListener('gestureend', function (e) {
   e.preventDefault();
 });
 
-// MAPBOX ACCESS TOKEN CỦA BẠN
+// CẤU HÌNH API KEYS VÀ ENDPOINTS
 const MAPBOX_TOKEN = 'pk.eyJ1IjoidHVhbmFuaDM0MTYyMyIsImEiOiJjbXUycmMxa2UwMjd4MnlxeWZ2ZDV5NGF5In0.o10B_hdnfqOIn1jNfbpY2w';
+const SUPABASE_URL = 'https://yvucyqkglbgxvozrznir.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl2dWN5cWtnbGJneHZvenJ6bmlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkxMzA3ODAsImV4cCI6MjEwNDcwNjc4MH0.Zagl4i2LPmxW3w9ih0h4LRsrm-OOGtPcWgvEs2vHBqo';
+const CF_WORKER_URL = 'https://raspy-recipe-7874.steep-feather-d277.workers.dev'; 
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // 1. LẤY VỊ TRÍ GẦN NHẤT TỪ LOCALSTORAGE ĐỂ MỞ BẢN ĐỒ TẠI ĐÓ NGAY LẬP TỨC
 const savedLat = localStorage.getItem('avyo_last_lat');
@@ -19,7 +23,7 @@ const initialCenter = (savedLat && savedLng)
   ? [parseFloat(savedLat), parseFloat(savedLng)] 
   : [18.7034, 105.6832];
 
-// Khởi tạo bản đồ Leaflet - Tối ưu Zoom mượt mà nguyên bản
+// Khởi tạo bản đồ Leaflet
 const map = L.map('map', { 
   preferCanvas: true,
   attributionControl: false,
@@ -43,7 +47,7 @@ let mapMoveDebounceTimer = null;
 let isFirstLocationLoad = true;
 let ggmapInputTimer = null;
 
-/* HÀM HỖ TRỢ SAO CHÉP CHUẨN TƯƠNG THÍCH HOÀN HẢO CẢ TRÊN ĐIỆN THOẠI LẪN PC */
+/* HÀM HỖ TRỢ SAO CHÉP CHUẨN TƯƠNG THÍCH TRÊN CẢ ĐIỆN THOẠI VÀ PC */
 function copyToClipboard(text) {
   if (navigator.clipboard && window.isSecureContext) {
     navigator.clipboard.writeText(text).catch(() => {
@@ -78,7 +82,7 @@ function fallbackCopyTextToClipboard(text) {
   document.body.removeChild(textArea);
 }
 
-/* HÀM CHUYỂN TAB ĐÁY MAXIM STYLE */
+/* HÀM CHUYỂN TAB ĐÁY */
 function switchTab(tabName, event) {
   if (event) event.preventDefault();
   document.querySelectorAll('.app-bottom-nav .nav-item').forEach(btn => btn.classList.remove('active'));
@@ -131,7 +135,7 @@ window.addEventListener('offline', updateNetworkStatus);
 window.addEventListener('online', updateNetworkStatus);
 document.addEventListener('DOMContentLoaded', updateNetworkStatus);
 
-/* HÀM HOÁN ĐỔI ĐIỂM ĐÓN VÀ ĐIỂM ĐẾN (CÓ HIỆU ỨNG XOAY 180°) */
+/* HÀM HOÁN ĐỔI ĐIỂM ĐÓN VÀ ĐIỂM ĐẾN */
 function swapRoute() {
   const swapBtn = document.querySelector('.btn-swap-route');
   if (swapBtn) {
@@ -183,7 +187,7 @@ function swapRoute() {
   updateSwapButtonVisibility();
 }
 
-/* HÀM ĐIỀU HƯỚNG BÀN PHÍM (MŨI TÊN TĂNG/GIẢM VÀ ENTER/ESC) */
+/* HÀM ĐIỀU HƯỚNG BÀN PHÍM */
 function handleInputEnter(event, type) {
   const listEl = document.getElementById(type + 'Suggestions');
   const isListVisible = listEl && listEl.style.display !== 'none';
@@ -234,7 +238,7 @@ function updateHighlightedSuggestion(items) {
   });
 }
 
-/* HÀM MỞ CHẾ ĐỘ FOCUS ĐẨY NGUYÊN DÒNG NHẬP LÊN ĐẦU MÀN HÌNH */
+/* HÀM MỞ CHẾ ĐỘ FOCUS */
 function enterFocusInputMode(type) {
   document.body.classList.remove('focus-pickup', 'focus-dest');
   if (type === 'pickup') {
@@ -248,7 +252,7 @@ function enterFocusInputMode(type) {
   setTimeout(() => window.scrollTo(0, 0), 200);
 }
 
-/* HÀM THOÁT CHẾ ĐỘ FOCUS QUAY VỀ GIAO DIỆN BAN ĐẦU */
+/* HÀM THOÁT CHẾ ĐỘ FOCUS */
 function exitFocusInputMode(type) {
   document.body.classList.remove('focus-pickup', 'focus-dest');
   if (type) {
@@ -380,10 +384,6 @@ googleLayer.addTo(map);
 setTimeout(() => { if (map) map.invalidateSize(); }, 300);
 window.addEventListener('resize', () => { if (map) map.invalidateSize(); });
 
-const SUPABASE_URL = 'https://yvucyqkglbgxvozrznir.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl2dWN5cWtnbGJneHZvenJ6bmlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkxMzA3ODAsImV4cCI6MjEwNDcwNjc4MH0.Zagl4i2LPmxW3w9ih0h4LRsrm-OOGtPcWgvEs2vHBqo';
-const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
 const RECENT_PICKUPS_KEY = 'avyo_recent_pickups';
 const RECENT_DESTS_KEY = 'avyo_recent_dests';
 const VEHICLE_PREF_KEY = 'avyo_selected_vehicle';
@@ -411,7 +411,7 @@ const typeIcons = {
 
 const typeNames = { 
   'bike': '🛵 Xe máy (4.500đ/km)', 
-  'car': '🚕 Ô ô (9.000đ/km)', 
+  'car': '🚕 Ô tô (9.000đ/km)', 
   'driver': '👤 Lái xe hộ (10.000đ/km)', 
   'truck': '🚚 Chở hàng (Thỏa thuận)'
 };
@@ -1760,7 +1760,7 @@ window.alert = function(message) {
   });
 };
 
-/* --- XỬ LÝ BÓC TÁCH LINK GOOGLE MAPS ĐẦY ĐỦ VÀ RÚT GỌN --- */
+/* --- XỬ LÝ BÓC TÁCH LINK GOOGLE MAPS VỚI LUỒNG DỰ PHÒNG (ƯU TIÊN SUPABASE EDGE) --- */
 
 window.openGoogleMapsToCopy = function() {
   window.open('https://www.google.com/maps/dir/', '_blank');
@@ -1779,7 +1779,6 @@ window.handleGgmapLinkInput = function() {
 
   if (!rawUrl) return;
 
-  // Tránh bắn thông báo liên tục nếu người dùng gõ tay dở dang
   if (!rawUrl.includes('google.com') && !rawUrl.includes('goo.gl')) {
     if (rawUrl.startsWith('http') || rawUrl.length > 25) {
       alert("⚠️ Link dán vào không thuộc định dạng Google Maps!");
@@ -1793,46 +1792,81 @@ window.handleGgmapLinkInput = function() {
     let targetUrl = rawUrl;
     let fullHtmlContent = "";
 
-    // 1. Giải mã link rút gọn (maps.app.goo.gl) qua danh sách Proxy dự phòng
+    // 1. Luồng tự động giải mã link rút gọn qua 3 tầng dự phòng (Ưu tiên Supabase Edge)
     if (rawUrl.includes('maps.app.goo.gl') || rawUrl.includes('goo.gl')) {
-      const proxyList = [
-        async (u) => {
-          const res = await fetch(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`);
-          if (!res.ok) throw new Error("Proxy CodeTabs bận");
-          const text = await res.text();
-          return { url: u, content: text };
-        },
-        async (u) => {
-          const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(u)}`);
-          if (!res.ok) throw new Error("Proxy AllOrigins bận");
-          const data = await res.json();
-          return { url: data.status?.url || u, content: data.contents || "" };
-        },
-        async (u) => {
-          const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(u)}`);
-          if (!res.ok) throw new Error("Proxy CORSProxy bận");
-          const text = await res.text();
-          return { url: res.url || u, content: text };
-        }
-      ];
+      let resolved = false;
 
-      let success = false;
-      for (const fetchProxy of proxyList) {
-        try {
-          const result = await fetchProxy(rawUrl);
-          targetUrl = result.url;
-          fullHtmlContent = result.content;
-          if (fullHtmlContent || targetUrl !== rawUrl) {
-            success = true;
-            break;
+      // TẦNG 1: Gọi Supabase Edge Function (Ưu tiên 1)
+      try {
+        const sbRes = await fetch(`${SUPABASE_URL}/functions/v1/unshorten?url=${encodeURIComponent(rawUrl)}`, {
+          headers: {
+            'Authorization': `Bearer ${SUPABASE_KEY}`,
+            'apikey': SUPABASE_KEY
           }
-        } catch (err) {
-          console.warn("Thử proxy tiếp theo do lỗi:", err);
+        });
+        if (sbRes.ok) {
+          const sbData = await sbRes.json();
+          if (sbData.expandedUrl) {
+            targetUrl = sbData.expandedUrl;
+            fullHtmlContent = sbData.content || "";
+            resolved = true;
+          }
+        }
+      } catch (e) {
+        console.warn("Supabase Edge bận, chuyển sang Tầng 2 (Cloudflare Worker)...");
+      }
+
+      // TẦNG 2: Gọi Cloudflare Worker (Dự phòng 1)
+      if (!resolved) {
+        try {
+          const cfRes = await fetch(`${CF_WORKER_URL}/?url=${encodeURIComponent(rawUrl)}`);
+          if (cfRes.ok) {
+            const cfData = await cfRes.json();
+            if (cfData.expandedUrl) {
+              targetUrl = cfData.expandedUrl;
+              fullHtmlContent = cfData.content || "";
+              resolved = true;
+            }
+          }
+        } catch (e) {
+          console.warn("Cloudflare Worker bận, chuyển sang Tầng 3 (Public Proxies)...");
         }
       }
 
-      if (!success) {
-        alert("❌ Dịch vụ giải mã link đang bận. Vui lòng thử lại sau giây lát!");
+      // TẦNG 3: Gọi Public Proxies (Dự phòng 2)
+      if (!resolved) {
+        const proxyList = [
+          async (u) => {
+            const res = await fetch(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`);
+            if (!res.ok) throw new Error("CodeTabs bận");
+            const text = await res.text();
+            return { url: u, content: text };
+          },
+          async (u) => {
+            const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(u)}`);
+            if (!res.ok) throw new Error("AllOrigins bận");
+            const data = await res.json();
+            return { url: data.status?.url || u, content: data.contents || "" };
+          }
+        ];
+
+        for (const fetchProxy of proxyList) {
+          try {
+            const result = await fetchProxy(rawUrl);
+            targetUrl = result.url;
+            fullHtmlContent = result.content;
+            if (fullHtmlContent || targetUrl !== rawUrl) {
+              resolved = true;
+              break;
+            }
+          } catch (err) {
+            console.warn("Thử proxy tiếp theo do lỗi:", err);
+          }
+        }
+      }
+
+      if (!resolved) {
+        alert("❌ Dịch vụ giải mã link bận. Vui lòng kiểm tra lại kết nối!");
         return;
       }
     }
@@ -1843,19 +1877,19 @@ window.handleGgmapLinkInput = function() {
     let destLat = null, destLng = null;
     let pickupName = "", destName = "";
 
-    // 2. Tách tên địa danh trực tiếp từ cấu trúc URL (/dir/Tên_Đón/Tên_Đến/)
+    // 2. Bóc tách tên địa danh trực tiếp từ đường dẫn URL (/dir/Tên_Đón/Tên_Đến/)
     const textMatch = targetUrl.match(/\/dir\/([^\/@]+)\/([^\/@]+)\//);
     if (textMatch) {
       try {
         pickupName = cleanAddressText(decodeURIComponent(textMatch[1].replace(/\+/g, ' ')));
         destName = cleanAddressText(decodeURIComponent(textMatch[2].replace(/\+/g, ' ')));
       } catch (e) {
-        console.warn("Lỗi đọc tên địa danh:", e);
+        console.warn("Lỗi đọc tên địa danh từ URL:", e);
       }
     }
 
     // 3. Trích xuất Tọa độ
-    // MẪU A: Đọc từ cụm data=!2m2!1d[LNG]!2d[LAT] (Chuẩn Google Maps đầy đủ)
+    // MẪU A: Bóc tách từ cụm data=!2m2!1d[LNG]!2d[LAT]
     const dataMatches = [...parseText.matchAll(/!2m2!1d(-?\d+\.\d+)!2d(-?\d+\.\d+)/g)];
     if (dataMatches.length >= 2) {
       pickupLng = parseFloat(dataMatches[0][1]);
@@ -1865,7 +1899,7 @@ window.handleGgmapLinkInput = function() {
       destLat = parseFloat(dataMatches[1][2]);
     }
 
-    // MẪU B: Đọc từ dạng /dir/Lat1,Lng1/Lat2,Lng2
+    // MẪU B: Bóc tách dạng /dir/Lat1,Lng1/Lat2,Lng2
     if (!pickupLat || !destLat) {
       const dirCoordMatch = parseText.match(/\/dir\/(-?\d+\.\d+),\s*(-?\d+\.\d+)\/(-?\d+\.\d+),\s*(-?\d+\.\d+)/);
       if (dirCoordMatch) {
@@ -1876,7 +1910,7 @@ window.handleGgmapLinkInput = function() {
       }
     }
 
-    // MẪU C: Đọc từ dạng origin=...&destination=...
+    // MẪU C: Bóc tách dạng origin=...&destination=...
     if (!pickupLat || !destLat) {
       const queryMatch = parseText.match(/(?:origin|saddr)=(-?\d+\.\d+),\s*(-?\d+\.\d+).*(?:destination|daddr)=(-?\d+\.\d+),\s*(-?\d+\.\d+)/);
       if (queryMatch) {
@@ -1894,7 +1928,7 @@ window.handleGgmapLinkInput = function() {
 
       exitSelectionMode();
 
-      // Thiết lập Điểm Đón
+      // Điểm đón
       setPickupLocation(pickupLatLng);
       if (pickupName) {
         const pInput = document.getElementById('pickupInput');
@@ -1905,7 +1939,7 @@ window.handleGgmapLinkInput = function() {
         fetchAddressForInput('pickup', pickupLatLng);
       }
 
-      // Thiết lập Điểm Đến
+      // Điểm đến
       setDestLocation(destLatLng);
       if (destName) {
         const dInput = document.getElementById('destInput');
@@ -1916,13 +1950,12 @@ window.handleGgmapLinkInput = function() {
         fetchAddressForInput('dest', destLatLng);
       }
 
-      // Vẽ tuyến đường
+      // Vẽ đường đi
       calculateMapboxRoute();
 
-      // THÔNG BÁO THÀNH CÔNG
       alert("✅ ĐÃ TRÍCH XUẤT THÀNH CÔNG LỘ TRÌNH!\n\nVị trí điểm đi, điểm đến và tuyến đường đã được thiết lập trên bản đồ.");
     } else {
-      alert("❌ Không tìm thấy tọa độ lộ trình trong liên kết này. Vui lòng đảm bảo bạn dán đúng link chỉ đường của Google Maps!");
+      alert("❌ Không tìm thấy tọa độ lộ trình trong liên kết này. Vui lòng dán đúng link chỉ đường Google Maps!");
     }
   }, 400);
 };
