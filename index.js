@@ -34,6 +34,17 @@ let swapDegree = 0;
 let activeSuggestionIndex = -1;
 let mapMoveDebounceTimer = null;
 
+/* HÀM CẬP NHẬT ẨN/HIỆN NÚT ĐỔI CHIỀU CHỈ KHI ĐÃ CHỌN ĐỦ 2 ĐIỂM */
+function updateSwapButtonVisibility() {
+  const swapBtn = document.querySelector('.btn-swap-route');
+  if (!swapBtn) return;
+  if (markerStart && markerEnd) {
+    swapBtn.style.display = 'flex';
+  } else {
+    swapBtn.style.display = 'none';
+  }
+}
+
 /* HÀM KIỂM TRA VÀ CẬP NHẬT TRẠNG THÁI MẠNG OFFLINE/ONLINE THỜI GIAN THỰC */
 function updateNetworkStatus() {
   const bar = document.getElementById('networkOfflineBar');
@@ -109,6 +120,7 @@ function swapRoute() {
     }
     loadDrivers();
   }
+  updateSwapButtonVisibility();
 }
 
 /* HÀM ĐIỀU HƯỚNG BÀN PHÍM (MŨI TÊN TĂNG/GIẢM VÀ ENTER/ESC) */
@@ -554,6 +566,7 @@ function enterSelectionMode(mode) {
   }
 
   updateGpsButtonUI(false);
+  updateSwapButtonVisibility();
 }
 
 async function fetchAddressForInput(type, latlng) {
@@ -606,6 +619,7 @@ function exitSelectionMode() {
   if (markerStart && markerEnd) {
     calculateMapboxRoute();
   }
+  updateSwapButtonVisibility();
 }
 
 map.on('movestart', () => {
@@ -816,6 +830,7 @@ function setPickupLocation(latlng, isAuto = false) {
     }, 150);
   }
 
+  updateSwapButtonVisibility();
   loadDrivers();
   updateGuide();
 }
@@ -842,6 +857,7 @@ function setDestLocation(latlng) {
     }, 150);
   }
 
+  updateSwapButtonVisibility();
   loadDrivers();
   updateGuide();
 }
@@ -1207,6 +1223,7 @@ function resetRoute() {
   updatePrice();
   loadDrivers();
   enterSelectionMode('pickup');
+  updateSwapButtonVisibility();
 }
 
 function deselectDriver() {
@@ -1606,6 +1623,7 @@ document.addEventListener('DOMContentLoaded', () => {
       opt.classList.remove('active');
     }
   });
+  updateSwapButtonVisibility();
 });
 
 setInterval(() => {

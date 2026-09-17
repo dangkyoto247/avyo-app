@@ -365,45 +365,51 @@ body.focus-dest .dest-group .suggestions-list {
   position: relative;
   height: 1px;
   background: #e2e8f0;
-  margin: 0 4px 0 22px;
+  margin: 0 4px 0 32px;
 }
 
 .connector-line {
   position: absolute;
   top: -16px;
-  left: -14px;
+  left: -21px;
   width: 2px;
   height: 16px;
   background: #cbd5e1;
   border-radius: 2px;
 }
 
-/* NÚT HOÁN ĐỔI NƠI ĐÓN ⇄ NƠI ĐẾN */
+/* NÚT HOÁN ĐỔI NƠI ĐÓN ⇄ NƠI ĐẾN (MẶC ĐỊNH ẨN, CHỈ HIỆN KHI CÓ ĐỦ 2 ĐIỂM) */
 .btn-swap-route {
   position: absolute;
-  right: 12px;
+  left: -32px;
   top: 50%;
   transform: translateY(-50%);
   background: #ffffff;
   border: 1px solid #cbd5e1;
   border-radius: 50%;
-  width: 26px;
-  height: 26px;
-  display: flex;
+  width: 23px;
+  height: 23px;
+  display: none;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  font-size: 13px;
+  font-size: 11px;
   font-weight: bold;
   color: #00b14f;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
   transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s;
-  z-index: 25;
+  z-index: 30;
   padding: 0;
 }
 
+.btn-swap-route:hover {
+  background: #f0fdf4;
+  border-color: #00b14f;
+}
+
 .btn-swap-route:active {
-  background: #f1f5f9;
+  transform: translateY(-50%) scale(0.9);
+  background: #dcfce7;
 }
 
 .dark-mode .btn-swap-route {
