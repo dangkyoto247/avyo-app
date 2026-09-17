@@ -260,24 +260,6 @@ body.focus-dest .dest-group .suggestions-list {
   border-radius: 14px !important;
 }
 
-/* ẨN NÚT XÁC NHẬN XANH, NÚT NỔI VÀ TOÀN BỘ PHẦN ĐÁY MÀN HÌNH KHI Ở CHẾ ĐỘ FOCUS */
-body.focus-pickup .top-float-bar,
-body.focus-dest .top-float-bar,
-body.focus-pickup .btn-confirm-select,
-body.focus-dest .btn-confirm-select,
-body.focus-pickup .floating-controls-stack,
-body.focus-dest .floating-controls-stack,
-body.focus-pickup .route-divider,
-body.focus-pickup .dest-group,
-body.focus-pickup .bottom-main-bar,
-body.focus-pickup .collapsible-drivers-panel,
-body.focus-dest .route-divider,
-body.focus-dest .pickup-group,
-body.focus-dest .bottom-main-bar,
-body.focus-dest .collapsible-drivers-panel {
-  display: none !important;
-}
-
 .route-icon {
   font-size: 13px;
   margin-right: 8px;
@@ -1215,4 +1197,28 @@ body.dark-mode {
   will-change: transform;
   transition-property: transform;
   transition-timing-function: cubic-bezier(0.2, 0, 0.2, 1);
+}
+
+/* ==========================================================================
+   QUY TẮC BẮT BUỘC: ĐẶT Ở CUỐI FILE VỚI ĐỘ ƯU TIÊN CAO NHẤT KHI MỞ CHẾ ĐỘ FOCUS
+   ========================================================================== */
+body.focus-pickup .btn-confirm-select,
+body.focus-dest .btn-confirm-select,
+body.selecting-pickup.focus-pickup .btn-confirm-select,
+body.selecting-dest.focus-pickup .btn-confirm-select,
+body.selecting-pickup.focus-dest .btn-confirm-select,
+body.selecting-dest.focus-dest .btn-confirm-select,
+body.focus-pickup .floating-controls-stack,
+body.focus-dest .floating-controls-stack,
+body.focus-pickup .top-float-bar,
+body.focus-dest .top-float-bar,
+body.focus-pickup .bottom-main-bar,
+body.focus-dest .bottom-main-bar,
+body.focus-pickup .collapsible-drivers-panel,
+body.focus-dest .collapsible-drivers-panel,
+body.focus-pickup .route-divider,
+body.focus-dest .route-divider,
+body.focus-pickup .dest-group,
+body.focus-dest .pickup-group {
+  display: none !important;
 }
