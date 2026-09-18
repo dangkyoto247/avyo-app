@@ -24,17 +24,24 @@ window.handleGgmapPaste = function(event) {
 
 // Hàm xử lý khi bấm nút "📋 Dán" trên giao diện
 window.pasteFromClipboard = async function() {
+  const inputEl = document.getElementById('ggmapLinkInput');
+  
   try {
+    // 1. Đọc trực tiếp bộ nhớ tạm từ Clipboard API
     const text = await navigator.clipboard.readText();
     if (text) {
-      const inputEl = document.getElementById('ggmapLinkInput');
       if (inputEl) {
-        inputEl.value = text;
+        inputEl.value = text.trim();
+        // Không gọi inputEl.focus() ở đây để tránh iOS bật thêm menu Dán phụ
         handleGgmapLinkInput();
       }
     }
   } catch (err) {
-    alert('⚠️ Trình duyệt chưa cấp quyền truy cập bộ nhớ tạm (Clipboard). Bạn hãy dán thủ công vào ô nhập nhé!');
+    // 2. Nếu Safari chặn Clipboard API, tự động mở ô nhập để khách dán 1 chạm bằng menu native
+    if (inputEl) {
+      inputEl.focus();
+      // Hiển thị gợi ý nhỏ nếu cần
+    }
   }
 };
 
