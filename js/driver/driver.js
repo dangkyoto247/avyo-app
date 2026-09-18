@@ -1,8 +1,3 @@
-const SUPABASE_URL = 'https://yvucyqkglbgxvozrznir.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl2dWN5cWtnbGJneHZvenJ6bmlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkxMzA3ODAsImV4cCI6MjEwNDcwNjc4MH0.Zagl4i2LPmxW3w9ih0h4LRsrm-OOGtPcWgvEs2vHBqo';
-
-const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
 let isOnline = false;
 let watchId = null;
 let currentDriverId = localStorage.getItem('avyo_driver_id');
@@ -11,7 +6,7 @@ let currentSessionToken = localStorage.getItem('avyo_session_token');
 let driverData = null; 
 let timeInterval = null;
 let wakeLock = null;
-let driverChannel = null; // Đã thêm: Biến lưu instance của Supabase Realtime Channel
+let driverChannel = null; // Biến lưu instance của Supabase Realtime Channel
 
 let driverMap = null;
 let driverMarker = null;
@@ -89,7 +84,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (appScreen) appScreen.style.display = 'block';
     loadDriverProfile();
     initDriverMap();
-    setupRealtimeSubscription(); // Đã thêm: Khởi tạo kênh realtime khi app load
+    setupRealtimeSubscription();
   } else {
     const loginScreen = document.getElementById('loginScreen');
     if (loginScreen) loginScreen.style.display = 'block';
@@ -315,7 +310,7 @@ function confirmLogout() {
 function executeLogout() {
   if (isOnline) toggleOnline();
 
-  // Đã thêm: Hủy lắng nghe kênh Realtime để tránh Memory Leak
+  // Hủy lắng nghe kênh Realtime để tránh Memory Leak
   if (driverChannel) {
     supabaseClient.removeChannel(driverChannel);
     driverChannel = null;
@@ -429,7 +424,6 @@ async function toggleOnline() {
       const now = Date.now();
       const movedKm = typeof getHaversineDistance === 'function' ? getHaversineDistance(lat, lng, lastSentLat, lastSentLng) : 0;
 
-      // Tối ưu pin: Chỉ gửi vị trí mới khi di chuyển >= 0.03 km (30m) VÀ cách nhau tối thiểu 5s, hoặc lần gửi đầu tiên
       if ((now - lastUpdateTime >= 5000 && movedKm >= 0.03) || lastSentLat === 0) {
         await updateLocation(lat, lng);
         lastUpdateTime = now;
@@ -512,17 +506,14 @@ window.addEventListener('offline', () => {
   }
 });
 
-// Đã thêm: Đóng gói kênh Realtime vào 1 hàm để quản lý Memory Leak
 function setupRealtimeSubscription() {
   if (!currentDriverId) return;
 
-  // Hủy kênh cũ nếu đang tồn tại trước khi mở mới
   if (driverChannel) {
     supabaseClient.removeChannel(driverChannel);
     driverChannel = null;
   }
 
-  // Khởi tạo kênh mới, sử dụng ID unique cho phiên đăng nhập này
   driverChannel = supabaseClient.channel(`driver-self-update-${currentDriverId}`)
     .on('postgres_changes', { 
       event: 'UPDATE', 

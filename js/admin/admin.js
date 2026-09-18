@@ -1,7 +1,3 @@
-const SUPABASE_URL = 'https://yvucyqkglbgxvozrznir.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl2dWN5cWtnbGJneHZvenJ6bmlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkxMzA3ODAsImV4cCI6MjEwNDcwNjc4MH0.Zagl4i2LPmxW3w9ih0h4LRsrm-OOGtPcWgvEs2vHBqo';
-const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
 let currentPage = 1;
 const ITEMS_PER_PAGE = 50;
 
@@ -577,35 +573,29 @@ async function saveDriver() {
   const vehicle_type = document.getElementById('vehicleType').value;
   const vehicle = document.getElementById('vehicleDetail').value.trim();
 
-  // 1. Tên tài xế
   const nameRegex = /^[a-zA-Z\sàáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệđìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵÀÁẢÃẠÂẦẤẨẪẬĂẰẮẲẴẶÈÉẺẼẸÊỀẾỂỄỆĐÌÍỈĨỊÒÓỎÕỌÔỒỐỔỖỘƠỜỚỞỠỢÙÚỦŨỤƯỪỨỬỮỰỲÝỶỸỴ]+$/;
   if (!name || name.length < 4 || !nameRegex.test(name)) {
     return customAlert('⚠️ Tên không hợp lệ', 'Vui lòng nhập từ 4 ký tự trở lên và CHỈ ĐƯỢC NHẬP CHỮ.', 'warning');
   }
 
-  // 2. Số điện thoại
   const phoneRegex = /^0\d{9}$/;
   if (!phoneRegex.test(phone)) {
     return customAlert('⚠️ Số điện thoại không hợp lệ', 'Vui lòng nhập đúng 10 chữ số (bắt đầu bằng số 0, VD: 0912345678).', 'warning');
   }
 
-  // 3. Mã PIN
   const pinRegex = /^(?=.*[a-zA-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?])[a-zA-Z0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]{6,15}$/;
   if (!pinRegex.test(pin)) {
     return customAlert('⚠️ Mã PIN không hợp lệ', 'Mã PIN phải từ 6 đến 15 ký tự, KHÔNG DẤU, KHÔNG KHOẢNG CÁCH, gồm cả chữ, số và ít nhất 1 ký tự đặc biệt (Ví dụ: Tuan123@).', 'warning');
   }
 
-  // 4. Link ảnh
   if (!avatar_url || !avatar_url.match(/^https?:\/\/.+/i)) {
     return customAlert('⚠️ Đường dẫn ảnh không hợp lệ', 'Đường dẫn ảnh bắt buộc phải bắt đầu bằng http:// hoặc https://', 'warning');
   }
 
-  // 5. Số CCCD
   if (!cccd || !/^\d{12}$/.test(cccd)) {
     return customAlert('⚠️ Số CCCD không hợp lệ', 'Vui lòng nhập đúng 12 chữ số.', 'warning');
   }
 
-  // 6. Biển số xe bọc () và IN HOA
   const vehicleRegex = /\(\d{2}[A-Z][A-Z0-9]?-(?:\d{4}\vert{}\d{3}\.\d{2})\)$/;
   if (!vehicle || !vehicleRegex.test(vehicle)) {
     return customAlert('⚠️ Loại xe & Biển số không hợp lệ', 'Phần biển số ở cuối bắt buộc phải bọc trong ngoặc () và CHỮ IN HOA (Ví dụ: Wave (37B1-1234) hoặc Toyota (37K-123.12)).', 'warning');

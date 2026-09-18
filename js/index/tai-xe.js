@@ -1,5 +1,6 @@
 // ICON ĐỘNG CỦA CÁC LOẠI XE
 let driverMarkers = {};
+let loadDriversDebounceTimer = null;
 
 const icons = {
   'bike': L.divIcon({ html: '<div class="vehicle-icon">🛵</div>', className: 'custom-icon', iconSize: [30, 30], iconAnchor: [15, 15] }),
@@ -71,29 +72,35 @@ function calcRating(driver) {
   return { score: (sum / count).toFixed(1), count: count };
 }
 
-async function loadDrivers() {
-  const centerPoint = markerStart ? markerStart.getLatLng() : (userLatLng || map.getCenter());
+/**
+ * Tải danh sách tài xế với cơ chế Debounce 400ms chống Spam RPC
+ */
+function loadDrivers() {
+  clearTimeout(loadDriversDebounceTimer);
+  loadDriversDebounceTimer = setTimeout(async () => {
+    const centerPoint = markerStart ? markerStart.getLatLng() : (userLatLng || map.getCenter());
 
-  if (centerPoint) {
-    let { data: nearbyData } = await supabaseClient.rpc('get_nearby_drivers', {
-      user_lat: centerPoint.lat, user_lng: centerPoint.lng, radius_km: 5.0, v_type: activeFilter
-    });
-    if (!nearbyData || nearbyData.length === 0) {
-      let { data: fallbackData } = await supabaseClient.rpc('get_nearby_drivers', {
-        user_lat: centerPoint.lat, user_lng: centerPoint.lng, radius_km: 15.0, v_type: activeFilter
+    if (centerPoint) {
+      let { data: nearbyData } = await supabaseClient.rpc('get_nearby_drivers', {
+        user_lat: centerPoint.lat, user_lng: centerPoint.lng, radius_km: 5.0, v_type: activeFilter
       });
-      rawDriversData = fallbackData || [];
-    } else { rawDriversData = nearbyData; }
-  } else {
-    const { data } = await supabaseClient.from('public_drivers').select('*').eq('is_online', true).neq('is_active', false).eq('vehicle_type', activeFilter).limit(15);
-    rawDriversData = data || [];
-  }
+      if (!nearbyData || nearbyData.length === 0) {
+        let { data: fallbackData } = await supabaseClient.rpc('get_nearby_drivers', {
+          user_lat: centerPoint.lat, user_lng: centerPoint.lng, radius_km: 15.0, v_type: activeFilter
+        });
+        rawDriversData = fallbackData || [];
+      } else { rawDriversData = nearbyData; }
+    } else {
+      const { data } = await supabaseClient.from('public_drivers').select('*').eq('is_online', true).neq('is_active', false).eq('vehicle_type', activeFilter).limit(15);
+      rawDriversData = data || [];
+    }
 
-  if (selectedDriver) {
-    const freshDriverData = rawDriversData.find(d => d.id === selectedDriver.id);
-    if (freshDriverData) selectedDriver = freshDriverData; else deselectDriver();
-  }
-  renderDriverMarkers();
+    if (selectedDriver) {
+      const freshDriverData = rawDriversData.find(d => d.id === selectedDriver.id);
+      if (freshDriverData) selectedDriver = freshDriverData; else deselectDriver();
+    }
+    renderDriverMarkers();
+  }, 400);
 }
 
 async function selectDriver(driver) {
@@ -238,7 +245,7 @@ function renderDriverMarkers() {
 }
 
 /**
- * Mở Zalo thông minh (Ưu tiên App native trên Mobile để tránh CAPTCHA Zalo Web)
+ * Mở Zalo Universal Link chuẩn (Mở trực tiếp trang cá nhân/khung chat trên cả Mobile và PC)
  */
 function openZaloById(driverId) {
   const driver = rawDriversData.find(d => d.id === driverId) || selectedDriver;
@@ -276,22 +283,16 @@ function openZaloById(driverId) {
     copyToClipboard(msg);
   }
 
-  // 2. Phân loại thiết bị Mobile vs PC để mở Zalo phù hợp
+  // 2. Mở Zalo qua Universal Link chuẩn (Hoạt động tốt trên cả Mobile và PC)
   const cleanPhone = driver.phone.replace(/\D/g, '');
-  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-
-  if (isMobile) {
-    window.location.href = `zalo://chat?phone=${cleanPhone}`;
-  } else {
-    window.open(`https://zalo.me/${cleanPhone}`, '_blank', 'noopener,noreferrer');
-  }
+  window.open(`https://zalo.me/${cleanPhone}`, '_blank', 'noopener,noreferrer');
 
   // 3. Hiển thị thông báo hướng dẫn dán nội dung
   if (typeof alert === 'function') {
     alert("✅ Đã sao chép lộ trình chuyến đi!\n\nKhi ứng dụng Zalo mở ra, bạn chỉ cần nhấn giữ khung chat và chọn 'DÁN' (Paste) để gửi thông tin cho tài xế.");
   }
 
-  // 4. Ghi nhận analytics ngầm an toàn (Sửa triệt để lỗi TypeError .catch)
+  // 4. Ghi nhận analytics ngầm phía sau (Fire-and-forget)
   if (typeof selectDriver === 'function' && (!selectedDriver || selectedDriver.id !== driver.id)) {
     selectDriver(driver);
   }
@@ -319,10 +320,8 @@ function trackCallById(driverId) {
 
   const cleanPhone = driver.phone.replace(/\D/g, '');
 
-  // Thực hiện cuộc gọi ngay lập tức
   window.location.href = `tel:${cleanPhone}`;
 
-  // Ghi nhận analytics ngầm an toàn (Sửa triệt để lỗi TypeError .catch)
   if (typeof supabaseClient !== 'undefined') {
     (async () => {
       try {

@@ -1,10 +1,3 @@
-// CẤU HÌNH API KEYS VÀ ENDPOINTS
-const MAPBOX_TOKEN = 'pk.eyJ1IjoidHVhbmFuaDM0MTYyMyIsImEiOiJjbXUwdHo3NHQwMG93MnlxemtrcmR0MzBuIn0.QKjVs1m4NPekmHPpzhL6Dg';
-const SUPABASE_URL = 'https://yvucyqkglbgxvozrznir.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl2dWN5cWtnbGJneHZvenJ6bmlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkxMzA3ODAsImV4cCI6MjEwNDcwNjc4MH0.Zagl4i2LPmxW3w9ih0h4LRsrm-OOGtPcWgvEs2vHBqo';
-const CF_WORKER_URL = 'https://raspy-recipe-7874.steep-feather-d277.workers.dev'; 
-const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
 // LOCALSTORAGE KEYS
 const RECENT_PICKUPS_KEY = 'avyo_recent_pickups';
 const RECENT_DESTS_KEY = 'avyo_recent_dests';
@@ -17,7 +10,7 @@ const initialCenter = (savedLat && savedLng)
   ? [parseFloat(savedLat), parseFloat(savedLng)] 
   : [18.7034, 105.6832];
 
-// CÁC BIẾN TOÀN CỤC (GLOBAL STATE) DÙNG CHUNG CHO TẤT CẢ CÁC FILE
+// CÁC BIẾN TOÀN CỤC (GLOBAL STATE) DÙNG CHUNG CHO TRANG ĐẶT XE
 let swapDegree = 0;
 let activeSuggestionIndex = -1;
 let mapMoveDebounceTimer = null;
