@@ -7,15 +7,14 @@ let lastAutoPastedUrl = '';
 window.openGoogleMapsToCopy = function() {
   let url = 'https://www.google.com/maps/dir/?api=1';
 
-  // 1. ĐIỂM ĐI: Ưu tiên điểm đã chọn trên Avyo -> Nếu chưa chọn thì lấy GPS hiện tại -> Nếu chưa có GPS thì để Google Maps tự định vị
+  // 1. CHỈ truyền origin khi khách ĐÃ CHỌN điểm đi cụ thể trên bản đồ Avyo
+  // Nếu chưa chọn: Không truyền origin để Google Maps tự động nhận diện "Vị trí của bạn"
   if (typeof markerStart !== 'undefined' && markerStart) {
     const s = markerStart.getLatLng();
     url += `&origin=${s.lat},${s.lng}`;
-  } else if (typeof userLocation !== 'undefined' && userLocation) {
-    url += `&origin=${userLocation.lat},${userLocation.lng}`;
   }
 
-  // 2. ĐIỂM ĐẾN: Truyền tọa độ nếu đã cắm ghim trên Avyo
+  // 2. Điểm đến: Truyền tọa độ nếu đã chọn trên Avyo
   if (typeof markerEnd !== 'undefined' && markerEnd) {
     const e = markerEnd.getLatLng();
     url += `&destination=${e.lat},${e.lng}`;
