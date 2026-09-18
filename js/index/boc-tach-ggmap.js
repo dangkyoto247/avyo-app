@@ -1,11 +1,11 @@
-// boc-tach-ggmap.js - Bóc tách và xử lý link chỉ đường Google Maps (Xử lý triệt để link iPhone kèm ?g_st=ic)
+// boc-tach-ggmap.js - Bóc tách và xử lý link chỉ đường Google Maps (Hỗ trợ "Vị trí của bạn" / GPS hiện tại)
 
 window.ggmapAbortController = window.ggmapAbortController || null;
 window.ggmapInputTimer = window.ggmapInputTimer || null;
 window.wasGgmapOpened = window.wasGgmapOpened || false;
 
 /**
- * Lọc trích xuất URL Google Maps chuẩn và TỰ ĐỘNG LỌC THAM SỐ g_st=ic CỦA IPHONE
+ * Lọc trích xuất URL Google Maps chuẩn và tự động lọc tham số g_st=ic của iPhone
  */
 function extractGoogleMapsUrl(text) {
   if (!text) return '';
@@ -14,7 +14,6 @@ function extractGoogleMapsUrl(text) {
   if (!match) return text.trim();
   
   let url = match[1];
-  // Tách bỏ tham số rác g_st=ic do iPhone tạo ra khiến Google chặn giải mã link full
   url = url.replace(/[\?&]g_st=[^&]+/i, '');
   return url;
 }
@@ -29,7 +28,7 @@ function isVietnamCoordinate(lat, lng) {
 }
 
 /**
- * BỘ QUÉT TỌA ĐỘ ĐA TẦNG: Quét toàn bộ văn bản HTML/URL để tìm các cặp tọa độ Việt Nam
+ * BỘ QUÉT TỌA ĐỘ ĐA TẦNG
  */
 function extractVietnamCoordinatesFromText(text) {
   if (!text) return [];
@@ -41,32 +40,29 @@ function extractVietnamCoordinatesFromText(text) {
     if (isVietnamCoordinate(lat, lng)) {
       const isDuplicate = coords.some(pt => {
         if (typeof safeDistance === 'function') {
-          return safeDistance(pt.lat, pt.lng, lat, lng) < 0.05; // Dưới 50m xem như trùng
+          return safeDistance(pt.lat, pt.lng, lat, lng) < 0.03;
         }
-        return Math.abs(pt.lat - lat) < 0.0005 && Math.abs(pt.lng - lng) < 0.0005;
+        return Math.abs(pt.lat - lat) < 0.0003 && Math.abs(pt.lng - lng) < 0.0003;
       });
       if (!isDuplicate) coords.push({ lat, lng });
     }
   };
 
-  // 1. Quét định dạng @lat,lng (RẤT PHỔ BIẾN SAU KHIN MỞ RỘNG LINK IPHONE)
+  // 1. Quét độc lập đường dẫn /dir/LAT,LNG/
+  [...text.matchAll(/\/dir\/(-?\d+\.\d+),(?:%2C|\s*)(-?\d+\.\d+)/gi)].forEach(m => addPt(m[1], m[2]));
+
+  // 2. Quét định dạng @lat,lng
   [...text.matchAll(/@(-?\d+\.\d+),(?:%2C|\s*)(-?\d+\.\d+)/gi)].forEach(m => addPt(m[1], m[2]));
 
-  // 2. Quét Protobuf !1d(lng)!2d(lat) & !2d(lng)!1d(lat)
+  // 3. Quét Protobuf !1d(lng)!2d(lat) & !2d(lng)!1d(lat)
   [...text.matchAll(/!1d(-?\d+\.\d+)!2d(-?\d+\.\d+)/g)].forEach(m => addPt(m[2], m[1]));
   [...text.matchAll(/!2d(-?\d+\.\d+)!1d(-?\d+\.\d+)/g)].forEach(m => addPt(m[2], m[1]));
 
-  // 3. Quét Protobuf !3d(lat)!4d(lng) & !4d(lng)!3d(lat)
+  // 4. Quét Protobuf !3d(lat)!4d(lng) & !4d(lng)!3d(lat)
   [...text.matchAll(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/g)].forEach(m => addPt(m[1], m[2]));
   [...text.matchAll(/!4d(-?\d+\.\d+)!3d(-?\d+\.\d+)/g)].forEach(m => addPt(m[2], m[1]));
 
-  // 4. Quét đường dẫn dạng /dir/lat1,lng1/lat2,lng2
-  [...text.matchAll(/\/dir\/(-?\d+\.\d+),(?:%2C|\s*)(-?\d+\.\d+)\/(-?\d+\.\d+),(?:%2C|\s*)(-?\d+\.\d+)/gi)].forEach(m => {
-    addPt(m[1], m[2]);
-    addPt(m[3], m[4]);
-  });
-
-  // 5. Quét tham số Query (origin, destination, saddr, daddr, markers, path, center, ll)
+  // 5. Quét tham số Query (origin, destination, saddr, daddr, markers, path, center, ll, q)
   [...text.matchAll(/(?:origin|destination|saddr|daddr|markers|path|center|ll|q)=(-?\d+\.\d+)(?:%2C|,)\s*(-?\d+\.\d+)/gi)].forEach(m => {
     addPt(m[1], m[2]);
   });
@@ -80,7 +76,7 @@ function extractVietnamCoordinatesFromText(text) {
 }
 
 /**
- * Trích xuất tên địa danh nơi đi và nơi đến từ URL / HTML
+ * Trích xuất tên địa danh và LỌC BỎ TỪ RÁC
  */
 function extractPlaceNamesFromText(text) {
   let pickupName = '', destName = '';
@@ -90,7 +86,11 @@ function extractPlaceNamesFromText(text) {
     try {
       let decoded = decodeURIComponent(str.replace(/\+/g, ' '));
       if (typeof cleanAddressText === 'function') decoded = cleanAddressText(decoded);
-      return /^-?\d+\.\d+,\s*-?\d+\.\d+$/.test(decoded) ? '' : decoded;
+      
+      if (/^-?\d+\.\d+,\s*-?\d+\.\d+$/.test(decoded)) return '';
+      if (/^(ghim đã thả|dropped pin|chỗ ghim|vị trí đã ghim|pinned location|unnamed road)$/i.test(decoded.trim())) return '';
+      
+      return decoded;
     } catch (e) {
       return '';
     }
@@ -117,6 +117,11 @@ function extractPlaceNamesFromText(text) {
  */
 async function geocodeAddressName(name, proximity) {
   if (!name || typeof MAPBOX_TOKEN === 'undefined' || !MAPBOX_TOKEN) return null;
+  
+  if (/^(ghim đã thả|dropped pin|chỗ ghim|vị trí đã ghim|pinned location)$/i.test(name.trim())) {
+    return null;
+  }
+
   try {
     let url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(name)}.json?access_token=${MAPBOX_TOKEN}&country=vn&language=vi&limit=1`;
     if (proximity && Number.isFinite(proximity.lat) && Number.isFinite(proximity.lng)) {
@@ -225,64 +230,46 @@ document.addEventListener('visibilitychange', () => {
 });
 
 /**
- * Giải mã song song siêu tốc qua các Proxy
+ * Giải mã link rút gọn an toàn
  */
-async function expandShortLinkParallel(shortUrl, signal) {
+async function expandShortLinkClean(shortUrl, signal) {
   const cleanShortUrl = extractGoogleMapsUrl(shortUrl);
   const encoded = encodeURIComponent(cleanShortUrl);
-  const endpoints = [
-    `https://yvucyqkglbgxvozrznir.supabase.co/functions/v1/dynamic-action?url=${encoded}`,
-    typeof CF_WORKER_URL !== 'undefined' ? `${CF_WORKER_URL}/?url=${encoded}` : null,
-    `https://api.codetabs.com/v1/proxy?quest=${encoded}`,
-    `https://corsproxy.io/?${encoded}`
-  ].filter(Boolean);
 
-  const fetchWithTimeout = (url, timeoutMs = 4000) => {
-    return new Promise(async (resolve, reject) => {
-      const timer = setTimeout(() => reject(new Error('Timeout')), timeoutMs);
-      try {
-        const res = await fetch(url, { signal });
-        clearTimeout(timer);
-        if (!res.ok) return reject(new Error('HTTP Error ' + res.status));
-        
-        const contentType = res.headers.get('content-type') || '';
-        if (contentType.includes('application/json')) {
-          const data = await res.json();
-          resolve({
-            expandedUrl: data.expandedUrl || res.url || cleanShortUrl,
-            content: data.content || ''
-          });
-        } else {
-          const text = await res.text();
-          resolve({
-            expandedUrl: res.url || cleanShortUrl,
-            content: text
-          });
-        }
-      } catch (e) {
-        clearTimeout(timer);
-        reject(e);
-      }
-    });
-  };
-
-  try {
-    const results = await Promise.allSettled(endpoints.map(ep => fetchWithTimeout(ep, 4000)));
-    let combinedContent = '';
-    let bestExpandedUrl = cleanShortUrl;
-
-    for (const r of results) {
-      if (r.status === 'fulfilled' && r.value) {
-        if (r.value.content) combinedContent += ' ' + r.value.content;
-        if (r.value.expandedUrl && r.value.expandedUrl !== cleanShortUrl) {
-          bestExpandedUrl = r.value.expandedUrl;
-        }
-      }
+  const proxyServices = [
+    async () => {
+      const res = await fetch(`https://yvucyqkglbgxvozrznir.supabase.co/functions/v1/dynamic-action?url=${encoded}`, { signal });
+      if (!res.ok) throw new Error('Supabase Edge Error');
+      const data = await res.json();
+      return { expandedUrl: data.expandedUrl || cleanShortUrl, content: data.content || '' };
+    },
+    async () => {
+      if (typeof CF_WORKER_URL === 'undefined' || !CF_WORKER_URL) throw new Error('No CF Worker');
+      const res = await fetch(`${CF_WORKER_URL}/?url=${encoded}`, { signal });
+      if (!res.ok) throw new Error('CF Worker Error');
+      const data = await res.json();
+      return { expandedUrl: data.expandedUrl || cleanShortUrl, content: data.content || '' };
+    },
+    async () => {
+      const res = await fetch(`https://api.allorigins.win/get?url=${encoded}`, { signal });
+      if (!res.ok) throw new Error('AllOrigins Error');
+      const data = await res.json();
+      return { expandedUrl: data.status?.url || cleanShortUrl, content: data.contents || '' };
     }
-    return { expandedUrl: bestExpandedUrl, content: combinedContent };
-  } catch (e) {
-    return { expandedUrl: cleanShortUrl, content: '' };
+  ];
+
+  for (const service of proxyServices) {
+    try {
+      const result = await service();
+      if (result && (result.content || result.expandedUrl !== cleanShortUrl)) {
+        return result;
+      }
+    } catch (e) {
+      if (e.name === 'AbortError') return { expandedUrl: cleanShortUrl, content: '' };
+    }
   }
+
+  return { expandedUrl: cleanShortUrl, content: '' };
 }
 
 window.handleGgmapLinkInput = function() {
@@ -315,9 +302,9 @@ window.handleGgmapLinkInput = function() {
     let targetUrl = rawUrl;
     let fullHtmlContent = "";
 
-    // 1. Giải mã link rút gọn nếu có
+    // 1. Giải mã link rút gọn
     if (rawUrl.includes('maps.app.goo.gl') || rawUrl.includes('goo.gl')) {
-      const expandedResult = await expandShortLinkParallel(rawUrl, currentSignal);
+      const expandedResult = await expandShortLinkClean(rawUrl, currentSignal);
       if (currentSignal.aborted) return;
       targetUrl = expandedResult.expandedUrl;
       fullHtmlContent = expandedResult.content;
@@ -334,40 +321,44 @@ window.handleGgmapLinkInput = function() {
 
     let pickupLat = null, pickupLng = null, destLat = null, destLng = null;
 
+    // Regex kiểm tra xem Tên điểm đón có phải là "Vị trí của bạn" / "Vị trí của tôi" hay không
+    const isMyLocationText = /^(vị trí của bạn|vị trí của tôi|my location|vị trí hiện tại|current location|your location)$/i;
+
     if (detectedCoords.length >= 2) {
       pickupLat = detectedCoords[0].lat;
       pickupLng = detectedCoords[0].lng;
       destLat = detectedCoords[detectedCoords.length - 1].lat;
       destLng = detectedCoords[detectedCoords.length - 1].lng;
     } else if (detectedCoords.length === 1) {
-      // XỬ LÝ ĐẶC BIỆT CHO LINK IPHONE CHỈ CHỨA 1 ĐIỂM ĐẾN:
       destLat = detectedCoords[0].lat;
       destLng = detectedCoords[0].lng;
       
-      // Điểm đón lấy vị trí hiện tại của khách
       if (typeof userLatLng !== 'undefined' && userLatLng) {
         pickupLat = userLatLng.lat;
         pickupLng = userLatLng.lng;
+        pickupName = "Vị trí hiện tại của bạn";
       }
     }
 
-    // 4. Quy đổi tên địa danh sang tọa độ nếu link không có chuỗi số tọa độ
+    // 4. XỬ LÝ "VỊ TRÍ CỦA BẠN": Nếu điểm đón chứa chữ "Vị trí của bạn", tự gán GPS hiện tại của khách
+    if (pickupName && isMyLocationText.test(pickupName.trim())) {
+      if (typeof userLatLng !== 'undefined' && userLatLng) {
+        pickupLat = userLatLng.lat;
+        pickupLng = userLatLng.lng;
+        pickupName = "Vị trí hiện tại của bạn";
+      }
+    }
+
+    // 5. Quy đổi tên địa danh sang tọa độ nếu link thiếu chuỗi số tọa độ
     if ((!pickupLat || !destLat) && (pickupName || destName)) {
       const proximity = (typeof userLatLng !== 'undefined' && userLatLng) ? { lat: userLatLng.lat, lng: userLatLng.lng } : null;
 
-      if (!pickupLat && pickupName) {
-        if (/^(vị trí của tôi|my location|vị trí hiện tại|current location)$/i.test(pickupName.trim())) {
-          if (typeof userLatLng !== 'undefined' && userLatLng) {
-            pickupLat = userLatLng.lat;
-            pickupLng = userLatLng.lng;
-          }
-        } else {
-          const geoRes = await geocodeAddressName(pickupName, proximity);
-          if (geoRes) {
-            pickupLat = geoRes.lat;
-            pickupLng = geoRes.lng;
-            if (geoRes.placeName) pickupName = geoRes.placeName;
-          }
+      if (!pickupLat && pickupName && !isMyLocationText.test(pickupName.trim())) {
+        const geoRes = await geocodeAddressName(pickupName, proximity);
+        if (geoRes) {
+          pickupLat = geoRes.lat;
+          pickupLng = geoRes.lng;
+          if (geoRes.placeName) pickupName = geoRes.placeName;
         }
       }
 
@@ -381,7 +372,7 @@ window.handleGgmapLinkInput = function() {
       }
     }
 
-    // 5. THỰC THI VẼ ĐƯỜNG VÀ TÍNH GIÁ CƯỚC
+    // 6. THỰC THI VẼ ĐƯỜNG VÀ TÍNH GIÁ CƯỚC
     if (pickupLat && pickupLng && destLat && destLng) {
       const pickupLatLng = L.latLng(pickupLat, pickupLng);
       const destLatLng = L.latLng(destLat, destLng);
