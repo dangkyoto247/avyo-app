@@ -420,7 +420,8 @@ async function toggleOnline() {
       const now = Date.now();
       const movedKm = typeof getHaversineDistance === 'function' ? getHaversineDistance(lat, lng, lastSentLat, lastSentLng) : 0;
 
-      if ((now - lastUpdateTime >= 3000 && movedKm > 0.01) || lastSentLat === 0) {
+      // Tối ưu pin: Chỉ gửi vị trí mới khi di chuyển >= 0.03 km (30m) VÀ cách nhau tối thiểu 5s, hoặc lần gửi đầu tiên
+      if ((now - lastUpdateTime >= 5000 && movedKm >= 0.03) || lastSentLat === 0) {
         await updateLocation(lat, lng);
         lastUpdateTime = now;
         lastSentLat = lat;
@@ -428,7 +429,11 @@ async function toggleOnline() {
       }
     }, (err) => {
       alert('Lỗi GPS: ' + err.message);
-    }, { enableHighAccuracy: true });
+    }, { 
+      enableHighAccuracy: true,
+      maximumAge: 3000,
+      timeout: 10000
+    });
 
   } else {
     isOnline = false;

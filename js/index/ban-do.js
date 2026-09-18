@@ -404,6 +404,9 @@ function cleanAddressText(text) {
   return text.replace(/\b\d{5,6}\b,?\s*/g, '').replace(/,?\s*(Việt Nam|Vietnam)$/gi, '').replace(/\s*,\s*,/g, ', ').replace(/^,\s*/, '').trim();
 }
 
+// Biến lưu giữ controller của request đang chạy, đặt bên ngoài hàm
+let searchAbortController = null;
+
 function onSearchInput(type, isDirectCall = false) {
   clearTimeout(searchTimer);
   activeSuggestionIndex = -1;
@@ -415,92 +418,120 @@ function onSearchInput(type, isDirectCall = false) {
     return;
   }
 
+  // 1. Hủy request cũ nếu nó vẫn đang tiếp tục
+  if (searchAbortController) {
+    searchAbortController.abort();
+  }
+  
+  // 2. Khởi tạo một AbortController mới
+  searchAbortController = new AbortController();
+  const currentSignal = searchAbortController.signal;
+
   listEl.innerHTML = '<div class="suggestion-loading">⏳ Đang tìm địa chỉ...</div>';
   listEl.style.display = 'block';
 
   const executeSearch = async () => {
-    let rawCenter = markerStart ? markerStart.getLatLng() : (userLatLng || getPinCenterLatLng());
-    if (rawCenter && typeof rawCenter.wrap === 'function') rawCenter = rawCenter.wrap();
-    const lat = Number(rawCenter ? rawCenter.lat : 18.7034), lng = Number(rawCenter ? rawCenter.lng : 105.6832);
+    try {
+      let rawCenter = markerStart ? markerStart.getLatLng() : (userLatLng || getPinCenterLatLng());
+      if (rawCenter && typeof rawCenter.wrap === 'function') rawCenter = rawCenter.wrap();
+      const lat = Number(rawCenter ? rawCenter.lat : 18.7034), lng = Number(rawCenter ? rawCenter.lng : 105.6832);
 
-    const fetchGeocoding = async (bboxStr) => {
-      let url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${MAPBOX_TOKEN}&country=vn&language=vi&limit=8`;
-      if (rawCenter && Number.isFinite(lat) && Number.isFinite(lng)) url += `&proximity=${lng.toFixed(4)},${lat.toFixed(4)}`;
-      if (bboxStr) url += `&bbox=${bboxStr}`;
-      try {
-        const res = await fetch(url);
-        if (!res.ok) return [];
-        const data = await res.json(); return data.features || [];
-      } catch (e) { return []; }
-    };
-
-    let features = [];
-    if (rawCenter && Number.isFinite(lat) && Number.isFinite(lng)) {
-      features = await fetchGeocoding(getBBox(lat, lng, 15));
-      if (features.length === 0) features = await fetchGeocoding(getBBox(lat, lng, 50));
-      if (features.length === 0) features = await fetchGeocoding(null);
-    } else features = await fetchGeocoding(null);
-
-    if (features.length === 0) {
-      listEl.innerHTML = '<div class="suggestion-loading">❌ Không tìm thấy địa chỉ phù hợp</div>';
-      listEl.style.display = 'block'; return;
-    }
-
-    if (rawCenter && Number.isFinite(lat) && Number.isFinite(lng)) {
-      features.sort((a, b) => {
-        if (!a.geometry || !b.geometry) return 0;
-        return safeDistance(lat, lng, a.geometry.coordinates[1], a.geometry.coordinates[0]) - safeDistance(lat, lng, b.geometry.coordinates[1], b.geometry.coordinates[0]);
-      });
-    }
-
-    if (isDirectCall && features.length > 0) {
-      const topResult = features[0];
-      const placeName = cleanAddressText(topResult.text || topResult.place_name);
-      const [resLng, resLat] = topResult.geometry.coordinates;
-      
-      if (document.activeElement) document.activeElement.blur();
-      document.getElementById(type + 'Input').value = placeName;
-      toggleClearButton(type);
-      listEl.style.display = 'none';
-      const latlng = L.latLng(resLat, resLng);
-
-      if (type === 'pickup') {
-        setPickupLocation(latlng); saveRecentPickup(placeName, resLat, resLng); exitFocusInputMode('pickup');
-        if (!markerEnd) enterSelectionMode('dest'); else exitSelectionMode();
-      } else {
-        setDestLocation(latlng); saveRecentDest(placeName, resLat, resLng); exitFocusInputMode('dest'); exitSelectionMode();
-      }
-      return;
-    }
-
-    listEl.innerHTML = '';
-    features.forEach(f => {
-      if (!f.geometry || !f.geometry.coordinates) return;
-      const mainTitle = cleanAddressText(f.text || f.place_name), addressSub = cleanAddressText(f.place_name || '');
-      const [fLng, fLat] = f.geometry.coordinates;
-      let distTag = '';
-      if (rawCenter && Number.isFinite(lat) && Number.isFinite(lng)) {
-        const d = safeDistance(lat, lng, fLat, fLng);
-        distTag = ` • Cách ${d < 1 ? Math.round(d * 1000) + 'm' : d.toFixed(1) + 'km'}`;
-      }
-      const div = document.createElement('div');
-      div.className = 'suggestion-item';
-      div.innerHTML = `📍 <b>${mainTitle}</b> <small style="color:#64748b; font-size:11px;">(${addressSub}<b style="color:#00b14f;">${distTag}</b>)</small>`;
-      div.onclick = () => {
-        if (document.activeElement) document.activeElement.blur();
-        document.getElementById(type + 'Input').value = mainTitle;
-        toggleClearButton(type); listEl.style.display = 'none';
-        const latlng = L.latLng(fLat, fLng);
-        if (type === 'pickup') {
-          setPickupLocation(latlng); saveRecentPickup(mainTitle, fLat, fLng); exitFocusInputMode('pickup');
-          if (!markerEnd) enterSelectionMode('dest'); else exitSelectionMode();
-        } else {
-          setDestLocation(latlng); saveRecentDest(mainTitle, fLat, fLng); exitFocusInputMode('dest'); exitSelectionMode();
+      const fetchGeocoding = async (bboxStr) => {
+        let url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${MAPBOX_TOKEN}&country=vn&language=vi&limit=8`;
+        if (rawCenter && Number.isFinite(lat) && Number.isFinite(lng)) url += `&proximity=${lng.toFixed(4)},${lat.toFixed(4)}`;
+        if (bboxStr) url += `&bbox=${bboxStr}`;
+        try {
+          // 3. Truyền signal vào hàm fetch
+          const res = await fetch(url, { signal: currentSignal });
+          if (!res.ok) return [];
+          const data = await res.json(); 
+          return data.features || [];
+        } catch (e) { 
+          // 4. Bắt lỗi AbortError và throw ra bên ngoài để cắt đứt luồng xử lý
+          if (e.name === 'AbortError') throw e;
+          return []; 
         }
       };
-      listEl.appendChild(div);
-    });
-    listEl.style.display = 'block';
+
+      let features = [];
+      if (rawCenter && Number.isFinite(lat) && Number.isFinite(lng)) {
+        features = await fetchGeocoding(getBBox(lat, lng, 15));
+        if (features.length === 0) features = await fetchGeocoding(getBBox(lat, lng, 50));
+        if (features.length === 0) features = await fetchGeocoding(null);
+      } else {
+        features = await fetchGeocoding(null);
+      }
+
+      if (features.length === 0) {
+        listEl.innerHTML = '<div class="suggestion-loading">❌ Không tìm thấy địa chỉ phù hợp</div>';
+        listEl.style.display = 'block'; return;
+      }
+
+      if (rawCenter && Number.isFinite(lat) && Number.isFinite(lng)) {
+        features.sort((a, b) => {
+          if (!a.geometry || !b.geometry) return 0;
+          return safeDistance(lat, lng, a.geometry.coordinates[1], a.geometry.coordinates[0]) - safeDistance(lat, lng, b.geometry.coordinates[1], b.geometry.coordinates[0]);
+        });
+      }
+
+      if (isDirectCall && features.length > 0) {
+        const topResult = features[0];
+        const placeName = cleanAddressText(topResult.text || topResult.place_name);
+        const [resLng, resLat] = topResult.geometry.coordinates;
+        
+        if (document.activeElement) document.activeElement.blur();
+        document.getElementById(type + 'Input').value = placeName;
+        toggleClearButton(type);
+        listEl.style.display = 'none';
+        const latlng = L.latLng(resLat, resLng);
+
+        if (type === 'pickup') {
+          setPickupLocation(latlng); saveRecentPickup(placeName, resLat, resLng); exitFocusInputMode('pickup');
+          if (!markerEnd) enterSelectionMode('dest'); else exitSelectionMode();
+        } else {
+          setDestLocation(latlng); saveRecentDest(placeName, resLat, resLng); exitFocusInputMode('dest'); exitSelectionMode();
+        }
+        return;
+      }
+
+      listEl.innerHTML = '';
+      features.forEach(f => {
+        if (!f.geometry || !f.geometry.coordinates) return;
+        const mainTitle = cleanAddressText(f.text || f.place_name), addressSub = cleanAddressText(f.place_name || '');
+        const [fLng, fLat] = f.geometry.coordinates;
+        let distTag = '';
+        if (rawCenter && Number.isFinite(lat) && Number.isFinite(lng)) {
+          const d = safeDistance(lat, lng, fLat, fLng);
+          distTag = ` • Cách ${d < 1 ? Math.round(d * 1000) + 'm' : d.toFixed(1) + 'km'}`;
+        }
+        const div = document.createElement('div');
+        div.className = 'suggestion-item';
+        div.innerHTML = `📍 <b>${mainTitle}</b> <small style="color:#64748b; font-size:11px;">(${addressSub}<b style="color:#00b14f;">${distTag}</b>)</small>`;
+        div.onclick = () => {
+          if (document.activeElement) document.activeElement.blur();
+          document.getElementById(type + 'Input').value = mainTitle;
+          toggleClearButton(type); listEl.style.display = 'none';
+          const latlng = L.latLng(fLat, fLng);
+          if (type === 'pickup') {
+            setPickupLocation(latlng); saveRecentPickup(mainTitle, fLat, fLng); exitFocusInputMode('pickup');
+            if (!markerEnd) enterSelectionMode('dest'); else exitSelectionMode();
+          } else {
+            setDestLocation(latlng); saveRecentDest(mainTitle, fLat, fLng); exitFocusInputMode('dest'); exitSelectionMode();
+          }
+        };
+        listEl.appendChild(div);
+      });
+      listEl.style.display = 'block';
+
+    } catch (err) {
+      // 5. Nếu lỗi là do Abort, chúng ta chỉ cần thoát ra (không làm gì cả)
+      if (err.name === 'AbortError') {
+        return;
+      }
+      console.error('Lỗi khi gọi Mapbox API:', err);
+    }
   };
+  
+  // Tối ưu debounce: Chờ 300ms sau khi người dùng ngừng gõ mới tiến hành gửi API request
   if (isDirectCall) executeSearch(); else searchTimer = setTimeout(executeSearch, 300);
 }
