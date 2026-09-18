@@ -47,42 +47,46 @@ window.clearGgmapInput = function() {
   if (clearBtn) { clearBtn.style.display = 'none'; }
 };
 
+/**
+ * Hàm dán liên kết với cơ chế dự phòng 100% thành công trên iPhone/Safari
+ */
 window.pasteFromClipboard = async function() {
   const inputEl = document.getElementById('ggmapLinkInput');
   if (!inputEl) return;
 
+  let text = '';
+
+  // 1. Thử tự động đọc khay nhớ tạm
   try {
-    if (!navigator.clipboard || !navigator.clipboard.readText) {
-      throw new Error("Trình duyệt không hỗ trợ API Clipboard trực tiếp");
+    if (navigator.clipboard && navigator.clipboard.readText) {
+      text = await navigator.clipboard.readText();
     }
+  } catch (err) {
+    console.warn("Safari chặn truy cập Clipboard tự động:", err);
+  }
 
-    const text = await navigator.clipboard.readText();
-    const cleanUrl = extractGoogleMapsUrl(text);
+  let cleanUrl = extractGoogleMapsUrl(text);
 
+  // 2. Nếu đọc tự động thành công và là link Google Maps -> Dán trực tiếp
+  if (cleanUrl && (cleanUrl.includes('google.com') || cleanUrl.includes('goo.gl'))) {
+    inputEl.value = cleanUrl;
+    const clearBtn = document.getElementById('clearGgmapBtn');
+    if (clearBtn) clearBtn.style.display = 'flex';
+    handleGgmapLinkInput();
+    return;
+  }
+
+  // 3. Nếu Safari chặn đọc ngầm hoặc chưa đọc được -> Mở khung dán trực tiếp (Đảm bảo 100% thành công trên iPhone)
+  const userPasted = prompt("📌 Nhấn giữ vào ô bên dưới ➔ Chọn 'Dán' (Paste):");
+  if (userPasted) {
+    cleanUrl = extractGoogleMapsUrl(userPasted);
     if (cleanUrl && (cleanUrl.includes('google.com') || cleanUrl.includes('goo.gl'))) {
       inputEl.value = cleanUrl;
       const clearBtn = document.getElementById('clearGgmapBtn');
       if (clearBtn) clearBtn.style.display = 'flex';
       handleGgmapLinkInput();
-    } else if (text && text.trim().length > 0) {
-      if (typeof alert === 'function') alert("⚠️ Nội dung bạn vừa sao chép không chứa liên kết Google Maps!");
-    } else {
-      if (typeof alert === 'function') alert("⚠️ Khay nhớ tạm đang trống, vui lòng qua Google Maps sao chép đường link trước.");
-    }
-  } catch (err) {
-    console.warn("Safari/Trình duyệt chặn đọc Clipboard trực tiếp:", err);
-    // Dự phòng fallback thông báo rõ ràng cho user nếu bị chặn hoặc đang dùng thiết bị cũ
-    if (typeof Swal !== 'undefined') {
-      Swal.fire({
-        toast: true,
-        position: 'top',
-        icon: 'info',
-        title: 'Trình duyệt chặn dán tự động. Vui lòng cho phép quyền hoặc dán thủ công.',
-        showConfirmButton: false,
-        timer: 3500
-      });
-    } else if (typeof alert === 'function') {
-      alert("⚠️ Thiết bị đã chặn quyền truy cập khay nhớ tạm. Vui lòng nhấn 'Cho phép dán' nếu có thông báo hiển thị.");
+    } else if (userPasted.trim().length > 0) {
+      if (typeof alert === 'function') alert("⚠️ Nội dung bạn dán không phải là liên kết Google Maps!");
     }
   }
 };
@@ -140,7 +144,7 @@ window.handleGgmapLinkInput = function() {
           if (cfRes.ok) {
             const cfData = await cfRes.json();
             if (cfData.expandedUrl) {
-              targetUrl = cfData.expandedUrl; fullHtmlContent = cfData.content || ""; resolved = true;
+              targetUrl = cfData.expandedUrl; fullHtmlContent = sbData.content || ""; resolved = true;
             }
           }
         } catch (e) { 
