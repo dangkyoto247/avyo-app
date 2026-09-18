@@ -1,5 +1,5 @@
 const TILE_CACHE_NAME = 'map-tiles-v2';
-const STATIC_CACHE_NAME = 'avyo-static-v113';
+const STATIC_CACHE_NAME = 'avyo-static-v114';
 
 const STATIC_ASSETS = [
   'https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;800&display=swap',
