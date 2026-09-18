@@ -15,6 +15,36 @@ function extractGoogleMapsUrl(text) {
 }
 
 /**
+ * Hàm tra cứu tọa độ từ tên địa điểm (Đặc trị cho link Google Maps từ iPhone)
+ */
+async function geocodeAddressName(name, proximity) {
+  if (!name || typeof MAPBOX_TOKEN === 'undefined' || !MAPBOX_TOKEN) return null;
+  try {
+    let url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(name)}.json?access_token=${MAPBOX_TOKEN}&country=vn&language=vi&limit=1`;
+    if (proximity && Number.isFinite(proximity.lat) && Number.isFinite(proximity.lng)) {
+      url += `&proximity=${proximity.lng.toFixed(4)},${proximity.lat.toFixed(4)}`;
+    }
+    const res = await fetch(url);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.features && data.features.length > 0) {
+        const [lng, lat] = data.features[0].geometry.coordinates;
+        return { 
+          lat, 
+          lng, 
+          placeName: typeof cleanAddressText === 'function' 
+            ? cleanAddressText(data.features[0].text || data.features[0].place_name) 
+            : (data.features[0].text || data.features[0].place_name) 
+        };
+      }
+    }
+  } catch (e) {
+    console.warn("Lỗi tra cứu tọa độ từ tên địa danh:", e);
+  }
+  return null;
+}
+
+/**
  * Mở Google Maps chuẩn cho iOS, Android và PC
  */
 window.openGoogleMapsToCopy = function() {
@@ -152,7 +182,7 @@ window.handleGgmapLinkInput = function() {
           if (cfRes.ok) {
             const cfData = await cfRes.json();
             if (cfData.expandedUrl) {
-              targetUrl = cfData.expandedUrl; fullHtmlContent = cfData.content || ""; resolved = true;
+              targetUrl = cfData.expandedUrl; fullHtmlContent = sbData.content || ""; resolved = true;
             }
           }
         } catch (e) { 
@@ -186,7 +216,7 @@ window.handleGgmapLinkInput = function() {
 
     if (currentSignal.aborted) return;
 
-    // Trích xuất thêm các thẻ Meta og:url / canonical / og:image trong HTML nếu có
+    // Trích xuất thêm thông tin thẻ Meta HTML
     let metaUrls = "";
     if (fullHtmlContent) {
       const ogUrlMatch = fullHtmlContent.match(/<meta[^>]+property=["']og:url["'][^>]+content=["']([^"']+)["']/i);
@@ -200,7 +230,7 @@ window.handleGgmapLinkInput = function() {
     const parseText = targetUrl + " " + metaUrls + " " + fullHtmlContent;
     let pickupLat = null, pickupLng = null, destLat = null, destLng = null, pickupName = "", destName = "";
 
-    // BƯỚC 1: Bóc tách tên địa điểm từ URL /dir/Name1/Name2/
+    // BƯỚC 1: Bóc tách tên địa điểm từ đường dẫn /dir/Name1/Name2/
     const textMatch = targetUrl.match(/\/dir\/([^\/@]+)\/([^\/@]+)\//);
     if (textMatch) {
       try {
@@ -212,7 +242,7 @@ window.handleGgmapLinkInput = function() {
       } catch (e) {}
     }
 
-    // BƯỚC 2: Thử trích xuất theo tham số Origin & Destination (Thường gặp trên iOS/Shortlink)
+    // BƯỚC 2: Thử trích xuất theo tham số Origin & Destination
     const queryMatch = parseText.match(/(?:origin|saddr)=(-?\d+\.\d+)(?:%2C|,)\s*(-?\d+\.\d+).*(?:destination|daddr)=(-?\d+\.\d+)(?:%2C|,)\s*(-?\d+\.\d+)/i);
     if (queryMatch) {
       pickupLat = parseFloat(queryMatch[1]); pickupLng = parseFloat(queryMatch[2]);
@@ -228,7 +258,7 @@ window.handleGgmapLinkInput = function() {
       }
     }
 
-    // BƯỚC 4: Thử trích xuất theo định dạng Protobuf Kiểu 1 (!1d lng !2d lat)
+    // BƯỚC 4: Thử trích xuất Protobuf Kiểu 1 (!1d lng !2d lat)
     if (!pickupLat || !destLat) {
       const matches1 = [...parseText.matchAll(/(?:!2m2)?!1d(-?\d+\.\d+)!2d(-?\d+\.\d+)/g)];
       if (matches1.length >= 2) {
@@ -237,7 +267,7 @@ window.handleGgmapLinkInput = function() {
       }
     }
 
-    // BƯỚC 5: Thử trích xuất theo định dạng Protobuf Kiểu 2 (!3d lat !4d lng - Phổ biến trên app iOS)
+    // BƯỚC 5: Thử trích xuất Protobuf Kiểu 2 (!3d lat !4d lng)
     if (!pickupLat || !destLat) {
       const matches2 = [...parseText.matchAll(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/g)];
       if (matches2.length >= 2) {
@@ -246,16 +276,33 @@ window.handleGgmapLinkInput = function() {
       }
     }
 
-    // BƯỚC 6: Thử trích xuất từ chuỗi đường vẽ tĩnh staticmap path=...%7Clat,lng%7C...
-    if (!pickupLat || !destLat) {
-      const pathMatches = [...parseText.matchAll(/(?:%7C|\|)(-?\d+\.\d+),(?:%2C|,)(-?\d+\.\d+)/g)];
-      if (pathMatches.length >= 2) {
-        pickupLat = parseFloat(pathMatches[0][1]); pickupLng = parseFloat(pathMatches[0][2]);
-        destLat = parseFloat(pathMatches[pathMatches.length - 1][1]); destLng = parseFloat(pathMatches[pathMatches.length - 1][2]);
+    // BƯỚC 6: NẾU LINK TỪ IPHONE THIẾU SỐ TỌA ĐỘ ➔ TỰ ĐỘNG CHUYỂN HƯỚNG SANG TRA CỨU ĐỊA DANH
+    if ((!pickupLat || !destLat) && (pickupName || destName)) {
+      let centerHint = null;
+      const centerMatch = parseText.match(/@(-?\d+\.\d+),(?:%2C|\s*)(-?\d+\.\d+)/);
+      if (centerMatch) {
+        centerHint = { lat: parseFloat(centerMatch[1]), lng: parseFloat(centerMatch[2]) };
+      }
+      const proximity = centerHint || (typeof userLatLng !== 'undefined' && userLatLng ? { lat: userLatLng.lat, lng: userLatLng.lng } : null);
+
+      if (!pickupLat && pickupName) {
+        if (/^(vị trí của tôi|my location|vị trí hiện tại|current location)$/i.test(pickupName.trim())) {
+          if (typeof userLatLng !== 'undefined' && userLatLng) {
+            pickupLat = userLatLng.lat; pickupLng = userLatLng.lng;
+          }
+        } else {
+          const geoRes = await geocodeAddressName(pickupName, proximity);
+          if (geoRes) { pickupLat = geoRes.lat; pickupLng = geoRes.lng; }
+        }
+      }
+
+      if (!destLat && destName) {
+        const geoRes = await geocodeAddressName(destName, proximity);
+        if (geoRes) { destLat = geoRes.lat; destLng = geoRes.lng; }
       }
     }
 
-    // THỰC THI VẼ ĐƯỜNG
+    // THỰC THI VẼ ĐƯỜNG VÀ CẬP NHẬT GIAO DIỆN
     if (pickupLat && pickupLng && destLat && destLng) {
       const pickupLatLng = L.latLng(pickupLat, pickupLng);
       const destLatLng = L.latLng(destLat, destLng);
