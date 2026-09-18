@@ -3,6 +3,7 @@
 // Gắn trực tiếp vào window để triệt tiêu 100% lỗi SyntaxError trùng biến
 window.ggmapAbortController = window.ggmapAbortController || null;
 window.ggmapInputTimer = window.ggmapInputTimer || null;
+window.wasGgmapOpened = window.wasGgmapOpened || false;
 
 /**
  * Lọc trích xuất URL Google Maps chuẩn từ chuỗi văn bản bất kỳ
@@ -18,6 +19,7 @@ function extractGoogleMapsUrl(text) {
  * Mở Google Maps chuẩn cho iOS, Android và PC
  */
 window.openGoogleMapsToCopy = function() {
+  window.wasGgmapOpened = true; // Đánh dấu người dùng vừa bấm mở Google Maps
   let url = 'https://www.google.com/maps/dir/?api=1';
 
   if (typeof markerStart !== 'undefined' && markerStart) {
@@ -48,7 +50,7 @@ window.clearGgmapInput = function() {
 };
 
 /**
- * Hàm dán liên kết với cơ chế dự phòng 100% thành công trên iPhone/Safari
+ * Hàm dán liên kết: Thử đọc ngầm trước, nếu bị Safari chặn sẽ mở ngay khung dán
  */
 window.pasteFromClipboard = async function() {
   const inputEl = document.getElementById('ggmapLinkInput');
@@ -56,7 +58,7 @@ window.pasteFromClipboard = async function() {
 
   let text = '';
 
-  // 1. Thử tự động đọc khay nhớ tạm
+  // 1. Thử tự động đọc khay nhớ tạm ngầm
   try {
     if (navigator.clipboard && navigator.clipboard.readText) {
       text = await navigator.clipboard.readText();
@@ -67,7 +69,7 @@ window.pasteFromClipboard = async function() {
 
   let cleanUrl = extractGoogleMapsUrl(text);
 
-  // 2. Nếu đọc tự động thành công và là link Google Maps -> Dán trực tiếp
+  // 2. Nếu đọc ngầm thành công và có link Google Maps -> Tự dán luôn không cần hỏi
   if (cleanUrl && (cleanUrl.includes('google.com') || cleanUrl.includes('goo.gl'))) {
     inputEl.value = cleanUrl;
     const clearBtn = document.getElementById('clearGgmapBtn');
@@ -76,7 +78,7 @@ window.pasteFromClipboard = async function() {
     return;
   }
 
-  // 3. Nếu Safari chặn đọc ngầm hoặc chưa đọc được -> Mở khung dán trực tiếp (Đảm bảo 100% thành công trên iPhone)
+  // 3. Nếu Safari chặn đọc ngầm -> Bật ngay hộp thoại để người dùng dán 1 chạm
   const userPasted = prompt("📌 Nhấn giữ vào ô bên dưới ➔ Chọn 'Dán' (Paste):");
   if (userPasted) {
     cleanUrl = extractGoogleMapsUrl(userPasted);
@@ -90,6 +92,16 @@ window.pasteFromClipboard = async function() {
     }
   }
 };
+
+// TỰ ĐỘNG BẬT HỘP THOẠI DÁN KHI TỪ GOOGLE MAPS QUAY VỀ ỨNG DỤNG
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && window.wasGgmapOpened) {
+    window.wasGgmapOpened = false; // Đặt lại cờ sau khi xử lý
+    setTimeout(() => {
+      window.pasteFromClipboard();
+    }, 350); // Chờ 350ms để Safari ổn định giao diện khi chuyển tab quay về
+  }
+});
 
 window.handleGgmapLinkInput = function() {
   clearTimeout(window.ggmapInputTimer);
