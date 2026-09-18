@@ -180,6 +180,9 @@ function renderDriverMarkers() {
       const rating = calcRating(driver);
       const avatarUrl = getOptimizedAvatar(driver.avatar_url);
       const typeBadge = typeNames[driver.vehicle_type] || 'Tài xế';
+      
+      // Lọc ký tự phòng chống XSS tên tài xế
+      const safeDriverName = (typeof escapeHTML === 'function') ? escapeHTML(driver.name) : driver.name;
 
       const div = document.createElement('div');
       div.className = `top3-item ${isSelected ? 'selected' : ''}`;
@@ -187,7 +190,7 @@ function renderDriverMarkers() {
         <div style="display:flex; align-items:center; gap:10px; flex: 1;" onclick="selectDriver(rawDriversData.find(d => d.id === '${driver.id}'))">
           <img src="${avatarUrl}" class="driver-avatar-img" onerror="this.src='https://cdn-icons-png.flaticon.com/512/149/149071.png'">
           <div>
-            <div style="font-weight:bold; font-size:13px; color:#0f172a;">${driver.name}</div>
+            <div style="font-weight:bold; font-size:13px; color:#0f172a;">${safeDriverName}</div>
             <div style="font-size:11px; color:#64748b;">${typeBadge} • Cách <b>${distKm.toFixed(1)} km</b></div>
             <div style="font-size:11px; color:#eab308; font-weight:bold;">⭐ ${rating.score} (${rating.count} lượt)</div>
           </div>
@@ -212,10 +215,13 @@ function renderDriverMarkers() {
     const icon = icons[driver.vehicle_type] || icons['bike'];
     const rating = calcRating(driver);
     const targetLatLng = [driver.lat, driver.lng];
+    
+    // Lọc ký tự phòng chống XSS tên tài xế trên Popup bản đồ
+    const safeDriverName = (typeof escapeHTML === 'function') ? escapeHTML(driver.name) : driver.name;
 
     const popupHtml = `
       <div style="text-align:center; padding:2px; min-width:130px;">
-        <b style="font-size:13px;" class="driver-popup-name">${driver.name}</b><br>
+        <b style="font-size:13px;" class="driver-popup-name">${safeDriverName}</b><br>
         <span style="color:#eab308; font-weight:bold; font-size:12px;">⭐ ${rating.score} / 5.0</span>
         <small style="color:#64748b; font-size:11px;">(${rating.count} lượt)</small>
         <div style="display:flex; gap:6px; justify-content:center; margin-top:8px;">

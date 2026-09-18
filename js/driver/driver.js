@@ -493,6 +493,12 @@ window.addEventListener('online', async () => {
       }).eq('id', currentDriverId);
     }
   }
+
+  // Tái kết nối lại kênh Realtime và tải lại thông tin tài xế khi có mạng
+  setupRealtimeSubscription();
+  if (typeof loadDriverProfile === 'function') {
+    loadDriverProfile();
+  }
 });
 
 window.addEventListener('offline', () => {

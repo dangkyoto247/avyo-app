@@ -1,5 +1,6 @@
 const TILE_CACHE_NAME = 'map-tiles-v2';
-const STATIC_CACHE_NAME = 'avyo-static-v3'; // Cập nhật version để SW reset lại
+const STATIC_CACHE_NAME = 'avyo-static-v4';
+const MAX_TILE_LIMIT = 150; // Giới hạn tối đa 150 mảnh bản đồ gần nhất
 
 const STATIC_ASSETS = [
   '/',
@@ -25,7 +26,21 @@ const STATIC_ASSETS = [
   'offline.html'
 ];
 
-// Hàm làm sạch Response an toàn (Đã sửa triệt để lỗi Opaque/CORS từ CDN)
+// Hàm giới hạn dung lượng cache bản đồ (Xóa tile cũ nhất khi vượt quá giới hạn)
+async function trimCache(cacheName, maxItems) {
+  try {
+    const cache = await caches.open(cacheName);
+    const keys = await cache.keys();
+    if (keys.length > maxItems) {
+      await cache.delete(keys[0]); // Xóa item cũ nhất (đầu danh sách)
+      trimCache(cacheName, maxItems); // Đệ quy xóa tiếp nếu vẫn đống dư
+    }
+  } catch (e) {
+    console.warn('Lỗi khi dọn dẹp cache bản đồ:', e);
+  }
+}
+
+// Hàm làm sạch Response an toàn
 async function cleanResponse(response) {
   if (!response) return response;
   
@@ -93,7 +108,6 @@ self.addEventListener('fetch', (event) => {
   if (STATIC_ASSETS.some(url => requestUrl.includes(url))) {
     event.respondWith(
       caches.open(STATIC_CACHE_NAME).then(async (cache) => {
-        // GIẢI PHÁP: Thêm { ignoreSearch: true } để bỏ qua các tham số như ?v=12
         const cachedResponse = await cache.match(event.request, { ignoreSearch: true });
         if (cachedResponse) return cachedResponse;
         
@@ -113,8 +127,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 2. Xử lý Cache mảnh bản đồ (Map Tiles)
-  // LƯU Ý: Ở đây KHÔNG dùng ignoreSearch vì bản đồ dùng query param ?x=..&y=.. để xác định tọa độ mảnh ghép
+  // 2. Xử lý Cache mảnh bản đồ (Map Tiles) - Có giới hạn 150 tiles tối đa
   if (requestUrl.includes('google.com/vt') || requestUrl.includes('mapbox.com') || requestUrl.includes('arcgisonline.com')) {
     event.respondWith(
       caches.open(TILE_CACHE_NAME).then(async (cache) => {
@@ -124,6 +137,8 @@ self.addEventListener('fetch', (event) => {
           const networkResponse = await fetch(event.request);
           if (networkResponse && (networkResponse.status === 200 || networkResponse.type === 'opaque')) {
             cache.put(event.request, networkResponse.clone());
+            // Kích hoạt tự động dọn dẹp nếu vượt quá 150 tiles
+            trimCache(TILE_CACHE_NAME, MAX_TILE_LIMIT);
           }
           return networkResponse;
         } catch (e) {
@@ -144,11 +159,9 @@ self.addEventListener('fetch', (event) => {
         } catch (err) {
           const cache = await caches.open(STATIC_CACHE_NAME);
           
-          // Thử lấy trang từ Cache, bỏ qua query param nếu có
           const cachedPage = await cache.match(event.request, { ignoreSearch: true });
           if (cachedPage) return cachedPage;
 
-          // Nếu không có, gọi trang offline mặc định
           const cachedOffline = await cache.match('offline.html', { ignoreSearch: true });
           if (cachedOffline) return cachedOffline;
           

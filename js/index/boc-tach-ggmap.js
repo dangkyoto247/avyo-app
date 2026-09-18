@@ -1,5 +1,8 @@
 // boc-tach-ggmap.js - Bóc tách và xử lý link chỉ đường Google Maps
 
+// Biến toàn cục lưu giữ Controller để hủy request giải mã cũ
+let ggmapAbortController = null;
+
 window.openGoogleMapsToCopy = function() {
   window.open('https://www.google.com/maps/dir/', '_blank');
 };
@@ -11,7 +14,7 @@ window.clearGgmapInput = function() {
   if (clearBtn) { clearBtn.style.display = 'none'; }
 };
 
-// Hàm xử lý sự kiện Dán (Paste) từ bàn phím/chuột (sửa lỗi ReferenceError)
+// Hàm xử lý sự kiện Dán (Paste) từ bàn phím/chuột
 window.handleGgmapPaste = function(event) {
   setTimeout(() => {
     handleGgmapLinkInput();
@@ -55,61 +58,84 @@ window.handleGgmapLinkInput = function() {
   }
 
   ggmapInputTimer = setTimeout(async () => {
+    // 1. Hủy request giải mã cũ nếu đang chạy ngầm
+    if (ggmapAbortController) {
+      ggmapAbortController.abort();
+    }
+    
+    // 2. Tạo AbortController mới cho lượt dán hiện tại
+    ggmapAbortController = new AbortController();
+    const currentSignal = ggmapAbortController.signal;
+
     alert("⏳ Đang giải mã và lấy vị trí từ Google Maps...");
 
     let targetUrl = rawUrl;
     let fullHtmlContent = "";
 
-    // 1. Luồng tự động giải mã qua 3 tầng (Supabase Edge -> Cloudflare -> Proxy)
+    // Luồng tự động giải mã qua 3 tầng (Supabase Edge -> Cloudflare -> Proxy)
     if (rawUrl.includes('maps.app.goo.gl') || rawUrl.includes('goo.gl')) {
       let resolved = false;
 
       // TẦNG 1: Supabase Edge
       try {
-        const sbRes = await fetch(`https://yvucyqkglbgxvozrznir.supabase.co/functions/v1/dynamic-action?url=${encodeURIComponent(rawUrl)}`);
+        const sbRes = await fetch(`https://yvucyqkglbgxvozrznir.supabase.co/functions/v1/dynamic-action?url=${encodeURIComponent(rawUrl)}`, { signal: currentSignal });
         if (sbRes.ok) {
           const sbData = await sbRes.json();
           if (sbData.expandedUrl) {
             targetUrl = sbData.expandedUrl; fullHtmlContent = sbData.content || ""; resolved = true;
           }
         }
-      } catch (e) { console.warn("Tầng 1 bận, chuyển sang Tầng 2..."); }
+      } catch (e) {
+        if (e.name === 'AbortError') return; // Bỏ qua nếu do người dùng dán link mới
+        console.warn("Tầng 1 bận, chuyển sang Tầng 2..."); 
+      }
 
       // TẦNG 2: Cloudflare Worker
       if (!resolved) {
         try {
-          const cfRes = await fetch(`${CF_WORKER_URL}/?url=${encodeURIComponent(rawUrl)}`);
+          const cfRes = await fetch(`${CF_WORKER_URL}/?url=${encodeURIComponent(rawUrl)}`, { signal: currentSignal });
           if (cfRes.ok) {
             const cfData = await cfRes.json();
             if (cfData.expandedUrl) {
-              targetUrl = cfData.expandedUrl; fullHtmlContent = cfData.content || ""; resolved = true;
+              targetUrl = cfData.expandedUrl; fullHtmlContent = sbData.content || ""; resolved = true;
             }
           }
-        } catch (e) { console.warn("Tầng 2 bận, chuyển sang Tầng 3..."); }
+        } catch (e) { 
+          if (e.name === 'AbortError') return;
+          console.warn("Tầng 2 bận, chuyển sang Tầng 3..."); 
+        }
       }
 
       // TẦNG 3: Public Proxies
       if (!resolved) {
         const proxyList = [
-          async (u) => { const res = await fetch(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`); if (!res.ok) throw new Error(); return { url: u, content: await res.text() }; },
-          async (u) => { const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(u)}`); if (!res.ok) throw new Error(); return { url: res.url || u, content: await res.text() }; }
+          async (u) => { const res = await fetch(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`, { signal: currentSignal }); if (!res.ok) throw new Error(); return { url: u, content: await res.text() }; },
+          async (u) => { const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(u)}`, { signal: currentSignal }); if (!res.ok) throw new Error(); return { url: res.url || u, content: await res.text() }; }
         ];
 
         for (const fetchProxy of proxyList) {
           try {
             const result = await fetchProxy(rawUrl); targetUrl = result.url; fullHtmlContent = result.content;
             if (fullHtmlContent || targetUrl !== rawUrl) { resolved = true; break; }
-          } catch (err) {}
+          } catch (err) {
+            if (err.name === 'AbortError') return;
+          }
         }
       }
 
-      if (!resolved) { alert("❌ Dịch vụ giải mã link bận. Vui lòng kiểm tra lại kết nối!"); return; }
+      if (!resolved) { 
+        if (currentSignal.aborted) return;
+        alert("❌ Dịch vụ giải mã link bận. Vui lòng kiểm tra lại kết nối!"); 
+        return; 
+      }
     }
+
+    if (currentSignal.aborted) return;
 
     const parseText = targetUrl + " " + fullHtmlContent;
     let pickupLat = null, pickupLng = null, destLat = null, destLng = null, pickupName = "", destName = "";
 
-    // 2. Bóc tách tên địa danh
+    // Bóc tách tên địa danh
     const textMatch = targetUrl.match(/\/dir\/([^\/@]+)\/([^\/@]+)\//);
     if (textMatch) {
       try {
@@ -121,7 +147,7 @@ window.handleGgmapLinkInput = function() {
       } catch (e) {}
     }
 
-    // 3. Trích xuất Tọa độ bằng các Regex mẫu
+    // Trích xuất Tọa độ bằng các Regex mẫu
     const dataMatches = [...parseText.matchAll(/!2m2!1d(-?\d+\.\d+)!2d(-?\d+\.\d+)/g)];
     if (dataMatches.length >= 2) {
       pickupLng = parseFloat(dataMatches[0][1]); pickupLat = parseFloat(dataMatches[0][2]);
@@ -142,7 +168,7 @@ window.handleGgmapLinkInput = function() {
       }
     }
 
-    // 4. Thiết lập vị trí bản đồ
+    // Thiết lập vị trí bản đồ
     if (pickupLat && pickupLng && destLat && destLng) {
       const pickupLatLng = L.latLng(pickupLat, pickupLng);
       const destLatLng = L.latLng(destLat, destLng);

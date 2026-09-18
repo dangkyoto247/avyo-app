@@ -276,9 +276,6 @@ async function loadAllData() {
 function renderAdminData() {
   const tbody = document.getElementById('driverTableBody');
   tbody.innerHTML = '';
- 
-  Object.keys(adminMarkers).forEach(id => map.removeLayer(adminMarkers[id]));
-  adminMarkers = {};
 
   const searchQuery = (document.getElementById('searchInput')?.value || '').toLowerCase().trim();
   const statusFilter = document.getElementById('statusFilter')?.value || 'all';
@@ -350,6 +347,11 @@ function renderAdminData() {
     return true;
   });
 
+  // ============================================================================
+  // TỐI ƯU HÓA XỬ LÝ MARKER: CẬP NHẬT TRỰC TIẾP KHÔNG XÓA VẼ LẠI
+  // ============================================================================
+  const activeMarkerIds = new Set();
+
   filteredDrivers.forEach(d => {
     const now = Date.now();
     const isLocked = d.locked_until && parseInt(d.locked_until) > now;
@@ -368,10 +370,10 @@ function renderAdminData() {
     }
 
     if (!isLocked && d.is_active !== false && d.is_online && d.lat && d.lng) {
-      const marker = L.marker([d.lat, d.lng], { 
-        icon: icons[d.vehicle_type] || icons['bike'],
-        opacity: isGhost ? 0.45 : 1.0
-      }).addTo(map);
+      activeMarkerIds.add(d.id);
+      
+      const icon = icons[d.vehicle_type] || icons['bike'];
+      const opacity = isGhost ? 0.45 : 1.0;
 
       let ghostNotice = '';
       if (isGhost) {
@@ -382,8 +384,33 @@ function renderAdminData() {
 
       const safeMarkerName = escapeHTML(d.name);
       const safeMarkerPhone = escapeHTML(d.phone);
-      marker.bindPopup(`<b>${safeMarkerName}</b><br>${safeMarkerPhone}${ghostNotice}`);
-      adminMarkers[d.id] = marker;
+      const popupHtml = `<b>${safeMarkerName}</b><br>${safeMarkerPhone}${ghostNotice}`;
+
+      if (adminMarkers[d.id]) {
+        // Nếu Marker đã tồn tại: Cập nhật vị trí, Icon, Opacity & Nội dung Popup
+        const existingMarker = adminMarkers[d.id];
+        existingMarker.setLatLng([d.lat, d.lng]);
+        existingMarker.setIcon(icon);
+        existingMarker.setOpacity(opacity);
+        existingMarker.setPopupContent(popupHtml);
+      } else {
+        // Nếu chưa có: Khởi tạo Marker mới
+        const marker = L.marker([d.lat, d.lng], { 
+          icon: icon,
+          opacity: opacity
+        }).addTo(map);
+
+        marker.bindPopup(popupHtml);
+        adminMarkers[d.id] = marker;
+      }
+    }
+  });
+
+  // Tự động dọn dẹp các Marker không còn phù hợp (tắt GPS, bị khóa, hoặc bị lọc)
+  Object.keys(adminMarkers).forEach(id => {
+    if (!activeMarkerIds.has(id)) {
+      if (map && adminMarkers[id]) map.removeLayer(adminMarkers[id]);
+      delete adminMarkers[id];
     }
   });
 
