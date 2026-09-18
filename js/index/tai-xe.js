@@ -73,7 +73,7 @@ function calcRating(driver) {
 }
 
 /**
- * Tải danh sách tài xế với cơ chế Debounce 400ms chống Spam RPC
+ * Tải danh sách tài xế với cơ chế Debounce 400ms
  */
 function loadDrivers() {
   clearTimeout(loadDriversDebounceTimer);
@@ -180,8 +180,6 @@ function renderDriverMarkers() {
       const rating = calcRating(driver);
       const avatarUrl = getOptimizedAvatar(driver.avatar_url);
       const typeBadge = typeNames[driver.vehicle_type] || 'Tài xế';
-      
-      // Lọc ký tự phòng chống XSS tên tài xế
       const safeDriverName = (typeof escapeHTML === 'function') ? escapeHTML(driver.name) : driver.name;
 
       const div = document.createElement('div');
@@ -196,7 +194,18 @@ function renderDriverMarkers() {
           </div>
         </div>
         <div style="display:flex; gap:6px; align-items:center;">
-          <button class="btn-action-zalo" onclick="event.stopPropagation(); openZaloById('${driver.id}')" title="Nhắn Zalo">💬 Zalo</button>
+          <div class="contact-dropdown-wrapper">
+            <button class="btn-action-zalo" onclick="event.stopPropagation(); toggleContactMenu('${driver.id}', event)" title="Chọn kênh nhắn tin">
+              💬 Nhắn tin ▾
+            </button>
+            <div id="contact-menu-${driver.id}" class="contact-popover-menu" style="display:none;" onclick="event.stopPropagation();">
+              <div class="contact-menu-item" onclick="openContactChannel('${driver.id}', 'zalo')"><span class="contact-icon">💬</span> Zalo</div>
+              <div class="contact-menu-item" onclick="openContactChannel('${driver.id}', 'sms')"><span class="contact-icon">✉️</span> SMS</div>
+              <div class="contact-menu-item" onclick="openContactChannel('${driver.id}', 'whatsapp')"><span class="contact-icon">🟢</span> WhatsApp</div>
+              <div class="contact-menu-item" onclick="openContactChannel('${driver.id}', 'telegram')"><span class="contact-icon">✈️</span> Telegram</div>
+              <div class="contact-menu-item" onclick="openContactChannel('${driver.id}', 'messenger')"><span class="contact-icon">⚡</span> Messenger</div>
+            </div>
+          </div>
           <button class="btn-action-phone" onclick="event.stopPropagation(); trackCallById('${driver.id}')" title="Gọi điện">📞 Gọi</button>
         </div>
       `;
@@ -215,8 +224,6 @@ function renderDriverMarkers() {
     const icon = icons[driver.vehicle_type] || icons['bike'];
     const rating = calcRating(driver);
     const targetLatLng = [driver.lat, driver.lng];
-    
-    // Lọc ký tự phòng chống XSS tên tài xế trên Popup bản đồ
     const safeDriverName = (typeof escapeHTML === 'function') ? escapeHTML(driver.name) : driver.name;
 
     const popupHtml = `
@@ -225,7 +232,16 @@ function renderDriverMarkers() {
         <span style="color:#eab308; font-weight:bold; font-size:12px;">⭐ ${rating.score} / 5.0</span>
         <small style="color:#64748b; font-size:11px;">(${rating.count} lượt)</small>
         <div style="display:flex; gap:6px; justify-content:center; margin-top:8px;">
-          <button class="btn-action-zalo" onclick="event.stopPropagation(); openZaloById('${driver.id}')" style="padding:5px 8px; font-size:11px;">💬 Zalo</button>
+          <div class="contact-dropdown-wrapper">
+            <button class="btn-action-zalo" onclick="event.stopPropagation(); toggleContactMenu('popup-${driver.id}', event)" style="padding:5px 8px; font-size:11px;">💬 Nhắn tin ▾</button>
+            <div id="contact-menu-popup-${driver.id}" class="contact-popover-menu" style="display:none;" onclick="event.stopPropagation();">
+              <div class="contact-menu-item" onclick="openContactChannel('${driver.id}', 'zalo')"><span class="contact-icon">💬</span> Zalo</div>
+              <div class="contact-menu-item" onclick="openContactChannel('${driver.id}', 'sms')"><span class="contact-icon">✉️</span> SMS</div>
+              <div class="contact-menu-item" onclick="openContactChannel('${driver.id}', 'whatsapp')"><span class="contact-icon">🟢</span> WhatsApp</div>
+              <div class="contact-menu-item" onclick="openContactChannel('${driver.id}', 'telegram')"><span class="contact-icon">✈️</span> Telegram</div>
+              <div class="contact-menu-item" onclick="openContactChannel('${driver.id}', 'messenger')"><span class="contact-icon">⚡</span> Messenger</div>
+            </div>
+          </div>
           <button class="btn-action-phone" onclick="event.stopPropagation(); trackCallById('${driver.id}')" style="padding:5px 8px; font-size:11px;">📞 Gọi</button>
         </div>
       </div>
@@ -251,14 +267,42 @@ function renderDriverMarkers() {
 }
 
 /**
- * Mở Zalo Universal Link chuẩn (Mở trực tiếp trang cá nhân/khung chat trên cả Mobile và PC)
+ * ẨN/HIỆN MENU ĐA KÊNH NHẮN TIN
  */
-function openZaloById(driverId) {
+function toggleContactMenu(targetId, event) {
+  if (event) event.stopPropagation();
+  const menuEl = document.getElementById(`contact-menu-${targetId}`);
+  if (!menuEl) return;
+
+  const isShowing = menuEl.style.display === 'flex';
+  document.querySelectorAll('.contact-popover-menu').forEach(m => m.style.display = 'none');
+
+  if (!isShowing) {
+    menuEl.style.display = 'flex';
+  }
+}
+
+// Lắng nghe sự kiện click toàn trang để đóng menu sổ khi click ra ngoài
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.contact-dropdown-wrapper')) {
+    document.querySelectorAll('.contact-popover-menu').forEach(m => m.style.display = 'none');
+  }
+});
+
+/**
+ * ĐIỀU HƯỚNG ĐA KÊNH LIÊN LẠC
+ */
+function openContactChannel(driverId, channel) {
+  document.querySelectorAll('.contact-popover-menu').forEach(m => m.style.display = 'none');
+  
   const driver = rawDriversData.find(d => d.id === driverId) || selectedDriver;
   if (!driver || !driver.phone) return;
 
+  const cleanPhone = driver.phone.replace(/\D/g, '');
+  const intPhone = cleanPhone.startsWith('0') ? '84' + cleanPhone.slice(1) : cleanPhone;
   const typeName = (typeof typeNames !== 'undefined' && typeNames[driver.vehicle_type]) || 'Tài xế';
   const distVal = parseFloat(currentDistance || 0);
+
   let msg = `Chào ${typeName}, tôi muốn đặt xe Avyo:\n`;
 
   if (typeof markerStart !== 'undefined' && markerStart) {
@@ -284,57 +328,53 @@ function openZaloById(driverId) {
     }
   }
 
-  // 1. Sao chép nội dung tin nhắn vào Clipboard
-  if (typeof copyToClipboard === 'function') {
-    copyToClipboard(msg);
-  }
-
-  // 2. Mở Zalo qua Universal Link chuẩn (Hoạt động tốt trên cả Mobile và PC)
-  const cleanPhone = driver.phone.replace(/\D/g, '');
-  window.open(`https://zalo.me/${cleanPhone}`, '_blank', 'noopener,noreferrer');
-
-  // 3. Hiển thị thông báo hướng dẫn dán nội dung
-  if (typeof alert === 'function') {
-    alert("✅ Đã sao chép lộ trình chuyến đi!\n\nKhi ứng dụng Zalo mở ra, bạn chỉ cần nhấn giữ khung chat và chọn 'DÁN' (Paste) để gửi thông tin cho tài xế.");
-  }
-
-  // 4. Ghi nhận analytics ngầm phía sau (Fire-and-forget)
   if (typeof selectDriver === 'function' && (!selectedDriver || selectedDriver.id !== driver.id)) {
     selectDriver(driver);
   }
 
-  if (typeof supabaseClient !== 'undefined') {
-    (async () => {
-      try {
-        await supabaseClient.rpc('increment_driver_zalo', { target_id: driver.id });
-      } catch (err) {
-        console.warn('[Supabase] Lỗi đếm Zalo:', err);
-      }
-    })();
+  if (channel === 'zalo') {
+    if (typeof copyToClipboard === 'function') copyToClipboard(msg);
+    window.open(`https://zalo.me/${cleanPhone}`, '_blank', 'noopener,noreferrer');
+    if (typeof alert === 'function') {
+      alert("✅ Đã sao chép lộ trình chuyến đi!\n\nKhi ứng dụng Zalo mở ra, bạn chỉ cần chọn 'DÁN' (Paste) để gửi thông tin cho tài xế.");
+    }
+    if (typeof supabaseClient !== 'undefined') {
+      supabaseClient.rpc('increment_driver_zalo', { target_id: driver.id }).catch(() => {});
+    }
+  } else if (channel === 'sms') {
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const smsUrl = isIOS 
+      ? `sms:${cleanPhone}&body=${encodeURIComponent(msg)}` 
+      : `sms:${cleanPhone}?body=${encodeURIComponent(msg)}`;
+    window.location.href = smsUrl;
+  } else if (channel === 'whatsapp') {
+    window.open(`https://wa.me/${intPhone}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener,noreferrer');
+  } else if (channel === 'telegram') {
+    if (typeof copyToClipboard === 'function') copyToClipboard(msg);
+    window.open(`https://t.me/+${intPhone}`, '_blank', 'noopener,noreferrer');
+    if (typeof alert === 'function') {
+      alert("✅ Đã sao chép lộ trình chuyến đi!\n\nBạn có thể dán thông tin vào khung chat Telegram với tài xế.");
+    }
+  } else if (channel === 'messenger') {
+    if (typeof copyToClipboard === 'function') copyToClipboard(msg);
+    window.open(`https://m.me/${cleanPhone}`, '_blank', 'noopener,noreferrer');
+    if (typeof alert === 'function') {
+      alert("✅ Đã sao chép lộ trình chuyến đi!\n\nBạn có thể dán thông tin vào Messenger.");
+    }
   }
 }
 
 /**
- * Kích hoạt cuộc gọi điện thoại đồng bộ để bảo toàn User Gesture
+ * Kích hoạt cuộc gọi điện thoại
  */
 function trackCallById(driverId) {
   const driver = rawDriversData.find(d => d.id === driverId) || selectedDriver;
-  if (!driver || !driver.phone) {
-    console.warn("[trackCallById] Không tìm thấy thông tin tài xế hoặc số điện thoại.");
-    return;
-  }
+  if (!driver || !driver.phone) return;
 
   const cleanPhone = driver.phone.replace(/\D/g, '');
-
   window.location.href = `tel:${cleanPhone}`;
 
   if (typeof supabaseClient !== 'undefined') {
-    (async () => {
-      try {
-        await supabaseClient.rpc('increment_driver_call', { target_id: driver.id });
-      } catch (err) {
-        console.warn('[Supabase] Lỗi đếm cuộc gọi:', err);
-      }
-    })();
+    supabaseClient.rpc('increment_driver_call', { target_id: driver.id }).catch(() => {});
   }
 }

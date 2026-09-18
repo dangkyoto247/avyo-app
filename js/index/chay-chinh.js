@@ -13,36 +13,6 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   if (typeof updateSwapButtonVisibility === 'function') updateSwapButtonVisibility();
   if (typeof updateNetworkStatus === 'function') updateNetworkStatus();
-
-  // ==========================================================================
-  // ĐÓN LINK TỪ GOOGLE MAPS BẮN SANG (TÍNH NĂNG WEB SHARE TARGET)
-  // ==========================================================================
-  const urlParams = new URLSearchParams(window.location.search);
-  const sharedText = urlParams.get('text') || '';
-  const sharedUrl = urlParams.get('url') || '';
-  const combinedShare = sharedText + " " + sharedUrl;
-
-  // Tìm kiếm link Google Maps trong nội dung được chia sẻ
-  const ggmapLinkRegex = /(https?:\/\/(?:maps\.app\.goo\.gl|goo\.gl|www\.google\.com\/maps)[^\s]+)/i;
-  const match = combinedShare.match(ggmapLinkRegex);
-
-  if (match) {
-    const extractedLink = match[1];
-    const inputEl = document.getElementById('ggmapLinkInput');
-    if (inputEl) {
-      inputEl.value = extractedLink;
-      
-      // Trì hoãn 1 chút để DOM tải xong bản đồ rồi mới chạy hàm bóc tách
-      setTimeout(() => {
-        if (typeof handleGgmapLinkInput === 'function') {
-          handleGgmapLinkInput();
-        }
-      }, 500);
-    }
-    
-    // Xóa các tham số trên thanh địa chỉ URL để tránh reload bị chạy lại link cũ
-    window.history.replaceState({}, document.title, window.location.pathname);
-  }
 });
 
 // THIẾT LẬP APP KHI KHỞI ĐỘNG
@@ -51,7 +21,7 @@ if (typeof loadDrivers === 'function') loadDrivers();
 if (typeof updateGuide === 'function') updateGuide();
 
 // ============================================================================
-// LẮNG NGHE LỚP DỮ LIỆU REALTIME (THAY THẾ CHO POLLING 12 GIÂY)
+// LẮNG NGHE LỚP DỮ LIỆU REALTIME
 // ============================================================================
 let customerDriversChannel = null;
 
@@ -61,10 +31,9 @@ function initCustomerRealtime() {
     customerDriversChannel = null;
   }
 
-  // Lắng nghe biến động vị trí GPS hoặc trạng thái On/Off của tài xế
   customerDriversChannel = supabaseClient.channel('customer-drivers-realtime')
     .on('postgres_changes', {
-      event: '*', // Nhận sự kiện INSERT, UPDATE, DELETE
+      event: '*',
       schema: 'public',
       table: 'drivers'
     }, (payload) => {
@@ -75,10 +44,8 @@ function initCustomerRealtime() {
     .subscribe();
 }
 
-// Khởi tạo Realtime ngay khi vào trang
 initCustomerRealtime();
 
-// Quản lý băng thông: Ngắt WebSocket khi ẩn Tab và kết nối lại khi quay lại ứng dụng
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
     if (customerDriversChannel) {
@@ -91,7 +58,6 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
-// TỰ ĐỘNG TÁI KẾT NỐI REALTIME KHI THIẾT BỊ CÓ MẠNG TRỞ LẠI (OFFLINE -> ONLINE)
 window.addEventListener('online', () => {
   if (typeof updateNetworkStatus === 'function') updateNetworkStatus();
   if (typeof loadDrivers === 'function') loadDrivers();
@@ -99,15 +65,13 @@ window.addEventListener('online', () => {
 });
 
 // ============================================================================
-// TÍNH NĂNG CÀI ĐẶT ỨNG DỤNG PWA ("THÊM VÀO MÀN HÌNH CHÍNH")
+// TÍNH NĂNG CÀI ĐẶT ỨNG DỤNG PWA
 // ============================================================================
 let deferredPrompt = null;
 
 window.addEventListener('beforeinstallprompt', (e) => {
-  // Ngăn chặn hộp thoại cài đặt mặc định của trình duyệt
   e.preventDefault();
   deferredPrompt = e;
-  // Hiển thị tùy chọn "📲 Cài đặt ứng dụng Avyo" trên Menu Popover
   showPwaInstallOption();
 });
 
@@ -125,7 +89,6 @@ function showPwaInstallOption() {
   installOption.onclick = async () => {
     if (!deferredPrompt) return;
     
-    // Kích hoạt hộp thoại cài đặt ứng dụng chuẩn của hệ điều hành
     deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;
     
@@ -138,11 +101,9 @@ function showPwaInstallOption() {
     if (typeof toggleTopMenu === 'function') toggleTopMenu();
   };
 
-  // Đưa tùy chọn cài đặt lên vị trí đầu tiên của Menu
   topMenuPopover.prepend(installOption);
 }
 
-// Ẩn nút nếu ứng dụng đã được cài đặt thành công
 window.addEventListener('appinstalled', () => {
   deferredPrompt = null;
   const option = document.getElementById('pwaInstallOption');
@@ -150,7 +111,7 @@ window.addEventListener('appinstalled', () => {
 });
 
 // ============================================================================
-// QUẢN LÝ SERVICE WORKER (TỐI ƯU UX: KHÔNG FORCE RELOAD TỰ ĐỘNG)
+// QUẢN LÝ SERVICE WORKER
 // ============================================================================
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').then((reg) => {
@@ -168,9 +129,6 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-/**
- * Hiển thị mẩu thông báo nhỏ cập nhật ứng dụng ở góc trên màn hình
- */
 function showUpdateToast() {
   if (document.getElementById('pwaUpdateToast')) return;
 

@@ -2,19 +2,15 @@
 // CẤU HÌNH HỆ THỐNG AVYO (CENTRALIZED CONFIG)
 // ==========================================
 const MAPBOX_TOKEN = 'pk.eyJ1IjoidHVhbmFuaDM0MTYyMyIsImEiOiJjbXUwdHo3NHQwMG93MnlxemtrcmR0MzBuIn0.QKjVs1m4NPekmHPpzhL6Dg';
-const GOONG_API_KEY = 'wZbBHiRfw0cPiZaPMXIIfRyXv7NOaMy2m5K5mF7l'; // Key Goong Maps
+const GOONG_API_KEY = 'wZbBHiRfw0cPiZaPMXIIfRyXv7NOaMy2m5K5mF7l';
 const SUPABASE_URL = 'https://yvucyqkglbgxvozrznir.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl2dWN5cWtnbGJneHZvenJ6bmlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkxMzA3ODAsImV4cCI6MjEwNDcwNjc4MH0.Zagl4i2LPmxW3w9ih0h4LRsrm-OOGtPcWgvEs2vHBqo';
 const CF_WORKER_URL = 'https://raspy-recipe-7874.steep-feather-d277.workers.dev';
 
-// Khởi tạo duy nhất 1 Supabase Client dùng chung cho toàn bộ dự án
 const supabaseClient = (typeof supabase !== 'undefined' && supabase.createClient) 
   ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY) 
   : null;
 
-// ==========================================
-// CÁC HÀM PHỤ TRỢ DÙNG CHUNG
-// ==========================================
 function getHaversineDistance(lat1, lon1, lat2, lon2) {
   const R = 6371;
   const dLat = (lat2 - lat1) * Math.PI / 180;

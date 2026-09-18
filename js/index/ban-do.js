@@ -1,3 +1,12 @@
+// ============================================================================
+// BỘ NHỚ ĐỆM (CACHE) TIẾT KIỆM TỐI ĐA LƯỢT GỌI GOONG MAPS API
+// ============================================================================
+const goongCache = {
+  autocomplete: new Map(),
+  detail: new Map(),
+  geocode: new Map()
+};
+
 // KHỞI TẠO BẢN ĐỒ LEAFLET CHÍNH
 const map = L.map('map', { 
   preferCanvas: true,
@@ -260,8 +269,20 @@ function exitSelectionMode() {
   updateSwapButtonVisibility();
 }
 
+// GIẢI MÃ TỌA ĐỘ KÉO GHIM VỚI BỘ NHỚ ĐỆM LATLNG (LÀM TRÒN ~11M)
 async function fetchAddressForInput(type, latlng) {
   if (!GOONG_API_KEY || !latlng || !Number.isFinite(latlng.lat) || !Number.isFinite(latlng.lng)) return;
+  
+  const cacheKey = `${latlng.lat.toFixed(4)},${latlng.lng.toFixed(4)}`;
+  if (goongCache.geocode.has(cacheKey)) {
+    const cachedAddress = goongCache.geocode.get(cacheKey);
+    const inputEl = document.getElementById(type + 'Input');
+    if (inputEl) { inputEl.value = cachedAddress; toggleClearButton(type); }
+    if (type === 'pickup') saveRecentPickup(cachedAddress, latlng.lat, latlng.lng);
+    if (type === 'dest') saveRecentDest(cachedAddress, latlng.lat, latlng.lng);
+    return;
+  }
+
   try {
     const url = `https://rsapi.goong.io/Geocode?latlng=${latlng.lat},${latlng.lng}&api_key=${GOONG_API_KEY}`;
     const res = await fetch(url);
@@ -269,6 +290,8 @@ async function fetchAddressForInput(type, latlng) {
       const data = await res.json();
       if (data.results && data.results.length > 0) {
         const placeName = cleanAddressText(data.results[0].formatted_address || data.results[0].name);
+        goongCache.geocode.set(cacheKey, placeName);
+        
         const inputEl = document.getElementById(type + 'Input');
         if (inputEl) { inputEl.value = placeName; toggleClearButton(type); }
         if (type === 'pickup') saveRecentPickup(placeName, latlng.lat, latlng.lng);
@@ -404,7 +427,26 @@ function cleanAddressText(text) {
   return text.replace(/\b\d{5,6}\b,?\s*/g, '').replace(/,?\s*(Việt Nam|Vietnam)$/gi, '').replace(/\s*,\s*,/g, ', ').replace(/^,\s*/, '').trim();
 }
 
-// Biến lưu giữ controller của request đang chạy, đặt bên ngoài hàm
+// HÀM TRA CỨU PLACE DETAIL CÓ CACHE
+async function fetchGoongPlaceDetail(placeId, signal) {
+  if (goongCache.detail.has(placeId)) {
+    return goongCache.detail.get(placeId);
+  }
+  try {
+    const detailUrl = `https://rsapi.goong.io/Place/Detail?place_id=${placeId}&api_key=${GOONG_API_KEY}`;
+    const detailRes = await fetch(detailUrl, { signal });
+    if (!detailRes.ok) return null;
+    const detailData = await detailRes.json();
+    const result = detailData.result || null;
+    if (result) goongCache.detail.set(placeId, result);
+    return result;
+  } catch (e) {
+    if (e.name === 'AbortError') throw e;
+    return null;
+  }
+}
+
+// HÀM GỢI Ý ĐỊA ĐIỂM TỰ ĐỘNG VỚI TỐI ƯU CACHE & DEBOUNCE 450MS
 let searchAbortController = null;
 
 function onSearchInput(type, isDirectCall = false) {
@@ -413,7 +455,8 @@ function onSearchInput(type, isDirectCall = false) {
   const query = document.getElementById(type + 'Input').value.trim().substring(0, 200);
   const listEl = document.getElementById(type + 'Suggestions');
  
-  if (query.length < 2) {
+  // Chỉ tìm kiếm khi gõ từ 3 ký tự trở lên để tiết kiệm request
+  if (query.length < 3) {
     if (type === 'pickup') showRecentPickups(); else if (type === 'dest') showRecentDests(); else listEl.style.display = 'none';
     return;
   }
@@ -425,15 +468,82 @@ function onSearchInput(type, isDirectCall = false) {
   searchAbortController = new AbortController();
   const currentSignal = searchAbortController.signal;
 
+  let rawCenter = markerStart ? markerStart.getLatLng() : (userLatLng || getPinCenterLatLng());
+  if (rawCenter && typeof rawCenter.wrap === 'function') rawCenter = rawCenter.wrap();
+  const lat = Number(rawCenter ? rawCenter.lat : 18.7034), lng = Number(rawCenter ? rawCenter.lng : 105.6832);
+
+  const cacheKey = `${query.toLowerCase()}_${lat.toFixed(2)},${lng.toFixed(2)}`;
+
+  const renderSuggestions = (predictions) => {
+    if (predictions.length === 0) {
+      listEl.innerHTML = '<div class="suggestion-loading">❌ Không tìm thấy địa chỉ phù hợp</div>';
+      listEl.style.display = 'block'; 
+      return;
+    }
+
+    listEl.innerHTML = '';
+    predictions.forEach(p => {
+      const mainTitle = cleanAddressText(p.structured_formatting?.main_text || p.description);
+      const addressSub = cleanAddressText(p.structured_formatting?.secondary_text || p.description);
+      const placeId = p.place_id;
+
+      const div = document.createElement('div');
+      div.className = 'suggestion-item';
+      div.innerHTML = `📍 <b>${mainTitle}</b> <small style="color:#64748b; font-size:11px;">(${addressSub})</small>`;
+      
+      div.onclick = async () => {
+        if (document.activeElement) document.activeElement.blur();
+        document.getElementById(type + 'Input').value = mainTitle;
+        toggleClearButton(type); 
+        listEl.style.display = 'none';
+
+        try {
+          const detail = await fetchGoongPlaceDetail(placeId, currentSignal);
+          if (detail && detail.geometry && detail.geometry.location) {
+            const fLat = detail.geometry.location.lat;
+            const fLng = detail.geometry.location.lng;
+            const latlng = L.latLng(fLat, fLng);
+
+            if (type === 'pickup') {
+              setPickupLocation(latlng); saveRecentPickup(mainTitle, fLat, fLng); exitFocusInputMode('pickup');
+              if (!markerEnd) enterSelectionMode('dest'); else exitSelectionMode();
+            } else {
+              setDestLocation(latlng); saveRecentDest(mainTitle, fLat, fLng); exitFocusInputMode('dest'); exitSelectionMode();
+            }
+          }
+        } catch (err) {
+          if (err.name !== 'AbortError') console.error('Lỗi khi lấy chi tiết Goong Maps API:', err);
+        }
+      };
+      listEl.appendChild(div);
+    });
+    listEl.style.display = 'block';
+  };
+
+  // Kiểm tra nếu có sẵn trong Cache
+  if (goongCache.autocomplete.has(cacheKey)) {
+    const cachedPredictions = goongCache.autocomplete.get(cacheKey);
+    if (isDirectCall && cachedPredictions.length > 0) {
+      fetchGoongPlaceDetail(cachedPredictions[0].place_id, currentSignal).then(detail => {
+        if (detail && detail.geometry && detail.geometry.location) {
+          const placeName = cleanAddressText(cachedPredictions[0].structured_formatting?.main_text || cachedPredictions[0].description);
+          const latlng = L.latLng(detail.geometry.location.lat, detail.geometry.location.lng);
+          document.getElementById(type + 'Input').value = placeName;
+          if (type === 'pickup') { setPickupLocation(latlng); saveRecentPickup(placeName, latlng.lat, latlng.lng); exitFocusInputMode('pickup'); }
+          else { setDestLocation(latlng); saveRecentDest(placeName, latlng.lat, latlng.lng); exitFocusInputMode('dest'); }
+        }
+      });
+    } else {
+      renderSuggestions(cachedPredictions);
+    }
+    return;
+  }
+
   listEl.innerHTML = '<div class="suggestion-loading">⏳ Đang tìm địa chỉ...</div>';
   listEl.style.display = 'block';
 
   const executeSearch = async () => {
     try {
-      let rawCenter = markerStart ? markerStart.getLatLng() : (userLatLng || getPinCenterLatLng());
-      if (rawCenter && typeof rawCenter.wrap === 'function') rawCenter = rawCenter.wrap();
-      const lat = Number(rawCenter ? rawCenter.lat : 18.7034), lng = Number(rawCenter ? rawCenter.lng : 105.6832);
-
       let url = `https://rsapi.goong.io/Place/AutoComplete?api_key=${GOONG_API_KEY}&input=${encodeURIComponent(query)}&limit=8`;
       if (rawCenter && Number.isFinite(lat) && Number.isFinite(lng)) {
         url += `&location=${lat.toFixed(5)},${lng.toFixed(5)}`;
@@ -444,28 +554,11 @@ function onSearchInput(type, isDirectCall = false) {
       const data = await res.json();
       const predictions = data.predictions || [];
 
-      if (predictions.length === 0) {
-        listEl.innerHTML = '<div class="suggestion-loading">❌ Không tìm thấy địa chỉ phù hợp</div>';
-        listEl.style.display = 'block'; 
-        return;
-      }
-
-      const fetchGoongPlaceDetail = async (placeId) => {
-        try {
-          const detailUrl = `https://rsapi.goong.io/Place/Detail?place_id=${placeId}&api_key=${GOONG_API_KEY}`;
-          const detailRes = await fetch(detailUrl, { signal: currentSignal });
-          if (!detailRes.ok) return null;
-          const detailData = await detailRes.json();
-          return detailData.result || null;
-        } catch (e) {
-          if (e.name === 'AbortError') throw e;
-          return null;
-        }
-      };
+      goongCache.autocomplete.set(cacheKey, predictions);
 
       if (isDirectCall && predictions.length > 0) {
         const topPrediction = predictions[0];
-        const detail = await fetchGoongPlaceDetail(topPrediction.place_id);
+        const detail = await fetchGoongPlaceDetail(topPrediction.place_id, currentSignal);
         
         if (detail && detail.geometry && detail.geometry.location) {
           const placeName = cleanAddressText(topPrediction.structured_formatting?.main_text || topPrediction.description);
@@ -488,43 +581,7 @@ function onSearchInput(type, isDirectCall = false) {
         return;
       }
 
-      listEl.innerHTML = '';
-      predictions.forEach(p => {
-        const mainTitle = cleanAddressText(p.structured_formatting?.main_text || p.description);
-        const addressSub = cleanAddressText(p.structured_formatting?.secondary_text || p.description);
-        const placeId = p.place_id;
-
-        const div = document.createElement('div');
-        div.className = 'suggestion-item';
-        div.innerHTML = `📍 <b>${mainTitle}</b> <small style="color:#64748b; font-size:11px;">(${addressSub})</small>`;
-        
-        div.onclick = async () => {
-          if (document.activeElement) document.activeElement.blur();
-          document.getElementById(type + 'Input').value = mainTitle;
-          toggleClearButton(type); 
-          listEl.style.display = 'none';
-
-          try {
-            const detail = await fetchGoongPlaceDetail(placeId);
-            if (detail && detail.geometry && detail.geometry.location) {
-              const fLat = detail.geometry.location.lat;
-              const fLng = detail.geometry.location.lng;
-              const latlng = L.latLng(fLat, fLng);
-
-              if (type === 'pickup') {
-                setPickupLocation(latlng); saveRecentPickup(mainTitle, fLat, fLng); exitFocusInputMode('pickup');
-                if (!markerEnd) enterSelectionMode('dest'); else exitSelectionMode();
-              } else {
-                setDestLocation(latlng); saveRecentDest(mainTitle, fLat, fLng); exitFocusInputMode('dest'); exitSelectionMode();
-              }
-            }
-          } catch (err) {
-            if (err.name !== 'AbortError') console.error('Lỗi khi lấy chi tiết Goong Maps API:', err);
-          }
-        };
-        listEl.appendChild(div);
-      });
-      listEl.style.display = 'block';
+      renderSuggestions(predictions);
 
     } catch (err) {
       if (err.name === 'AbortError') return;
@@ -532,5 +589,5 @@ function onSearchInput(type, isDirectCall = false) {
     }
   };
   
-  if (isDirectCall) executeSearch(); else searchTimer = setTimeout(executeSearch, 300);
+  if (isDirectCall) executeSearch(); else searchTimer = setTimeout(executeSearch, 450);
 }

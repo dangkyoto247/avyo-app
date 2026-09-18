@@ -24,7 +24,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/gh/ewoken/Leaflet.MovingMarker@master/MovingMarker.js"></script>
 
-  <link rel="stylesheet" href="css/index.css?v=4">
+  <link rel="stylesheet" href="css/index.css?v=5">
 </head>
 <body class="selecting-pickup">
 
@@ -110,21 +110,6 @@
 
     <!-- KHUNG ĐỊA CHỈ DẠNG KHUÔN LIÊN KẾT (TIMELINE CARD) -->
     <div class="route-card">
-
-      <!-- DÒNG LẤY LỘ TRÌNH GOOGLE MAPS -->
-      <div class="route-input-item ggmap-group">
-        <button type="button" class="btn-ggmap" onclick="openGoogleMapsToCopy()" title="Mở Google Maps để tìm đường">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
-          Mở GGMap
-        </button>
-        <input type="text" id="ggmapLinkInput" placeholder="Dán link Google Map vào đây..." autocomplete="off" readonly inputmode="none" onclick="pasteFromClipboard()" oninput="handleGgmapLinkInput()">
-        
-        <div class="action-buttons-right">
-          <button type="button" id="clearGgmapBtn" class="btn-clear-input" onclick="clearGgmapInput()" title="Xóa link" style="display: none;">✕</button>
-        </div>
-      </div>
-
-      <div class="route-divider ggmap-divider"></div>
 
       <!-- DÒNG ĐIỂM ĐÓN -->
       <div class="route-input-item pickup-group">
@@ -223,13 +208,12 @@
     </div>
   </div>
 
-<script src="js/utils.js?v=4"></script>
-<script src="js/index/cau-hinh.js?v=4"></script>
-<script src="js/index/giao-dien.js?v=4"></script>
-<script src="js/index/ban-do.js?v=4"></script>
-<script src="js/index/tai-xe.js?v=4"></script>
-<script src="js/index/boc-tach-ggmap.js?v=4"></script>
-<script src="js/index/chay-chinh.js?v=4"></script>
+<script src="js/utils.js?v=5"></script>
+<script src="js/index/cau-hinh.js?v=5"></script>
+<script src="js/index/giao-dien.js?v=5"></script>
+<script src="js/index/ban-do.js?v=5"></script>
+<script src="js/index/tai-xe.js?v=5"></script>
+<script src="js/index/chay-chinh.js?v=5"></script>
 
 </body>
 </html>

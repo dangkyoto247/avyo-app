@@ -1398,3 +1398,105 @@ body.selecting-dest .btn-confirm-select {
   background: #2563eb !important;
   box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3) !important;
 }
+
+
+/* POPUP MENU CHỌN KÊNH NHẮN TIN - ĐIỀU CHỈNH HƯỚNG SỔ VÀ CHỐNG CHE LẤP */
+.contact-dropdown-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.contact-popover-menu {
+  position: absolute;
+  z-index: 99999;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  padding: 4px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 130px;
+}
+
+/* 1. DANH SÁCH 3 TÀI XẾ Ở ĐÁY MÀN HÌNH: SỔ HƯỚNG LÊN TRÊN */
+.top3-item .contact-popover-menu {
+  bottom: calc(100% + 6px) !important;
+  top: auto !important;
+  right: 0 !important;
+  left: auto !important;
+}
+
+/* KHÔNG CHO CÁC KHUNG CHỨA CẮT MẤT MENU KHI SỔ LÊN TRÊN */
+.collapsible-drivers-panel {
+  overflow: visible !important;
+}
+
+.collapsible-drivers-panel.show {
+  max-height: none !important;
+  overflow: visible !important;
+  opacity: 1;
+  margin-top: 10px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  border-top: 1px dashed #cbd5e1;
+}
+
+/* 2. POPUP ICON TRÊN BẢN ĐỒ: SỔ HƯỚNG XUỐNG DƯỚI */
+.leaflet-popup-content .contact-popover-menu {
+  top: calc(100% + 6px) !important;
+  bottom: auto !important;
+  left: 50% !important;
+  right: auto !important;
+  transform: translateX(-50%) !important;
+}
+
+/* ĐẢM BẢO POPUP BẢN ĐỒ LEAFLET KHÔNG CẮT MENU KHI SỔ XUỐNG DƯỚI */
+.leaflet-popup-content-wrapper,
+.leaflet-popup-content {
+  overflow: visible !important;
+}
+
+.contact-menu-item {
+  padding: 6px 8px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #334155;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.15s ease, color 0.15s ease;
+  white-space: nowrap;
+}
+
+.contact-menu-item .contact-icon {
+  font-size: 12px;
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.contact-menu-item:hover {
+  background: #f0fdf4;
+  color: #00b14f;
+}
+
+.dark-mode .contact-popover-menu {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+.dark-mode .contact-menu-item {
+  color: #cbd5e1;
+}
+
+.dark-mode .contact-menu-item:hover {
+  background: #334155;
+  color: #6ee7b7;
+}
