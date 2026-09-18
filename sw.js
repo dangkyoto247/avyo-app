@@ -1,5 +1,5 @@
 const TILE_CACHE_NAME = 'map-tiles-v2';
-const STATIC_CACHE_NAME = 'avyo-static-v114';
+const STATIC_CACHE_NAME = 'avyo-static-v115';
 
 const STATIC_ASSETS = [
   'https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;800&display=swap',
@@ -7,8 +7,13 @@ const STATIC_ASSETS = [
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',
   'utils.js',
+  'cau-hinh.js',
+  'giao-dien.js',
+  'ban-do.js',
+  'tai-xe.js',
+  'boc-tach-ggmap.js',
+  'chay-chinh.js',
   'index.css',
-  'index.js',
   'driver.css',
   'driver.js',
   'admin.css',
