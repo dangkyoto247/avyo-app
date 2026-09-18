@@ -381,7 +381,6 @@ body.focus-dest .dest-group .suggestions-list {
   margin: 0 4px 0 32px;
 }
 
-/* ẨN HOÀN TOÀN ĐƯỜNG KẺ NỐI DỌC DƯỚI ICON ĐỎ */
 .connector-line {
   display: none !important;
 }
@@ -971,7 +970,7 @@ body.map-moving .fixed-center-pin .pin-shadow {
   box-shadow: 0 2px 8px rgba(0, 177, 79, 0.15);
 }
 
-/* DARK MODE */
+/* CHẾ ĐỘ TỐI (DARK MODE) */
 body.dark-mode {
   background: #121212;
   color: #e2e8f0;
@@ -997,17 +996,36 @@ body.dark-mode {
   color: #f8fafc;
 }
 
-.dark-mode .route-card {
-  background: #2a2a2a;
-  border-color: #404040;
+.dark-mode .route-card,
+.dark-mode .route-input-item,
+.dark-mode .route-input-item.pickup-group,
+.dark-mode .route-input-item.dest-group,
+.dark-mode .route-input-item.ggmap-group {
+  background-color: #1e293b !important;
+  color: #f8fafc !important;
+  border-color: #334155 !important;
 }
 
-.dark-mode .route-input-item input {
-  color: #f8fafc;
+.dark-mode #pickupInput,
+.dark-mode #destInput,
+.dark-mode #ggmapLinkInput,
+.dark-mode #pickupDetailInput {
+  background-color: #1e293b !important;
+  color: #ffffff !important;
+  caret-color: #00b14f !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+
+.dark-mode #pickupInput::placeholder,
+.dark-mode #destInput::placeholder,
+.dark-mode #ggmapLinkInput::placeholder,
+.dark-mode #pickupDetailInput::placeholder {
+  color: #94a3b8 !important;
+  -webkit-text-fill-color: #94a3b8 !important;
 }
 
 .dark-mode .route-divider {
-  background: #404040;
+  background: #334155 !important;
 }
 
 .dark-mode .btn-pickup-detail,
@@ -1024,18 +1042,23 @@ body.dark-mode {
 }
 
 .dark-mode .suggestions-list {
-  background: #2d2d2d;
-  border-color: #404040;
+  background: #1e293b !important;
+  border-color: #334155 !important;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5) !important;
 }
 
 .dark-mode .suggestion-item {
-  color: #d1d5db;
-  border-bottom: 1px solid #404040;
+  color: #f8fafc !important;
+  border-bottom: 1px solid #334155 !important;
 }
 
 .dark-mode .suggestion-item:hover {
-  background: #064e3b;
+  background: #334155 !important;
   color: #6ee7b7;
+}
+
+.dark-mode .suggestion-item small {
+  color: #94a3b8 !important;
 }
 
 .dark-mode .suggestion-loading {
@@ -1220,7 +1243,7 @@ body.dark-mode {
   transform: scale(0.97);
 }
 
-/* TỐI ƯU CẤU HÌNH RENDER BẢN ĐỒ - TẠO BỘ ĐỆM ĐỒ HỌA NHẸ */
+/* TỐI ƯU CẤU HÌNH RENDER BẢN ĐỒ */
 .leaflet-container {
   background-color: #f1f5f9 !important;
 }
@@ -1318,7 +1341,7 @@ body.focus-dest .pickup-group {
   color: #6ee7b7;
 }
 
-/* --- STYLE CHO KHUNG GOOGLE MAPS --- */
+/* KÍCH THƯỚC NÚT VÀ KHUNG GGMAP */
 .btn-ggmap {
   background: #e8f5e9;
   border: 1px solid #4caf50;
@@ -1359,7 +1382,6 @@ body.focus-dest .pickup-group {
   border-bottom-color: #475569;
 }
 
-/* Ẩn nguyên cụm GG Maps khi người dùng đang bấm vào ô nhập điểm đón/điểm đến */
 body.focus-pickup .ggmap-group,
 body.focus-dest .ggmap-group,
 body.focus-pickup .ggmap-divider,
@@ -1367,7 +1389,6 @@ body.focus-dest .ggmap-divider {
   display: none !important;
 }
 
-/* ĐỔI MÀU NÚT XÁC NHẬN THEO TRẠNG THÁI (ĐÓN = ĐỎ, ĐẾN = XANH) */
 body.selecting-pickup .btn-confirm-select {
   background: #dc2626 !important;
   box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3) !important;

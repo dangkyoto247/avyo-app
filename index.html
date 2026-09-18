@@ -24,7 +24,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/gh/ewoken/Leaflet.MovingMarker@master/MovingMarker.js"></script>
 
-  <link rel="stylesheet" href="css/index.css?v=115">
+  <link rel="stylesheet" href="css/index.css?v=1">
 </head>
 <body class="selecting-pickup">
 
@@ -115,11 +115,12 @@
       <div class="route-input-item ggmap-group">
         <button type="button" class="btn-ggmap" onclick="openGoogleMapsToCopy()" title="Mở Google Maps để tìm đường">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
-          Lấy lộ trình GGMap
+          Mở GGMap
         </button>
-        <input type="text" id="ggmapLinkInput" placeholder="Dán link Google Map vào đây..." autocomplete="off" oninput="handleGgmapLinkInput()">
+        <input type="text" id="ggmapLinkInput" placeholder="Dán link Google Map vào đây..." autocomplete="off" onpaste="handleGgmapPaste(event)" oninput="handleGgmapLinkInput()">
         
         <div class="action-buttons-right">
+          <button type="button" id="pasteGgmapBtn" class="btn-pickup-detail" onclick="pasteFromClipboard()" style="padding: 4px 8px; font-size: 11px;">📋 Dán</button>
           <button type="button" id="clearGgmapBtn" class="btn-clear-input" onclick="clearGgmapInput()" title="Xóa link" style="display: none;">✕</button>
         </div>
       </div>
@@ -224,13 +225,13 @@
   </div>
 
   <!-- CÁC FILE SCRIPT THEO ĐÚNG ĐƯỜNG DẪN MỚI -->
-<script src="js/utils.js?v=115"></script>
-<script src="js/index/cau-hinh.js?v=115"></script>
-<script src="js/index/giao-dien.js?v=115"></script>
-<script src="js/index/ban-do.js?v=115"></script>
-<script src="js/index/tai-xe.js?v=115"></script>
-<script src="js/index/boc-tach-ggmap.js?v=115"></script>
-<script src="js/index/chay-chinh.js?v=115"></script>
+<script src="js/utils.js?v=1"></script>
+<script src="js/index/cau-hinh.js?v=1"></script>
+<script src="js/index/giao-dien.js?v=1"></script>
+<script src="js/index/ban-do.js?v=1"></script>
+<script src="js/index/tai-xe.js?v=1"></script>
+<script src="js/index/boc-tach-ggmap.js?v=1"></script>
+<script src="js/index/chay-chinh.js?v=1"></script>
 
 </body>
 </html>
