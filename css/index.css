@@ -1366,3 +1366,14 @@ body.focus-pickup .ggmap-divider,
 body.focus-dest .ggmap-divider {
   display: none !important;
 }
+
+/* ĐỔI MÀU NÚT XÁC NHẬN THEO TRẠNG THÁI (ĐÓN = ĐỎ, ĐẾN = XANH) */
+body.selecting-pickup .btn-confirm-select {
+  background: #dc2626 !important;
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3) !important;
+}
+
+body.selecting-dest .btn-confirm-select {
+  background: #2563eb !important;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3) !important;
+}

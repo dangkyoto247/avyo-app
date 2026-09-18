@@ -226,12 +226,12 @@ function enterSelectionMode(mode) {
   if (mode === 'pickup') {
     document.body.classList.add('selecting-pickup');
     updatePinColor('#dc2626');
-    if (confirmBtn) confirmBtn.innerText = "📍 CHỌN ĐIỂM ĐÓN NÀY";
+    if (confirmBtn) confirmBtn.innerText = "CHỌN ĐIỂM ĐÓN NÀY";
     if (markerStart) { map.removeLayer(markerStart); markerStart = null; }
   } else if (mode === 'dest') {
     document.body.classList.add('selecting-dest');
     updatePinColor('#2563eb');
-    if (confirmBtn) confirmBtn.innerText = "📍 CHỌN ĐIỂM ĐẾN NÀY";
+    if (confirmBtn) confirmBtn.innerText = "CHỌN ĐIỂM ĐẾN NÀY";
     if (markerEnd) { map.removeLayer(markerEnd); markerEnd = null; }
   }
 
