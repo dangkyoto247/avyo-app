@@ -1,21 +1,119 @@
-// boc-tach-ggmap.js - Bóc tách và xử lý link chỉ đường Google Maps
+// boc-tach-ggmap.js - Bóc tách và xử lý link chỉ đường Google Maps (Xử lý triệt để link iPhone kèm ?g_st=ic)
 
 window.ggmapAbortController = window.ggmapAbortController || null;
 window.ggmapInputTimer = window.ggmapInputTimer || null;
 window.wasGgmapOpened = window.wasGgmapOpened || false;
 
 /**
- * Lọc trích xuất URL Google Maps chuẩn từ chuỗi văn bản bất kỳ
+ * Lọc trích xuất URL Google Maps chuẩn và TỰ ĐỘNG LỌC THAM SỐ g_st=ic CỦA IPHONE
  */
 function extractGoogleMapsUrl(text) {
   if (!text) return '';
   const reg = /(https?:\/\/(?:maps\.app\.goo\.gl|goo\.gl|www\.google\.com\/maps)[^\s]+)/i;
   const match = text.match(reg);
-  return match ? match[1] : text.trim();
+  if (!match) return text.trim();
+  
+  let url = match[1];
+  // Tách bỏ tham số rác g_st=ic do iPhone tạo ra khiến Google chặn giải mã link full
+  url = url.replace(/[\?&]g_st=[^&]+/i, '');
+  return url;
 }
 
 /**
- * Hàm tra cứu tọa độ từ tên địa điểm (Đặc trị cho link Google Maps từ iPhone)
+ * Kiểm tra điểm tọa độ có nằm trong phạm vi lãnh thổ Việt Nam hay không
+ */
+function isVietnamCoordinate(lat, lng) {
+  return Number.isFinite(lat) && Number.isFinite(lng) &&
+         lat >= 8.0 && lat <= 24.0 &&
+         lng >= 102.0 && lng <= 110.0;
+}
+
+/**
+ * BỘ QUÉT TỌA ĐỘ ĐA TẦNG: Quét toàn bộ văn bản HTML/URL để tìm các cặp tọa độ Việt Nam
+ */
+function extractVietnamCoordinatesFromText(text) {
+  if (!text) return [];
+  const coords = [];
+
+  const addPt = (lat, lng) => {
+    lat = parseFloat(lat);
+    lng = parseFloat(lng);
+    if (isVietnamCoordinate(lat, lng)) {
+      const isDuplicate = coords.some(pt => {
+        if (typeof safeDistance === 'function') {
+          return safeDistance(pt.lat, pt.lng, lat, lng) < 0.05; // Dưới 50m xem như trùng
+        }
+        return Math.abs(pt.lat - lat) < 0.0005 && Math.abs(pt.lng - lng) < 0.0005;
+      });
+      if (!isDuplicate) coords.push({ lat, lng });
+    }
+  };
+
+  // 1. Quét định dạng @lat,lng (RẤT PHỔ BIẾN SAU KHIN MỞ RỘNG LINK IPHONE)
+  [...text.matchAll(/@(-?\d+\.\d+),(?:%2C|\s*)(-?\d+\.\d+)/gi)].forEach(m => addPt(m[1], m[2]));
+
+  // 2. Quét Protobuf !1d(lng)!2d(lat) & !2d(lng)!1d(lat)
+  [...text.matchAll(/!1d(-?\d+\.\d+)!2d(-?\d+\.\d+)/g)].forEach(m => addPt(m[2], m[1]));
+  [...text.matchAll(/!2d(-?\d+\.\d+)!1d(-?\d+\.\d+)/g)].forEach(m => addPt(m[2], m[1]));
+
+  // 3. Quét Protobuf !3d(lat)!4d(lng) & !4d(lng)!3d(lat)
+  [...text.matchAll(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/g)].forEach(m => addPt(m[1], m[2]));
+  [...text.matchAll(/!4d(-?\d+\.\d+)!3d(-?\d+\.\d+)/g)].forEach(m => addPt(m[2], m[1]));
+
+  // 4. Quét đường dẫn dạng /dir/lat1,lng1/lat2,lng2
+  [...text.matchAll(/\/dir\/(-?\d+\.\d+),(?:%2C|\s*)(-?\d+\.\d+)\/(-?\d+\.\d+),(?:%2C|\s*)(-?\d+\.\d+)/gi)].forEach(m => {
+    addPt(m[1], m[2]);
+    addPt(m[3], m[4]);
+  });
+
+  // 5. Quét tham số Query (origin, destination, saddr, daddr, markers, path, center, ll)
+  [...text.matchAll(/(?:origin|destination|saddr|daddr|markers|path|center|ll|q)=(-?\d+\.\d+)(?:%2C|,)\s*(-?\d+\.\d+)/gi)].forEach(m => {
+    addPt(m[1], m[2]);
+  });
+
+  // 6. Quét tất cả các cặp Lat,Lng tự do trong HTML
+  [...text.matchAll(/(-?\d{1,2}\.\d{4,15})\s*(?:%2C|,)\s*(-?\d{2,3}\.\d{4,15})/g)].forEach(m => {
+    addPt(m[1], m[2]);
+  });
+
+  return coords;
+}
+
+/**
+ * Trích xuất tên địa danh nơi đi và nơi đến từ URL / HTML
+ */
+function extractPlaceNamesFromText(text) {
+  let pickupName = '', destName = '';
+  if (!text) return { pickupName, destName };
+
+  const cleanName = (str) => {
+    try {
+      let decoded = decodeURIComponent(str.replace(/\+/g, ' '));
+      if (typeof cleanAddressText === 'function') decoded = cleanAddressText(decoded);
+      return /^-?\d+\.\d+,\s*-?\d+\.\d+$/.test(decoded) ? '' : decoded;
+    } catch (e) {
+      return '';
+    }
+  };
+
+  const dirMatch = text.match(/\/dir\/([^\/@?#]+)\/([^\/@?#]+)/i);
+  if (dirMatch) {
+    pickupName = cleanName(dirMatch[1]);
+    destName = cleanName(dirMatch[2]);
+  }
+
+  if (!pickupName || !destName) {
+    const origMatch = text.match(/origin=([^&]+)/i);
+    const destMatch = text.match(/destination=([^&]+)/i);
+    if (origMatch && !pickupName) pickupName = cleanName(origMatch[1]);
+    if (destMatch && !destName) destName = cleanName(destMatch[1]);
+  }
+
+  return { pickupName, destName };
+}
+
+/**
+ * Hàm tra cứu tọa độ từ tên địa danh qua Mapbox API
  */
 async function geocodeAddressName(name, proximity) {
   if (!name || typeof MAPBOX_TOKEN === 'undefined' || !MAPBOX_TOKEN) return null;
@@ -29,17 +127,14 @@ async function geocodeAddressName(name, proximity) {
       const data = await res.json();
       if (data.features && data.features.length > 0) {
         const [lng, lat] = data.features[0].geometry.coordinates;
-        return { 
-          lat, 
-          lng, 
-          placeName: typeof cleanAddressText === 'function' 
-            ? cleanAddressText(data.features[0].text || data.features[0].place_name) 
-            : (data.features[0].text || data.features[0].place_name) 
-        };
+        const placeName = typeof cleanAddressText === 'function' 
+          ? cleanAddressText(data.features[0].text || data.features[0].place_name) 
+          : (data.features[0].text || data.features[0].place_name);
+        return { lat, lng, placeName };
       }
     }
   } catch (e) {
-    console.warn("Lỗi tra cứu tọa độ từ tên địa danh:", e);
+    console.warn("Lỗi Geocoding:", e);
   }
   return null;
 }
@@ -129,6 +224,67 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
+/**
+ * Giải mã song song siêu tốc qua các Proxy
+ */
+async function expandShortLinkParallel(shortUrl, signal) {
+  const cleanShortUrl = extractGoogleMapsUrl(shortUrl);
+  const encoded = encodeURIComponent(cleanShortUrl);
+  const endpoints = [
+    `https://yvucyqkglbgxvozrznir.supabase.co/functions/v1/dynamic-action?url=${encoded}`,
+    typeof CF_WORKER_URL !== 'undefined' ? `${CF_WORKER_URL}/?url=${encoded}` : null,
+    `https://api.codetabs.com/v1/proxy?quest=${encoded}`,
+    `https://corsproxy.io/?${encoded}`
+  ].filter(Boolean);
+
+  const fetchWithTimeout = (url, timeoutMs = 4000) => {
+    return new Promise(async (resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error('Timeout')), timeoutMs);
+      try {
+        const res = await fetch(url, { signal });
+        clearTimeout(timer);
+        if (!res.ok) return reject(new Error('HTTP Error ' + res.status));
+        
+        const contentType = res.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+          const data = await res.json();
+          resolve({
+            expandedUrl: data.expandedUrl || res.url || cleanShortUrl,
+            content: data.content || ''
+          });
+        } else {
+          const text = await res.text();
+          resolve({
+            expandedUrl: res.url || cleanShortUrl,
+            content: text
+          });
+        }
+      } catch (e) {
+        clearTimeout(timer);
+        reject(e);
+      }
+    });
+  };
+
+  try {
+    const results = await Promise.allSettled(endpoints.map(ep => fetchWithTimeout(ep, 4000)));
+    let combinedContent = '';
+    let bestExpandedUrl = cleanShortUrl;
+
+    for (const r of results) {
+      if (r.status === 'fulfilled' && r.value) {
+        if (r.value.content) combinedContent += ' ' + r.value.content;
+        if (r.value.expandedUrl && r.value.expandedUrl !== cleanShortUrl) {
+          bestExpandedUrl = r.value.expandedUrl;
+        }
+      }
+    }
+    return { expandedUrl: bestExpandedUrl, content: combinedContent };
+  } catch (e) {
+    return { expandedUrl: cleanShortUrl, content: '' };
+  }
+}
+
 window.handleGgmapLinkInput = function() {
   clearTimeout(window.ggmapInputTimer);
 
@@ -159,150 +315,73 @@ window.handleGgmapLinkInput = function() {
     let targetUrl = rawUrl;
     let fullHtmlContent = "";
 
+    // 1. Giải mã link rút gọn nếu có
     if (rawUrl.includes('maps.app.goo.gl') || rawUrl.includes('goo.gl')) {
-      let resolved = false;
-
-      // TẦNG 1: Supabase Edge
-      try {
-        const sbRes = await fetch(`https://yvucyqkglbgxvozrznir.supabase.co/functions/v1/dynamic-action?url=${encodeURIComponent(rawUrl)}`, { signal: currentSignal });
-        if (sbRes.ok) {
-          const sbData = await sbRes.json();
-          if (sbData.expandedUrl) {
-            targetUrl = sbData.expandedUrl; fullHtmlContent = sbData.content || ""; resolved = true;
-          }
-        }
-      } catch (e) {
-        if (e.name === 'AbortError') return;
-      }
-
-      // TẦNG 2: Cloudflare Worker
-      if (!resolved) {
-        try {
-          const cfRes = await fetch(`${CF_WORKER_URL}/?url=${encodeURIComponent(rawUrl)}`, { signal: currentSignal });
-          if (cfRes.ok) {
-            const cfData = await cfRes.json();
-            if (cfData.expandedUrl) {
-              targetUrl = cfData.expandedUrl; fullHtmlContent = sbData.content || ""; resolved = true;
-            }
-          }
-        } catch (e) { 
-          if (e.name === 'AbortError') return;
-        }
-      }
-
-      // TẦNG 3: Public Proxies
-      if (!resolved) {
-        const proxyList = [
-          async (u) => { const res = await fetch(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`, { signal: currentSignal }); if (!res.ok) throw new Error(); return { url: u, content: await res.text() }; },
-          async (u) => { const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(u)}`, { signal: currentSignal }); if (!res.ok) throw new Error(); return { url: res.url || u, content: await res.text() }; }
-        ];
-
-        for (const fetchProxy of proxyList) {
-          try {
-            const result = await fetchProxy(rawUrl); targetUrl = result.url; fullHtmlContent = result.content;
-            if (fullHtmlContent || targetUrl !== rawUrl) { resolved = true; break; }
-          } catch (err) {
-            if (err.name === 'AbortError') return;
-          }
-        }
-      }
-
-      if (!resolved) { 
-        if (currentSignal.aborted) return;
-        if (typeof alert === 'function') alert("❌ Dịch vụ giải mã link bận. Vui lòng kiểm tra lại kết nối!"); 
-        return; 
-      }
+      const expandedResult = await expandShortLinkParallel(rawUrl, currentSignal);
+      if (currentSignal.aborted) return;
+      targetUrl = expandedResult.expandedUrl;
+      fullHtmlContent = expandedResult.content;
     }
 
     if (currentSignal.aborted) return;
 
-    // Trích xuất thêm thông tin thẻ Meta HTML
-    let metaUrls = "";
-    if (fullHtmlContent) {
-      const ogUrlMatch = fullHtmlContent.match(/<meta[^>]+property=["']og:url["'][^>]+content=["']([^"']+)["']/i);
-      const canonicalMatch = fullHtmlContent.match(/<link[^>]+rel=["']canonical["'][^>]+href=["']([^"']+)["']/i);
-      const ogImageMatch = fullHtmlContent.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i);
-      if (ogUrlMatch) metaUrls += " " + ogUrlMatch[1];
-      if (canonicalMatch) metaUrls += " " + canonicalMatch[1];
-      if (ogImageMatch) metaUrls += " " + ogImageMatch[1];
-    }
+    // 2. Tổng hợp tất cả nguồn văn bản
+    const masterText = rawUrl + " " + targetUrl + " " + fullHtmlContent;
 
-    const parseText = targetUrl + " " + metaUrls + " " + fullHtmlContent;
-    let pickupLat = null, pickupLng = null, destLat = null, destLng = null, pickupName = "", destName = "";
+    // 3. Quét tọa độ Việt Nam từ văn bản
+    let detectedCoords = extractVietnamCoordinatesFromText(masterText);
+    let { pickupName, destName } = extractPlaceNamesFromText(masterText);
 
-    // BƯỚC 1: Bóc tách tên địa điểm từ đường dẫn /dir/Name1/Name2/
-    const textMatch = targetUrl.match(/\/dir\/([^\/@]+)\/([^\/@]+)\//);
-    if (textMatch) {
-      try {
-        let rawPickup = cleanAddressText(decodeURIComponent(textMatch[1].replace(/\+/g, ' ')));
-        let rawDest = cleanAddressText(decodeURIComponent(textMatch[2].replace(/\+/g, ' ')));
-        const isCoordRegex = /^-?\d+\.\d+,\s*-?\d+\.\d+$/;
-        if (!isCoordRegex.test(rawPickup)) pickupName = rawPickup;
-        if (!isCoordRegex.test(rawDest)) destName = rawDest;
-      } catch (e) {}
-    }
+    let pickupLat = null, pickupLng = null, destLat = null, destLng = null;
 
-    // BƯỚC 2: Thử trích xuất theo tham số Origin & Destination
-    const queryMatch = parseText.match(/(?:origin|saddr)=(-?\d+\.\d+)(?:%2C|,)\s*(-?\d+\.\d+).*(?:destination|daddr)=(-?\d+\.\d+)(?:%2C|,)\s*(-?\d+\.\d+)/i);
-    if (queryMatch) {
-      pickupLat = parseFloat(queryMatch[1]); pickupLng = parseFloat(queryMatch[2]);
-      destLat = parseFloat(queryMatch[3]); destLng = parseFloat(queryMatch[4]);
-    }
-
-    // BƯỚC 3: Thử trích xuất theo đường dẫn /dir/lat1,lng1/lat2,lng2
-    if (!pickupLat || !destLat) {
-      const dirCoordMatch = parseText.match(/\/dir\/(-?\d+\.\d+),(?:%2C|\s*)(-?\d+\.\d+)\/(-?\d+\.\d+),(?:%2C|\s*)(-?\d+\.\d+)/i);
-      if (dirCoordMatch) {
-        pickupLat = parseFloat(dirCoordMatch[1]); pickupLng = parseFloat(dirCoordMatch[2]);
-        destLat = parseFloat(dirCoordMatch[3]); destLng = parseFloat(dirCoordMatch[4]);
+    if (detectedCoords.length >= 2) {
+      pickupLat = detectedCoords[0].lat;
+      pickupLng = detectedCoords[0].lng;
+      destLat = detectedCoords[detectedCoords.length - 1].lat;
+      destLng = detectedCoords[detectedCoords.length - 1].lng;
+    } else if (detectedCoords.length === 1) {
+      // XỬ LÝ ĐẶC BIỆT CHO LINK IPHONE CHỈ CHỨA 1 ĐIỂM ĐẾN:
+      destLat = detectedCoords[0].lat;
+      destLng = detectedCoords[0].lng;
+      
+      // Điểm đón lấy vị trí hiện tại của khách
+      if (typeof userLatLng !== 'undefined' && userLatLng) {
+        pickupLat = userLatLng.lat;
+        pickupLng = userLatLng.lng;
       }
     }
 
-    // BƯỚC 4: Thử trích xuất Protobuf Kiểu 1 (!1d lng !2d lat)
-    if (!pickupLat || !destLat) {
-      const matches1 = [...parseText.matchAll(/(?:!2m2)?!1d(-?\d+\.\d+)!2d(-?\d+\.\d+)/g)];
-      if (matches1.length >= 2) {
-        pickupLng = parseFloat(matches1[0][1]); pickupLat = parseFloat(matches1[0][2]);
-        destLng = parseFloat(matches1[1][1]); destLat = parseFloat(matches1[1][2]);
-      }
-    }
-
-    // BƯỚC 5: Thử trích xuất Protobuf Kiểu 2 (!3d lat !4d lng)
-    if (!pickupLat || !destLat) {
-      const matches2 = [...parseText.matchAll(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/g)];
-      if (matches2.length >= 2) {
-        pickupLat = parseFloat(matches2[0][1]); pickupLng = parseFloat(matches2[0][2]);
-        destLat = parseFloat(matches2[1][1]); destLng = parseFloat(matches2[1][2]);
-      }
-    }
-
-    // BƯỚC 6: NẾU LINK TỪ IPHONE THIẾU SỐ TỌA ĐỘ ➔ TỰ ĐỘNG CHUYỂN HƯỚNG SANG TRA CỨU ĐỊA DANH
+    // 4. Quy đổi tên địa danh sang tọa độ nếu link không có chuỗi số tọa độ
     if ((!pickupLat || !destLat) && (pickupName || destName)) {
-      let centerHint = null;
-      const centerMatch = parseText.match(/@(-?\d+\.\d+),(?:%2C|\s*)(-?\d+\.\d+)/);
-      if (centerMatch) {
-        centerHint = { lat: parseFloat(centerMatch[1]), lng: parseFloat(centerMatch[2]) };
-      }
-      const proximity = centerHint || (typeof userLatLng !== 'undefined' && userLatLng ? { lat: userLatLng.lat, lng: userLatLng.lng } : null);
+      const proximity = (typeof userLatLng !== 'undefined' && userLatLng) ? { lat: userLatLng.lat, lng: userLatLng.lng } : null;
 
       if (!pickupLat && pickupName) {
         if (/^(vị trí của tôi|my location|vị trí hiện tại|current location)$/i.test(pickupName.trim())) {
           if (typeof userLatLng !== 'undefined' && userLatLng) {
-            pickupLat = userLatLng.lat; pickupLng = userLatLng.lng;
+            pickupLat = userLatLng.lat;
+            pickupLng = userLatLng.lng;
           }
         } else {
           const geoRes = await geocodeAddressName(pickupName, proximity);
-          if (geoRes) { pickupLat = geoRes.lat; pickupLng = geoRes.lng; }
+          if (geoRes) {
+            pickupLat = geoRes.lat;
+            pickupLng = geoRes.lng;
+            if (geoRes.placeName) pickupName = geoRes.placeName;
+          }
         }
       }
 
       if (!destLat && destName) {
         const geoRes = await geocodeAddressName(destName, proximity);
-        if (geoRes) { destLat = geoRes.lat; destLng = geoRes.lng; }
+        if (geoRes) {
+          destLat = geoRes.lat;
+          destLng = geoRes.lng;
+          if (geoRes.placeName) destName = geoRes.placeName;
+        }
       }
     }
 
-    // THỰC THI VẼ ĐƯỜNG VÀ CẬP NHẬT GIAO DIỆN
+    // 5. THỰC THI VẼ ĐƯỜNG VÀ TÍNH GIÁ CƯỚC
     if (pickupLat && pickupLng && destLat && destLng) {
       const pickupLatLng = L.latLng(pickupLat, pickupLng);
       const destLatLng = L.latLng(destLat, destLng);
