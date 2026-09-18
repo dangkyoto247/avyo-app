@@ -1,11 +1,11 @@
-// boc-tach-ggmap.js - Bóc tách và xử lý link chỉ đường Google Maps (Bản chuẩn hóa tối ưu cho iPhone, Android, PC & Zalo)
+// boc-tach-ggmap.js - Bóc tách và xử lý link chỉ đường Google Maps (Khắc phục triệt để lỗi trùng điểm < 50m trên iOS)
 
 window.ggmapAbortController = window.ggmapAbortController || null;
 window.ggmapInputTimer = window.ggmapInputTimer || null;
 window.wasGgmapOpened = window.wasGgmapOpened || false;
 
 /**
- * Lọc trích xuất URL Google Maps chuẩn và TỰ ĐỘNG LỌC THAM SỐ g_st=ic CỦA IPHONE
+ * Lọc trích xuất URL Google Maps chuẩn và tự động lọc tham số g_st=ic của iPhone
  */
 function extractGoogleMapsUrl(text) {
   if (!text) return '';
@@ -14,7 +14,6 @@ function extractGoogleMapsUrl(text) {
   if (!match) return text.trim();
   
   let url = match[1];
-  // Tách bỏ tham số rác g_st=ic do iPhone tạo ra
   url = url.replace(/[\?&]g_st=[^&]+/i, '');
   return url;
 }
@@ -29,7 +28,7 @@ function isVietnamCoordinate(lat, lng) {
 }
 
 /**
- * BỘ QUÉT TỌA ĐỘ ĐA TẦNG: Quét độc lập từng cặp tọa độ Việt Nam trong URL và HTML
+ * BỘ QUÉT TỌA ĐỘ ĐA TẦNG: Quét tất cả tọa độ Việt Nam có trong văn bản
  */
 function extractVietnamCoordinatesFromText(text) {
   if (!text) return [];
@@ -41,15 +40,15 @@ function extractVietnamCoordinatesFromText(text) {
     if (isVietnamCoordinate(lat, lng)) {
       const isDuplicate = coords.some(pt => {
         if (typeof safeDistance === 'function') {
-          return safeDistance(pt.lat, pt.lng, lat, lng) < 0.03; // Dưới 30m xem như trùng
+          return safeDistance(pt.lat, pt.lng, lat, lng) < 0.02; // Dưới 20m xem như trùng
         }
-        return Math.abs(pt.lat - lat) < 0.0003 && Math.abs(pt.lng - lng) < 0.0003;
+        return Math.abs(pt.lat - lat) < 0.0002 && Math.abs(pt.lng - lng) < 0.0002;
       });
       if (!isDuplicate) coords.push({ lat, lng });
     }
   };
 
-  // 1. Quét độc lập đường dẫn /dir/LAT,LNG/ (Chuyên trị link Ghim trên iOS)
+  // 1. Quét đường dẫn /dir/LAT,LNG/
   [...text.matchAll(/\/dir\/(-?\d+\.\d+),(?:%2C|\s*)(-?\d+\.\d+)/gi)].forEach(m => addPt(m[1], m[2]));
 
   // 2. Quét định dạng @lat,lng
@@ -77,7 +76,7 @@ function extractVietnamCoordinatesFromText(text) {
 }
 
 /**
- * Trích xuất tên địa danh và LỌC BỎ TỪ RÁC "Ghim đã thả", "Dropped pin"
+ * Trích xuất tên địa danh và LỌC BỎ TỪ RÁC
  */
 function extractPlaceNamesFromText(text) {
   let pickupName = '', destName = '';
@@ -88,7 +87,6 @@ function extractPlaceNamesFromText(text) {
       let decoded = decodeURIComponent(str.replace(/\+/g, ' '));
       if (typeof cleanAddressText === 'function') decoded = cleanAddressText(decoded);
       
-      // Bỏ qua nếu là Tọa độ số hoặc Từ rác
       if (/^-?\d+\.\d+,\s*-?\d+\.\d+$/.test(decoded)) return '';
       if (/^(ghim đã thả|dropped pin|chỗ ghim|vị trí đã ghim|pinned location|unnamed road)$/i.test(decoded.trim())) return '';
       
@@ -120,7 +118,6 @@ function extractPlaceNamesFromText(text) {
 async function geocodeAddressName(name, proximity) {
   if (!name || typeof MAPBOX_TOKEN === 'undefined' || !MAPBOX_TOKEN) return null;
   
-  // Bỏ qua từ rác "Ghim đã thả"
   if (/^(ghim đã thả|dropped pin|chỗ ghim|vị trí đã ghim|pinned location)$/i.test(name.trim())) {
     return null;
   }
@@ -182,7 +179,7 @@ window.clearGgmapInput = function() {
 };
 
 /**
- * Hàm dán liên kết hỗ trợ tối đa cho Safari iOS
+ * Hàm dán liên kết hỗ trợ Safari iOS
  */
 window.pasteFromClipboard = async function() {
   const inputEl = document.getElementById('ggmapLinkInput');
@@ -233,21 +230,19 @@ document.addEventListener('visibilitychange', () => {
 });
 
 /**
- * Giải mã link rút gọn an toàn (Không bắn lỗi 403 / CORS ra Console)
+ * Giải mã link rút gọn an toàn
  */
 async function expandShortLinkClean(shortUrl, signal) {
   const cleanShortUrl = extractGoogleMapsUrl(shortUrl);
   const encoded = encodeURIComponent(cleanShortUrl);
 
   const proxyServices = [
-    // 1. Supabase Edge Function
     async () => {
       const res = await fetch(`https://yvucyqkglbgxvozrznir.supabase.co/functions/v1/dynamic-action?url=${encoded}`, { signal });
       if (!res.ok) throw new Error('Supabase Edge Error');
       const data = await res.json();
       return { expandedUrl: data.expandedUrl || cleanShortUrl, content: data.content || '' };
     },
-    // 2. Cloudflare Worker
     async () => {
       if (typeof CF_WORKER_URL === 'undefined' || !CF_WORKER_URL) throw new Error('No CF Worker');
       const res = await fetch(`${CF_WORKER_URL}/?url=${encoded}`, { signal });
@@ -255,7 +250,6 @@ async function expandShortLinkClean(shortUrl, signal) {
       const data = await res.json();
       return { expandedUrl: data.expandedUrl || cleanShortUrl, content: data.content || '' };
     },
-    // 3. AllOrigins Proxy (Thay thế cho các Proxy 403 bị lỗi)
     async () => {
       const res = await fetch(`https://api.allorigins.win/get?url=${encoded}`, { signal });
       if (!res.ok) throw new Error('AllOrigins Error');
@@ -308,7 +302,7 @@ window.handleGgmapLinkInput = function() {
     let targetUrl = rawUrl;
     let fullHtmlContent = "";
 
-    // 1. Giải mã link rút gọn hoặc link geocode từ Zalo
+    // 1. Giải mã link rút gọn
     if (rawUrl.includes('maps.app.goo.gl') || rawUrl.includes('goo.gl') || rawUrl.includes('geocode=')) {
       const expandedResult = await expandShortLinkClean(rawUrl, currentSignal);
       if (currentSignal.aborted) return;
@@ -318,34 +312,47 @@ window.handleGgmapLinkInput = function() {
 
     if (currentSignal.aborted) return;
 
-    // 2. Tổng hợp nguồn văn bản
+    // 2. Tổng hợp tất cả nguồn văn bản
     const masterText = rawUrl + " " + targetUrl + " " + fullHtmlContent;
 
-    // 3. Quét tọa độ Việt Nam từ văn bản
+    // 3. Quét tọa độ Việt Nam
     let detectedCoords = extractVietnamCoordinatesFromText(masterText);
     let { pickupName, destName } = extractPlaceNamesFromText(masterText);
 
     let pickupLat = null, pickupLng = null, destLat = null, destLng = null;
-
     const isMyLocationText = /^(vị trí của bạn|vị trí của tôi|my location|vị trí hiện tại|current location|your location)$/i;
 
+    // BƯỚC KIỂM TRA ĐIỂM ĐÓN & ĐIỂM ĐẾN THỰC SỰ (> 100m)
+    let hasTwoRealEndpoints = false;
     if (detectedCoords.length >= 2) {
-      pickupLat = detectedCoords[0].lat;
-      pickupLng = detectedCoords[0].lng;
-      destLat = detectedCoords[detectedCoords.length - 1].lat;
-      destLng = detectedCoords[detectedCoords.length - 1].lng;
-    } else if (detectedCoords.length === 1) {
-      destLat = detectedCoords[0].lat;
-      destLng = detectedCoords[0].lng;
+      const first = detectedCoords[0];
+      const last = detectedCoords[detectedCoords.length - 1];
+      const dist = (typeof safeDistance === 'function') ? safeDistance(first.lat, first.lng, last.lat, last.lng) : 0;
       
-      if (typeof userLatLng !== 'undefined' && userLatLng) {
-        pickupLat = userLatLng.lat;
-        pickupLng = userLatLng.lng;
-        pickupName = "Vị trí hiện tại của bạn";
+      // Chỉ chấp nhận là 2 điểm khi khoảng cách giữa chúng từ 100m trở lên
+      if (dist >= 0.1) {
+        pickupLat = first.lat;
+        pickupLng = first.lng;
+        destLat = last.lat;
+        destLng = last.lng;
+        hasTwoRealEndpoints = true;
       }
     }
 
-    // 4. XỬ LÝ "VỊ TRÍ CỦA BẠN": Nếu điểm đón là "Vị trí của bạn", tự gán GPS hiện tại
+    // NẾU KHÔNG CÓ 2 ĐIỂM XA NHAU: Tọa độ tìm thấy duy nhất chính là ĐIỂM ĐẾN
+    if (!hasTwoRealEndpoints && detectedCoords.length >= 1) {
+      destLat = detectedCoords[0].lat;
+      destLng = detectedCoords[0].lng;
+      
+      // Điểm đón lấy vị trí GPS hiện tại của khách
+      if (typeof userLatLng !== 'undefined' && userLatLng) {
+        pickupLat = userLatLng.lat;
+        pickupLng = userLatLng.lng;
+        if (!pickupName) pickupName = "Vị trí hiện tại của bạn";
+      }
+    }
+
+    // 4. XỬ LÝ "VỊ TRÍ CỦA BẠN": Gán GPS hiện tại của khách làm Điểm đón
     if (pickupName && isMyLocationText.test(pickupName.trim())) {
       if (typeof userLatLng !== 'undefined' && userLatLng) {
         pickupLat = userLatLng.lat;
@@ -354,7 +361,7 @@ window.handleGgmapLinkInput = function() {
       }
     }
 
-    // 5. Quy đổi tên địa danh sang tọa độ nếu link thiếu chuỗi số tọa độ
+    // 5. Quy đổi tên địa danh sang tọa độ nếu link thiếu chuỗi số
     if ((!pickupLat || !destLat) && (pickupName || destName)) {
       const proximity = (typeof userLatLng !== 'undefined' && userLatLng) ? { lat: userLatLng.lat, lng: userLatLng.lng } : null;
 
