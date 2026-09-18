@@ -11,6 +11,7 @@ let currentSessionToken = localStorage.getItem('avyo_session_token');
 let driverData = null; 
 let timeInterval = null;
 let wakeLock = null;
+let driverChannel = null; // Đã thêm: Biến lưu instance của Supabase Realtime Channel
 
 let driverMap = null;
 let driverMarker = null;
@@ -88,6 +89,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (appScreen) appScreen.style.display = 'block';
     loadDriverProfile();
     initDriverMap();
+    setupRealtimeSubscription(); // Đã thêm: Khởi tạo kênh realtime khi app load
   } else {
     const loginScreen = document.getElementById('loginScreen');
     if (loginScreen) loginScreen.style.display = 'block';
@@ -312,6 +314,13 @@ function confirmLogout() {
 
 function executeLogout() {
   if (isOnline) toggleOnline();
+
+  // Đã thêm: Hủy lắng nghe kênh Realtime để tránh Memory Leak
+  if (driverChannel) {
+    supabaseClient.removeChannel(driverChannel);
+    driverChannel = null;
+  }
+
   releaseWakeLock();
   hideNetworkAlert();
   localStorage.removeItem('avyo_driver_id');
@@ -503,8 +512,18 @@ window.addEventListener('offline', () => {
   }
 });
 
-if (currentDriverId) {
-  supabaseClient.channel('driver-self-update')
+// Đã thêm: Đóng gói kênh Realtime vào 1 hàm để quản lý Memory Leak
+function setupRealtimeSubscription() {
+  if (!currentDriverId) return;
+
+  // Hủy kênh cũ nếu đang tồn tại trước khi mở mới
+  if (driverChannel) {
+    supabaseClient.removeChannel(driverChannel);
+    driverChannel = null;
+  }
+
+  // Khởi tạo kênh mới, sử dụng ID unique cho phiên đăng nhập này
+  driverChannel = supabaseClient.channel(`driver-self-update-${currentDriverId}`)
     .on('postgres_changes', { 
       event: 'UPDATE', 
       schema: 'public', 

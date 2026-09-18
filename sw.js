@@ -1,5 +1,5 @@
 const TILE_CACHE_NAME = 'map-tiles-v2';
-const STATIC_CACHE_NAME = 'avyo-static-v1'; // Cập nhật version để SW reset lại
+const STATIC_CACHE_NAME = 'avyo-static-v2'; // Cập nhật version để SW reset lại
 
 const STATIC_ASSETS = [
   '/',

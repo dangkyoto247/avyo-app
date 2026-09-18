@@ -187,7 +187,7 @@ function renderDriverMarkers() {
         </div>
         <div style="display:flex; gap:6px; align-items:center;">
           <button class="btn-action-zalo" onclick="event.stopPropagation(); openZaloById('${driver.id}')" title="Nhắn Zalo">💬 Zalo</button>
-          <button class="btn-action-phone" onclick="event.stopPropagation(); trackCallById(event, '${driver.id}')" title="Gọi điện">📞 Gọi</button>
+          <button class="btn-action-phone" onclick="event.stopPropagation(); trackCallById('${driver.id}')" title="Gọi điện">📞 Gọi</button>
         </div>
       `;
       if (top3List) top3List.appendChild(div);
@@ -213,7 +213,7 @@ function renderDriverMarkers() {
         <small style="color:#64748b; font-size:11px;">(${rating.count} lượt)</small>
         <div style="display:flex; gap:6px; justify-content:center; margin-top:8px;">
           <button class="btn-action-zalo" onclick="event.stopPropagation(); openZaloById('${driver.id}')" style="padding:5px 8px; font-size:11px;">💬 Zalo</button>
-          <button class="btn-action-phone" onclick="event.stopPropagation(); trackCallById(event, '${driver.id}')" style="padding:5px 8px; font-size:11px;">📞 Gọi</button>
+          <button class="btn-action-phone" onclick="event.stopPropagation(); trackCallById('${driver.id}')" style="padding:5px 8px; font-size:11px;">📞 Gọi</button>
         </div>
       </div>
     `;
@@ -237,62 +237,99 @@ function renderDriverMarkers() {
   });
 }
 
-async function trackCallById(event, driverId) {
-  if (event) event.preventDefault();
+/**
+ * Mở Zalo thông minh (Ưu tiên App native trên Mobile để tránh CAPTCHA Zalo Web)
+ */
+function openZaloById(driverId) {
   const driver = rawDriversData.find(d => d.id === driverId) || selectedDriver;
-  if (!driver) return;
-  if (!selectedDriver || selectedDriver.id !== driver.id) await selectDriver(driver);
+  if (!driver || !driver.phone) return;
 
-  const centerPoint = markerStart ? markerStart.getLatLng() : userLatLng;
-  if (centerPoint) {
-    const distKm = safeDistance(centerPoint.lat, centerPoint.lng, driver.lat, driver.lng);
-    if (distKm > 15) return alert(`⚠️ Tài xế đang ở cách bạn ${distKm.toFixed(1)}km (ngoài bán kính 15km). Hãy chọn tài xế ở gần hơn!`);
+  const typeName = (typeof typeNames !== 'undefined' && typeNames[driver.vehicle_type]) || 'Tài xế';
+  const distVal = parseFloat(currentDistance || 0);
+  let msg = `Chào ${typeName}, tôi muốn đặt xe Avyo:\n`;
+
+  if (typeof markerStart !== 'undefined' && markerStart) {
+    const sLat = markerStart.getLatLng().lat.toFixed(5);
+    const sLng = markerStart.getLatLng().lng.toFixed(5);
+    
+    if (typeof markerEnd !== 'undefined' && markerEnd) {
+      const eLat = markerEnd.getLatLng().lat.toFixed(5);
+      const eLng = markerEnd.getLatLng().lng.toFixed(5);
+      const mapRouteUrl = `https://www.google.com/maps/dir/?api=1&origin=${sLat},${sLng}&destination=${eLat},${eLng}&travelmode=driving`;
+      
+      msg += `\n🗺️ Lộ trình Google Maps: ${mapRouteUrl}`;
+      if (typeof pickupDetailNote !== 'undefined' && pickupDetailNote) {
+        msg += `\n📝 Chi tiết điểm đón: ${pickupDetailNote}`;
+      }
+      msg += `\n📏 Quãng đường: ${currentDistance} km`;
+      msg += `\n💰 Cước phí dự kiến: ${(driver.vehicle_type === 'truck' || distVal > 100) ? 'Thỏa thuận' : (typeof currentPrice !== 'undefined' ? currentPrice.toLocaleString('vi-VN') + 'đ' : '')}`;
+    } else {
+      msg += `\n📍 Vị trí đón: https://maps.google.com/?q=${sLat},${sLng}`;
+      if (typeof pickupDetailNote !== 'undefined' && pickupDetailNote) {
+        msg += `\n📝 Chi tiết điểm đón: ${pickupDetailNote}`;
+      }
+    }
   }
 
-  localStorage.setItem(`avyo_unlocked_rating_${driver.id}`, 'true');
-  await supabaseClient.rpc('increment_driver_call', { target_id: driver.id });
-  window.location.href = `tel:${driver.phone}`;
+  // 1. Sao chép nội dung tin nhắn vào Clipboard
+  if (typeof copyToClipboard === 'function') {
+    copyToClipboard(msg);
+  }
+
+  // 2. Phân loại thiết bị Mobile vs PC để mở Zalo phù hợp
+  const cleanPhone = driver.phone.replace(/\D/g, '');
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+  if (isMobile) {
+    window.location.href = `zalo://chat?phone=${cleanPhone}`;
+  } else {
+    window.open(`https://zalo.me/${cleanPhone}`, '_blank', 'noopener,noreferrer');
+  }
+
+  // 3. Hiển thị thông báo hướng dẫn dán nội dung
+  if (typeof alert === 'function') {
+    alert("✅ Đã sao chép lộ trình chuyến đi!\n\nKhi ứng dụng Zalo mở ra, bạn chỉ cần nhấn giữ khung chat và chọn 'DÁN' (Paste) để gửi thông tin cho tài xế.");
+  }
+
+  // 4. Ghi nhận analytics ngầm an toàn (Sửa triệt để lỗi TypeError .catch)
+  if (typeof selectDriver === 'function' && (!selectedDriver || selectedDriver.id !== driver.id)) {
+    selectDriver(driver);
+  }
+
+  if (typeof supabaseClient !== 'undefined') {
+    (async () => {
+      try {
+        await supabaseClient.rpc('increment_driver_zalo', { target_id: driver.id });
+      } catch (err) {
+        console.warn('[Supabase] Lỗi đếm Zalo:', err);
+      }
+    })();
+  }
 }
 
-async function openZaloById(driverId) {
+/**
+ * Kích hoạt cuộc gọi điện thoại đồng bộ để bảo toàn User Gesture
+ */
+function trackCallById(driverId) {
   const driver = rawDriversData.find(d => d.id === driverId) || selectedDriver;
-  if (!driver) return;
-
-  const typeName = typeNames[driver.vehicle_type] || 'Tài xế';
-  const distVal = parseFloat(currentDistance);
-  let msg = `Chào ${typeName}, tôi muốn sử dụng dịch vụ Avyo:\n`;
-
-  if (markerStart && markerEnd) {
-    const sLat = markerStart.getLatLng().lat.toFixed(5), sLng = markerStart.getLatLng().lng.toFixed(5);
-    const eLat = markerEnd.getLatLng().lat.toFixed(5), eLng = markerEnd.getLatLng().lng.toFixed(5);
-    const mapRouteUrl = `https://www.google.com/maps/dir/?api=1&origin=${sLat},${sLng}&destination=${eLat},${eLng}&travelmode=driving`;
-    msg += `\n🗺️ Lộ trình Google Maps: ${mapRouteUrl}`;
-    if (pickupDetailNote) msg += `\n📝 Chi tiết điểm đón: ${pickupDetailNote}`;
-    msg += `\n📏 Quãng đường: ${currentDistance} km`;
-    msg += `\n💰 Cước phí: ${(driver.vehicle_type === 'truck' || distVal > 100) ? 'Thỏa thuận' : currentPrice.toLocaleString('vi-VN') + 'đ'}`;
-  } else if (markerStart) {
-    const sLat = markerStart.getLatLng().lat.toFixed(5), sLng = markerStart.getLatLng().lng.toFixed(5);
-    msg += `\n📍 Điểm đi: https://maps.google.com/?q=${sLat},${sLng}`;
-    if (pickupDetailNote) msg += `\n📝 Chi tiết điểm đón: ${pickupDetailNote}`;
-  }
-  copyToClipboard(msg);
-
-  if (!selectedDriver || selectedDriver.id !== driver.id) await selectDriver(driver);
-
-  const centerPoint = markerStart ? markerStart.getLatLng() : userLatLng;
-  if (centerPoint) {
-    const distKm = safeDistance(centerPoint.lat, centerPoint.lng, driver.lat, driver.lng);
-    if (distKm > 15) return alert(`⚠️ Tài xế đang ở cách bạn ${distKm.toFixed(1)}km (ngoài bán kính 15km). Hãy chọn tài xế ở gần hơn!`);
+  if (!driver || !driver.phone) {
+    console.warn("[trackCallById] Không tìm thấy thông tin tài xế hoặc số điện thoại.");
+    return;
   }
 
-  localStorage.setItem(`avyo_unlocked_rating_${driver.id}`, 'true');
-  await supabaseClient.rpc('increment_driver_zalo', { target_id: driver.id });
-  await alert("✅ ĐÃ COPY LỘ TRÌNH!\n\nHệ thống mở Zalo ngay bây giờ. Bạn hãy dán (Paste) nội dung tin nhắn gửi cho tài xế nhé!");
-  
-  // GỌI HÀM MỞ ZALO CHỐNG CHẶN RATE-LIMIT
-  if (typeof openZaloApp === 'function') {
-    openZaloApp(driver.phone);
-  } else {
-    window.open(`https://zalo.me/${driver.phone.replace(/\D/g, '')}`, '_blank', 'noopener,noreferrer');
+  const cleanPhone = driver.phone.replace(/\D/g, '');
+
+  // Thực hiện cuộc gọi ngay lập tức
+  window.location.href = `tel:${cleanPhone}`;
+
+  // Ghi nhận analytics ngầm an toàn (Sửa triệt để lỗi TypeError .catch)
+  if (typeof supabaseClient !== 'undefined') {
+    (async () => {
+      try {
+        await supabaseClient.rpc('increment_driver_call', { target_id: driver.id });
+      } catch (err) {
+        console.warn('[Supabase] Lỗi đếm cuộc gọi:', err);
+      }
+    })();
   }
 }
