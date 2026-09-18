@@ -383,3 +383,34 @@ window.alert = function(message) {
     btnEl.onclick = closeAlert;
   });
 };
+
+// ==========================================
+// HÀM MỞ ZALO THÔNG MINH (CHỐNG BỊ ZALO BẮT MÃ BẢO MẬT/CAPTCHA)
+// ==========================================
+window.openZaloApp = function(phoneNumber) {
+  if (!phoneNumber) return;
+  
+  // Chuẩn hóa số điện thoại, xóa các ký tự không phải số
+  const cleanPhone = phoneNumber.toString().replace(/\D/g, '');
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+  if (isMobile) {
+    // Kích hoạt thẳng ứng dụng Zalo trên điện thoại (không mở trang web zalo.me)
+    window.location.href = `zalo://chat?phone=${cleanPhone}`;
+    
+    // Dự phòng: Nếu thiết bị chưa cài app Zalo, mở web sau 1.5 giây
+    let hasBlurred = false;
+    const blurHandler = () => { hasBlurred = true; };
+    window.addEventListener('blur', blurHandler, { once: true });
+
+    setTimeout(() => {
+      window.removeEventListener('blur', blurHandler);
+      if (!hasBlurred) {
+        window.open(`https://zalo.me/${cleanPhone}`, '_blank', 'noopener,noreferrer');
+      }
+    }, 1500);
+  } else {
+    // Trên máy tính: Mở tab Web và ẩn Referrer để Zalo không chặn IP web app
+    window.open(`https://zalo.me/${cleanPhone}`, '_blank', 'noopener,noreferrer');
+  }
+};

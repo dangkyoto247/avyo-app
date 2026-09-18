@@ -122,11 +122,9 @@ async function selectDriver(driver) {
   updatePrice();
   renderDriverMarkers();
 
-  // CĂN CHỈNH BẢN ĐỒ ĐỂ ICON TÀI XẾ NẰM TRÊN ĐỈNH GHIM PIN 1/3
   const driverMarker = driverMarkers[driver.id];
   const targetLatLng = driverMarker ? driverMarker.getLatLng() : (driver.lat && driver.lng ? L.latLng(driver.lat, driver.lng) : null);
   if (targetLatLng) {
-    // Thay đổi tham số offset (ví dụ: -45 là dịch chuyển lên trên đỉnh ghim pin khoảng vài px)
     const pinTopOffset = -60; 
     centerMapOnPin(targetLatLng, null, pinTopOffset, true);
   }
@@ -228,7 +226,6 @@ function renderDriverMarkers() {
       existingMarker.setPopupContent(popupHtml);
     } else {
       const marker = L.Marker.movingMarker([targetLatLng, targetLatLng], [1000], { icon: icon }).addTo(map);
-      // THÊM autoPan: false ĐỂ TRÁNH POPUP LÀM TRÔI VỊ TRÍ CHÍNH GIỮA GHIM PIN
       marker.bindPopup(popupHtml, { autoPan: false });
       marker.on('click', () => selectDriver(driver));
       driverMarkers[driver.id] = marker;
@@ -240,7 +237,6 @@ function renderDriverMarkers() {
   });
 }
 
-// XỬ LÝ NÚT GỌI ĐIỆN HOẶC MỞ ZALO
 async function trackCallById(event, driverId) {
   if (event) event.preventDefault();
   const driver = rawDriversData.find(d => d.id === driverId) || selectedDriver;
@@ -292,5 +288,11 @@ async function openZaloById(driverId) {
   localStorage.setItem(`avyo_unlocked_rating_${driver.id}`, 'true');
   await supabaseClient.rpc('increment_driver_zalo', { target_id: driver.id });
   await alert("✅ ĐÃ COPY LỘ TRÌNH!\n\nHệ thống mở Zalo ngay bây giờ. Bạn hãy dán (Paste) nội dung tin nhắn gửi cho tài xế nhé!");
-  window.open(`https://zalo.me/${driver.phone}`, '_blank');
+  
+  // GỌI HÀM MỞ ZALO CHỐNG CHẶN RATE-LIMIT
+  if (typeof openZaloApp === 'function') {
+    openZaloApp(driver.phone);
+  } else {
+    window.open(`https://zalo.me/${driver.phone.replace(/\D/g, '')}`, '_blank', 'noopener,noreferrer');
+  }
 }
