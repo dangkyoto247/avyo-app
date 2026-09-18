@@ -7,8 +7,7 @@ let lastAutoPastedUrl = '';
 window.openGoogleMapsToCopy = function() {
   let url = 'https://www.google.com/maps/dir/?api=1';
 
-  // 1. CHỈ truyền origin khi khách ĐÃ CHỌN điểm đi cụ thể trên bản đồ Avyo
-  // Nếu chưa chọn: Không truyền origin để Google Maps tự động nhận diện "Vị trí của bạn"
+  // 1. Chỉ truyền origin khi khách ĐÃ CHỌN điểm đi cụ thể trên Avyo
   if (typeof markerStart !== 'undefined' && markerStart) {
     const s = markerStart.getLatLng();
     url += `&origin=${s.lat},${s.lng}`;
@@ -20,7 +19,17 @@ window.openGoogleMapsToCopy = function() {
     url += `&destination=${e.lat},${e.lng}`;
   }
 
-  window.open(url, '_blank');
+  // 3. Kiểm tra thiết bị iOS (iPhone/iPad)
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+                (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+  if (isIOS) {
+    // Trên iOS: Dùng location.href để mở thẳng App Google Maps, tránh bị kẹt màn hình trắng "Xong"
+    window.location.href = url;
+  } else {
+    // Trên Android / PC: Mở tab mới bình thường
+    window.open(url, '_blank');
+  }
 };
 
 window.clearGgmapInput = function() {
