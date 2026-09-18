@@ -1,33 +1,42 @@
 // boc-tach-ggmap.js - Bóc tách và xử lý link chỉ đường Google Maps
 
-// Biến toàn cục lưu giữ Controller để hủy request giải mã cũ
-let ggmapAbortController = null;
-let lastAutoPastedUrl = '';
+// Gắn trực tiếp vào window để triệt tiêu 100% lỗi SyntaxError trùng biến
+window.ggmapAbortController = window.ggmapAbortController || null;
+window.lastAutoPastedUrl = window.lastAutoPastedUrl || '';
+window.ggmapInputTimer = window.ggmapInputTimer || null;
 
+/**
+ * Lọc trích xuất URL Google Maps chuẩn từ chuỗi văn bản bất kỳ
+ */
+function extractGoogleMapsUrl(text) {
+  if (!text) return '';
+  const reg = /(https?:\/\/(?:maps\.app\.goo\.gl|goo\.gl|www\.google\.com\/maps)[^\s]+)/i;
+  const match = text.match(reg);
+  return match ? match[1] : text.trim();
+}
+
+/**
+ * Mở Google Maps chuẩn cho iOS, Android và PC
+ */
 window.openGoogleMapsToCopy = function() {
   let url = 'https://www.google.com/maps/dir/?api=1';
 
-  // 1. Chỉ truyền origin khi khách ĐÃ CHỌN điểm đi cụ thể trên Avyo
   if (typeof markerStart !== 'undefined' && markerStart) {
     const s = markerStart.getLatLng();
     url += `&origin=${s.lat},${s.lng}`;
   }
 
-  // 2. Điểm đến: Truyền tọa độ nếu đã chọn trên Avyo
   if (typeof markerEnd !== 'undefined' && markerEnd) {
     const e = markerEnd.getLatLng();
     url += `&destination=${e.lat},${e.lng}`;
   }
 
-  // 3. Kiểm tra thiết bị iOS (iPhone/iPad)
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
                 (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
   if (isIOS) {
-    // Trên iOS: Dùng location.href để mở thẳng App Google Maps, tránh bị kẹt màn hình trắng "Xong"
     window.location.href = url;
   } else {
-    // Trên Android / PC: Mở tab mới bình thường
     window.open(url, '_blank');
   }
 };
@@ -39,47 +48,48 @@ window.clearGgmapInput = function() {
   if (clearBtn) { clearBtn.style.display = 'none'; }
 };
 
-// Hàm xử lý sự kiện Dán (Paste) từ bàn phím/chuột
-window.handleGgmapPaste = function(event) {
-  setTimeout(() => {
-    handleGgmapLinkInput();
-  }, 100);
-};
-
-// Hàm xử lý khi bấm nút "📋 Dán" trên giao diện
 window.pasteFromClipboard = async function() {
   const inputEl = document.getElementById('ggmapLinkInput');
-  
+  if (!inputEl) return;
+
   try {
-    // 1. Đọc trực tiếp bộ nhớ tạm từ Clipboard API
     const text = await navigator.clipboard.readText();
-    if (text) {
-      if (inputEl) {
-        inputEl.value = text.trim();
-        // Không gọi inputEl.focus() ở đây để tránh iOS bật thêm menu Dán phụ
-        handleGgmapLinkInput();
-      }
+    const cleanUrl = extractGoogleMapsUrl(text);
+
+    if (cleanUrl && (cleanUrl.includes('google.com') || cleanUrl.includes('goo.gl'))) {
+      inputEl.value = cleanUrl;
+      const clearBtn = document.getElementById('clearGgmapBtn');
+      if (clearBtn) clearBtn.style.display = 'flex';
+      handleGgmapLinkInput();
+      return;
     }
   } catch (err) {
-    // 2. Nếu Safari chặn Clipboard API, tự động mở ô nhập để khách dán 1 chạm bằng menu native
-    if (inputEl) {
-      inputEl.focus();
-      // Hiển thị gợi ý nhỏ nếu cần
-    }
+    console.warn("Safari/Trình duyệt chặn đọc Clipboard trực tiếp:", err);
+  }
+
+  inputEl.focus();
+  inputEl.select();
+  
+  if (typeof Swal !== 'undefined') {
+    Swal.fire({
+      toast: true,
+      position: 'top',
+      icon: 'info',
+      title: 'Chạm giữ ô nhập ➔ Chọn "Dán" (Paste)',
+      showConfirmButton: false,
+      timer: 3000
+    });
   }
 };
 
 window.handleGgmapLinkInput = function() {
-  clearTimeout(ggmapInputTimer);
+  clearTimeout(window.ggmapInputTimer);
 
   const inputEl = document.getElementById('ggmapLinkInput');
   const clearBtn = document.getElementById('clearGgmapBtn');
   let rawUrl = inputEl ? inputEl.value.trim() : '';
 
-  // BÓC TÁCH LINK VÀ CẮT BỎ ĐUÔI RÁC ?g_st=ic NẾU CÓ
-  const urlRegex = /(https?:\/\/[^\s]+)/;
-  const match = rawUrl.match(urlRegex);
-  if (match) rawUrl = match[1].split('?')[0]; 
+  rawUrl = extractGoogleMapsUrl(rawUrl);
 
   if (clearBtn) clearBtn.style.display = rawUrl.length > 0 ? 'flex' : 'none';
   if (!rawUrl) return;
@@ -89,22 +99,17 @@ window.handleGgmapLinkInput = function() {
     return;
   }
 
-  ggmapInputTimer = setTimeout(async () => {
-    // 1. Hủy request giải mã cũ nếu đang chạy ngầm
-    if (ggmapAbortController) {
-      ggmapAbortController.abort();
+  window.ggmapInputTimer = setTimeout(async () => {
+    if (window.ggmapAbortController) {
+      window.ggmapAbortController.abort();
     }
     
-    // 2. Tạo AbortController mới cho lượt dán hiện tại
-    ggmapAbortController = new AbortController();
-    const currentSignal = ggmapAbortController.signal;
-
-    alert("⏳ Đang giải mã và lấy vị trí từ Google Maps...");
+    window.ggmapAbortController = new AbortController();
+    const currentSignal = window.ggmapAbortController.signal;
 
     let targetUrl = rawUrl;
     let fullHtmlContent = "";
 
-    // Luồng tự động giải mã qua 3 tầng (Supabase Edge -> Cloudflare -> Proxy)
     if (rawUrl.includes('maps.app.goo.gl') || rawUrl.includes('goo.gl')) {
       let resolved = false;
 
@@ -118,8 +123,7 @@ window.handleGgmapLinkInput = function() {
           }
         }
       } catch (e) {
-        if (e.name === 'AbortError') return; // Bỏ qua nếu do người dùng dán link mới
-        console.warn("Tầng 1 bận, chuyển sang Tầng 2..."); 
+        if (e.name === 'AbortError') return;
       }
 
       // TẦNG 2: Cloudflare Worker
@@ -129,12 +133,11 @@ window.handleGgmapLinkInput = function() {
           if (cfRes.ok) {
             const cfData = await cfRes.json();
             if (cfData.expandedUrl) {
-              targetUrl = cfData.expandedUrl; fullHtmlContent = cfData.content || ""; resolved = true;
+              targetUrl = cfData.expandedUrl; fullHtmlContent = sbData.content || ""; resolved = true;
             }
           }
         } catch (e) { 
           if (e.name === 'AbortError') return;
-          console.warn("Tầng 2 bận, chuyển sang Tầng 3..."); 
         }
       }
 
@@ -167,7 +170,6 @@ window.handleGgmapLinkInput = function() {
     const parseText = targetUrl + " " + fullHtmlContent;
     let pickupLat = null, pickupLng = null, destLat = null, destLng = null, pickupName = "", destName = "";
 
-    // Bóc tách tên địa danh
     const textMatch = targetUrl.match(/\/dir\/([^\/@]+)\/([^\/@]+)\//);
     if (textMatch) {
       try {
@@ -179,7 +181,6 @@ window.handleGgmapLinkInput = function() {
       } catch (e) {}
     }
 
-    // Trích xuất Tọa độ bằng các Regex mẫu
     const dataMatches = [...parseText.matchAll(/!2m2!1d(-?\d+\.\d+)!2d(-?\d+\.\d+)/g)];
     if (dataMatches.length >= 2) {
       pickupLng = parseFloat(dataMatches[0][1]); pickupLat = parseFloat(dataMatches[0][2]);
@@ -200,37 +201,40 @@ window.handleGgmapLinkInput = function() {
       }
     }
 
-    // Thiết lập vị trí bản đồ
     if (pickupLat && pickupLng && destLat && destLng) {
       const pickupLatLng = L.latLng(pickupLat, pickupLng);
       const destLatLng = L.latLng(destLat, destLng);
 
-      exitSelectionMode();
-      setPickupLocation(pickupLatLng);
+      if (typeof exitSelectionMode === 'function') exitSelectionMode();
+      if (typeof setPickupLocation === 'function') setPickupLocation(pickupLatLng);
+      
       if (pickupName) {
         const pInput = document.getElementById('pickupInput');
-        if (pInput) pInput.value = pickupName; toggleClearButton('pickup');
-        saveRecentPickup(pickupName, pickupLat, pickupLng);
-      } else { fetchAddressForInput('pickup', pickupLatLng); }
+        if (pInput) pInput.value = pickupName; 
+        if (typeof toggleClearButton === 'function') toggleClearButton('pickup');
+        if (typeof saveRecentPickup === 'function') saveRecentPickup(pickupName, pickupLat, pickupLng);
+      } else if (typeof fetchAddressForInput === 'function') { 
+        fetchAddressForInput('pickup', pickupLatLng); 
+      }
 
-      setDestLocation(destLatLng);
+      if (typeof setDestLocation === 'function') setDestLocation(destLatLng);
+      
       if (destName) {
         const dInput = document.getElementById('destInput');
-        if (dInput) dInput.value = destName; toggleClearButton('dest');
-        saveRecentDest(destName, destLat, destLng);
-      } else { fetchAddressForInput('dest', destLatLng); }
+        if (dInput) dInput.value = destName; 
+        if (typeof toggleClearButton === 'function') toggleClearButton('dest');
+        if (typeof saveRecentDest === 'function') saveRecentDest(destName, destLat, destLng);
+      } else if (typeof fetchAddressForInput === 'function') { 
+        fetchAddressForInput('dest', destLatLng); 
+      }
 
-      calculateMapboxRoute();
-      alert("✅ ĐÃ TRÍCH XUẤT THÀNH CÔNG LỘ TRÌNH!\n\nVị trí điểm đi, điểm đến và tuyến đường đã được thiết lập trên bản đồ.");
+      if (typeof calculateMapboxRoute === 'function') calculateMapboxRoute();
     } else {
       alert("❌ Không tìm thấy tọa độ lộ trình trong liên kết này. Vui lòng dán đúng link chỉ đường Google Maps!");
     }
-  }, 400);
+  }, 300);
 };
 
-// ============================================================================
-// TỰ ĐỘNG BẮT LINK GOOGLE MAPS KHI KHÁCH QUAY LẠI TAB (TỐI ƯU CỰC MẠNH CHO IPHONE)
-// ============================================================================
 async function checkAndAutoPasteClipboard() {
   const inputEl = document.getElementById('ggmapLinkInput');
   if (!inputEl) return;
@@ -238,21 +242,16 @@ async function checkAndAutoPasteClipboard() {
   try {
     if (navigator.clipboard && navigator.clipboard.readText) {
       const text = await navigator.clipboard.readText();
-      const cleanText = text ? text.trim() : '';
+      const cleanUrl = extractGoogleMapsUrl(text);
 
-      // Kiểm tra xem bộ nhớ tạm có chứa link Google Maps không
-      if (cleanText && (cleanText.includes('maps.app.goo.gl') || cleanText.includes('google.com/maps') || cleanText.includes('goo.gl'))) {
-        
-        // Tránh tự dán lại nhiều lần cùng 1 link
-        if (cleanText !== lastAutoPastedUrl && inputEl.value !== cleanText) {
-          lastAutoPastedUrl = cleanText;
-          inputEl.value = cleanText;
+      if (cleanUrl && (cleanUrl.includes('google.com') || cleanUrl.includes('goo.gl'))) {
+        if (cleanUrl !== window.lastAutoPastedUrl && inputEl.value !== cleanUrl) {
+          window.lastAutoPastedUrl = cleanUrl;
+          inputEl.value = cleanUrl;
 
-          // Hiển thị nút xóa x
           const clearBtn = document.getElementById('clearGgmapBtn');
           if (clearBtn) clearBtn.style.display = 'flex';
 
-          // Tự động kích hoạt luồng bóc tách tọa độ
           if (typeof handleGgmapLinkInput === 'function') {
             handleGgmapLinkInput();
           }
@@ -260,21 +259,21 @@ async function checkAndAutoPasteClipboard() {
       }
     }
   } catch (err) {
-    // Trình duyệt từ chối quyền đọc Clipboard ngầm, bỏ qua êm đẹp
+    // Trình duyệt từ chối đọc Clipboard ngầm
   }
 }
 
-// Bắt sự kiện khi người dùng vừa chuyển từ Google Maps quay lại Tab Avyo
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden) {
     checkAndAutoPasteClipboard();
   }
 });
 
-// Bắt sự kiện khi chạm hoặc focus vào ô nhập link
 document.addEventListener('DOMContentLoaded', () => {
   const inputEl = document.getElementById('ggmapLinkInput');
   if (inputEl) {
+    inputEl.addEventListener('input', () => handleGgmapLinkInput());
+    inputEl.addEventListener('paste', () => setTimeout(() => handleGgmapLinkInput(), 100));
     inputEl.addEventListener('focus', checkAndAutoPasteClipboard);
     inputEl.addEventListener('click', checkAndAutoPasteClipboard);
   }
