@@ -1,3 +1,5 @@
+// boc-tach-ggmap.js - Bóc tách và xử lý link chỉ đường Google Maps
+
 window.openGoogleMapsToCopy = function() {
   window.open('https://www.google.com/maps/dir/', '_blank');
 };
@@ -7,6 +9,29 @@ window.clearGgmapInput = function() {
   const clearBtn = document.getElementById('clearGgmapBtn');
   if (inputEl) { inputEl.value = ''; inputEl.focus(); }
   if (clearBtn) { clearBtn.style.display = 'none'; }
+};
+
+// Hàm xử lý sự kiện Dán (Paste) từ bàn phím/chuột (sửa lỗi ReferenceError)
+window.handleGgmapPaste = function(event) {
+  setTimeout(() => {
+    handleGgmapLinkInput();
+  }, 100);
+};
+
+// Hàm xử lý khi bấm nút "📋 Dán" trên giao diện
+window.pasteFromClipboard = async function() {
+  try {
+    const text = await navigator.clipboard.readText();
+    if (text) {
+      const inputEl = document.getElementById('ggmapLinkInput');
+      if (inputEl) {
+        inputEl.value = text;
+        handleGgmapLinkInput();
+      }
+    }
+  } catch (err) {
+    alert('⚠️ Trình duyệt chưa cấp quyền truy cập bộ nhớ tạm (Clipboard). Bạn hãy dán thủ công vào ô nhập nhé!');
+  }
 };
 
 window.handleGgmapLinkInput = function() {

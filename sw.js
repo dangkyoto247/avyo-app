@@ -1,7 +1,11 @@
 const TILE_CACHE_NAME = 'map-tiles-v2';
-const STATIC_CACHE_NAME = 'avyo-static-v115';
+const STATIC_CACHE_NAME = 'avyo-static-v116'; // Cập nhật version để SW reset lại
 
 const STATIC_ASSETS = [
+  '/',
+  'index.html',
+  'driver.html',
+  'admin.html',
   'https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;800&display=swap',
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
@@ -21,15 +25,26 @@ const STATIC_ASSETS = [
   'offline.html'
 ];
 
+// Hàm làm sạch Response an toàn (Đã sửa triệt để lỗi Opaque/CORS từ CDN)
 async function cleanResponse(response) {
-  if (!response || (!response.ok && response.type !== 'opaque')) return response;
-  const blob = await response.blob();
-  const headers = new Headers(response.headers);
-  return new Response(blob, {
-    status: 200,
-    statusText: 'OK',
-    headers: headers
-  });
+  if (!response) return response;
+  
+  if (response.type === 'opaque' || !response.ok) {
+    return response;
+  }
+
+  try {
+    const clonedRes = response.clone();
+    const blob = await clonedRes.blob();
+    const headers = new Headers(clonedRes.headers);
+    return new Response(blob, {
+      status: clonedRes.status,
+      statusText: clonedRes.statusText,
+      headers: headers
+    });
+  } catch (e) {
+    return response;
+  }
 }
 
 self.addEventListener('install', (event) => {
@@ -74,11 +89,14 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // 1. Xử lý tài nguyên Tĩnh (Static Assets)
   if (STATIC_ASSETS.some(url => requestUrl.includes(url))) {
     event.respondWith(
       caches.open(STATIC_CACHE_NAME).then(async (cache) => {
-        const cachedResponse = await cache.match(event.request);
+        // GIẢI PHÁP: Thêm { ignoreSearch: true } để bỏ qua các tham số như ?v=12
+        const cachedResponse = await cache.match(event.request, { ignoreSearch: true });
         if (cachedResponse) return cachedResponse;
+        
         try {
           const networkResponse = await fetch(event.request, { redirect: 'follow' });
           if (networkResponse && (networkResponse.status === 200 || networkResponse.type === 'opaque')) {
@@ -95,6 +113,8 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // 2. Xử lý Cache mảnh bản đồ (Map Tiles)
+  // LƯU Ý: Ở đây KHÔNG dùng ignoreSearch vì bản đồ dùng query param ?x=..&y=.. để xác định tọa độ mảnh ghép
   if (requestUrl.includes('google.com/vt') || requestUrl.includes('mapbox.com') || requestUrl.includes('arcgisonline.com')) {
     event.respondWith(
       caches.open(TILE_CACHE_NAME).then(async (cache) => {
@@ -114,6 +134,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // 3. Xử lý Điều hướng trang HTML (Navigation Fallback)
   if (event.request.mode === 'navigate' || (event.request.headers.get('accept') && event.request.headers.get('accept').includes('text/html'))) {
     event.respondWith(
       (async () => {
@@ -122,7 +143,13 @@ self.addEventListener('fetch', (event) => {
           return await cleanResponse(response);
         } catch (err) {
           const cache = await caches.open(STATIC_CACHE_NAME);
-          const cachedOffline = await cache.match('offline.html');
+          
+          // Thử lấy trang từ Cache, bỏ qua query param nếu có
+          const cachedPage = await cache.match(event.request, { ignoreSearch: true });
+          if (cachedPage) return cachedPage;
+
+          // Nếu không có, gọi trang offline mặc định
+          const cachedOffline = await cache.match('offline.html', { ignoreSearch: true });
           if (cachedOffline) return cachedOffline;
           
           return new Response(
