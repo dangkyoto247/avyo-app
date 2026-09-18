@@ -121,8 +121,19 @@ async function selectDriver(driver) {
 
   updatePrice();
   renderDriverMarkers();
-  if (driver && driver.lat && driver.lng) centerMapOnPin(L.latLng(driver.lat, driver.lng), null, 0);
-  if (driverMarkers[driver.id]) driverMarkers[driver.id].openPopup();
+
+  // CĂN CHỈNH BẢN ĐỒ ĐỂ ICON TÀI XẾ NẰM TRÊN ĐỈNH GHIM PIN 1/3
+  const driverMarker = driverMarkers[driver.id];
+  const targetLatLng = driverMarker ? driverMarker.getLatLng() : (driver.lat && driver.lng ? L.latLng(driver.lat, driver.lng) : null);
+  if (targetLatLng) {
+    // Thay đổi tham số offset (ví dụ: -45 là dịch chuyển lên trên đỉnh ghim pin khoảng vài px)
+    const pinTopOffset = -60; 
+    centerMapOnPin(targetLatLng, null, pinTopOffset, true);
+  }
+
+  if (driverMarker) {
+    driverMarker.openPopup();
+  }
 }
 
 function renderDriverMarkers() {
@@ -217,7 +228,8 @@ function renderDriverMarkers() {
       existingMarker.setPopupContent(popupHtml);
     } else {
       const marker = L.Marker.movingMarker([targetLatLng, targetLatLng], [1000], { icon: icon }).addTo(map);
-      marker.bindPopup(popupHtml);
+      // THÊM autoPan: false ĐỂ TRÁNH POPUP LÀM TRÔI VỊ TRÍ CHÍNH GIỮA GHIM PIN
+      marker.bindPopup(popupHtml, { autoPan: false });
       marker.on('click', () => selectDriver(driver));
       driverMarkers[driver.id] = marker;
     }
