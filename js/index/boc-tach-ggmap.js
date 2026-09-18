@@ -2,7 +2,6 @@
 
 // Gắn trực tiếp vào window để triệt tiêu 100% lỗi SyntaxError trùng biến
 window.ggmapAbortController = window.ggmapAbortController || null;
-window.lastAutoPastedUrl = window.lastAutoPastedUrl || '';
 window.ggmapInputTimer = window.ggmapInputTimer || null;
 
 /**
@@ -44,7 +43,7 @@ window.openGoogleMapsToCopy = function() {
 window.clearGgmapInput = function() {
   const inputEl = document.getElementById('ggmapLinkInput');
   const clearBtn = document.getElementById('clearGgmapBtn');
-  if (inputEl) { inputEl.value = ''; inputEl.focus(); }
+  if (inputEl) { inputEl.value = ''; }
   if (clearBtn) { clearBtn.style.display = 'none'; }
 };
 
@@ -53,6 +52,10 @@ window.pasteFromClipboard = async function() {
   if (!inputEl) return;
 
   try {
+    if (!navigator.clipboard || !navigator.clipboard.readText) {
+      throw new Error("Trình duyệt không hỗ trợ API Clipboard trực tiếp");
+    }
+
     const text = await navigator.clipboard.readText();
     const cleanUrl = extractGoogleMapsUrl(text);
 
@@ -61,24 +64,26 @@ window.pasteFromClipboard = async function() {
       const clearBtn = document.getElementById('clearGgmapBtn');
       if (clearBtn) clearBtn.style.display = 'flex';
       handleGgmapLinkInput();
-      return;
+    } else if (text && text.trim().length > 0) {
+      if (typeof alert === 'function') alert("⚠️ Nội dung bạn vừa sao chép không chứa liên kết Google Maps!");
+    } else {
+      if (typeof alert === 'function') alert("⚠️ Khay nhớ tạm đang trống, vui lòng qua Google Maps sao chép đường link trước.");
     }
   } catch (err) {
     console.warn("Safari/Trình duyệt chặn đọc Clipboard trực tiếp:", err);
-  }
-
-  inputEl.focus();
-  inputEl.select();
-  
-  if (typeof Swal !== 'undefined') {
-    Swal.fire({
-      toast: true,
-      position: 'top',
-      icon: 'info',
-      title: 'Chạm giữ ô nhập ➔ Chọn "Dán" (Paste)',
-      showConfirmButton: false,
-      timer: 3000
-    });
+    // Dự phòng fallback thông báo rõ ràng cho user nếu bị chặn hoặc đang dùng thiết bị cũ
+    if (typeof Swal !== 'undefined') {
+      Swal.fire({
+        toast: true,
+        position: 'top',
+        icon: 'info',
+        title: 'Trình duyệt chặn dán tự động. Vui lòng cho phép quyền hoặc dán thủ công.',
+        showConfirmButton: false,
+        timer: 3500
+      });
+    } else if (typeof alert === 'function') {
+      alert("⚠️ Thiết bị đã chặn quyền truy cập khay nhớ tạm. Vui lòng nhấn 'Cho phép dán' nếu có thông báo hiển thị.");
+    }
   }
 };
 
@@ -95,7 +100,9 @@ window.handleGgmapLinkInput = function() {
   if (!rawUrl) return;
 
   if (!rawUrl.includes('google.com') && !rawUrl.includes('goo.gl')) {
-    if (rawUrl.startsWith('http') || rawUrl.length > 25) alert("⚠️ Link dán vào không thuộc định dạng Google Maps!");
+    if (rawUrl.startsWith('http') || rawUrl.length > 25) {
+      if (typeof alert === 'function') alert("⚠️ Link dán vào không thuộc định dạng Google Maps!");
+    }
     return;
   }
 
@@ -133,7 +140,7 @@ window.handleGgmapLinkInput = function() {
           if (cfRes.ok) {
             const cfData = await cfRes.json();
             if (cfData.expandedUrl) {
-              targetUrl = cfData.expandedUrl; fullHtmlContent = sbData.content || ""; resolved = true;
+              targetUrl = cfData.expandedUrl; fullHtmlContent = cfData.content || ""; resolved = true;
             }
           }
         } catch (e) { 
@@ -160,7 +167,7 @@ window.handleGgmapLinkInput = function() {
 
       if (!resolved) { 
         if (currentSignal.aborted) return;
-        alert("❌ Dịch vụ giải mã link bận. Vui lòng kiểm tra lại kết nối!"); 
+        if (typeof alert === 'function') alert("❌ Dịch vụ giải mã link bận. Vui lòng kiểm tra lại kết nối!"); 
         return; 
       }
     }
@@ -230,51 +237,14 @@ window.handleGgmapLinkInput = function() {
 
       if (typeof calculateMapboxRoute === 'function') calculateMapboxRoute();
     } else {
-      alert("❌ Không tìm thấy tọa độ lộ trình trong liên kết này. Vui lòng dán đúng link chỉ đường Google Maps!");
+      if (typeof alert === 'function') alert("❌ Không tìm thấy tọa độ lộ trình trong liên kết này. Vui lòng dán đúng link chỉ đường Google Maps!");
     }
   }, 300);
 };
-
-async function checkAndAutoPasteClipboard() {
-  const inputEl = document.getElementById('ggmapLinkInput');
-  if (!inputEl) return;
-
-  try {
-    if (navigator.clipboard && navigator.clipboard.readText) {
-      const text = await navigator.clipboard.readText();
-      const cleanUrl = extractGoogleMapsUrl(text);
-
-      if (cleanUrl && (cleanUrl.includes('google.com') || cleanUrl.includes('goo.gl'))) {
-        if (cleanUrl !== window.lastAutoPastedUrl && inputEl.value !== cleanUrl) {
-          window.lastAutoPastedUrl = cleanUrl;
-          inputEl.value = cleanUrl;
-
-          const clearBtn = document.getElementById('clearGgmapBtn');
-          if (clearBtn) clearBtn.style.display = 'flex';
-
-          if (typeof handleGgmapLinkInput === 'function') {
-            handleGgmapLinkInput();
-          }
-        }
-      }
-    }
-  } catch (err) {
-    // Trình duyệt từ chối đọc Clipboard ngầm
-  }
-}
-
-document.addEventListener('visibilitychange', () => {
-  if (!document.hidden) {
-    checkAndAutoPasteClipboard();
-  }
-});
 
 document.addEventListener('DOMContentLoaded', () => {
   const inputEl = document.getElementById('ggmapLinkInput');
   if (inputEl) {
     inputEl.addEventListener('input', () => handleGgmapLinkInput());
-    inputEl.addEventListener('paste', () => setTimeout(() => handleGgmapLinkInput(), 100));
-    inputEl.addEventListener('focus', checkAndAutoPasteClipboard);
-    inputEl.addEventListener('click', checkAndAutoPasteClipboard);
   }
 });
