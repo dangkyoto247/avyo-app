@@ -1,7 +1,7 @@
 // CHẠY LẦN ĐẦU KHI VÀO TRANG
 document.addEventListener('DOMContentLoaded', () => {
   const activeLabel = document.getElementById('activeVehicleLabel');
-  if (activeLabel && typeIcons[activeFilter]) {
+  if (activeLabel && typeof typeIcons !== 'undefined' && typeIcons[activeFilter]) {
     activeLabel.innerHTML = typeIcons[activeFilter];
   }
   document.querySelectorAll('.vehicle-option').forEach(opt => {
@@ -11,14 +11,44 @@ document.addEventListener('DOMContentLoaded', () => {
       opt.classList.remove('active');
     }
   });
-  updateSwapButtonVisibility();
-  updateNetworkStatus();
+  if (typeof updateSwapButtonVisibility === 'function') updateSwapButtonVisibility();
+  if (typeof updateNetworkStatus === 'function') updateNetworkStatus();
+
+  // ==========================================================================
+  // ĐÓN LINK TỪ GOOGLE MAPS BẮN SANG (TÍNH NĂNG WEB SHARE TARGET)
+  // ==========================================================================
+  const urlParams = new URLSearchParams(window.location.search);
+  const sharedText = urlParams.get('text') || '';
+  const sharedUrl = urlParams.get('url') || '';
+  const combinedShare = sharedText + " " + sharedUrl;
+
+  // Tìm kiếm link Google Maps trong nội dung được chia sẻ
+  const ggmapLinkRegex = /(https?:\/\/(?:maps\.app\.goo\.gl|goo\.gl|www\.google\.com\/maps)[^\s]+)/i;
+  const match = combinedShare.match(ggmapLinkRegex);
+
+  if (match) {
+    const extractedLink = match[1];
+    const inputEl = document.getElementById('ggmapLinkInput');
+    if (inputEl) {
+      inputEl.value = extractedLink;
+      
+      // Trì hoãn 1 chút để DOM tải xong bản đồ rồi mới chạy hàm bóc tách
+      setTimeout(() => {
+        if (typeof handleGgmapLinkInput === 'function') {
+          handleGgmapLinkInput();
+        }
+      }, 500);
+    }
+    
+    // Xóa các tham số trên thanh địa chỉ URL để tránh reload bị chạy lại link cũ
+    window.history.replaceState({}, document.title, window.location.pathname);
+  }
 });
 
 // THIẾT LẬP APP KHI KHỞI ĐỘNG
-enterSelectionMode('pickup');
-loadDrivers();
-updateGuide();
+if (typeof enterSelectionMode === 'function') enterSelectionMode('pickup');
+if (typeof loadDrivers === 'function') loadDrivers();
+if (typeof updateGuide === 'function') updateGuide();
 
 // ============================================================================
 // LẮNG NGHE LỚP DỮ LIỆU REALTIME (THAY THẾ CHO POLLING 12 GIÂY)
