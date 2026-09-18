@@ -2,6 +2,7 @@
 
 // Biến toàn cục lưu giữ Controller để hủy request giải mã cũ
 let ggmapAbortController = null;
+let lastAutoPastedUrl = '';
 
 window.openGoogleMapsToCopy = function() {
   window.open('https://www.google.com/maps/dir/', '_blank');
@@ -97,7 +98,7 @@ window.handleGgmapLinkInput = function() {
           if (cfRes.ok) {
             const cfData = await cfRes.json();
             if (cfData.expandedUrl) {
-              targetUrl = cfData.expandedUrl; fullHtmlContent = sbData.content || ""; resolved = true;
+              targetUrl = cfData.expandedUrl; fullHtmlContent = cfData.content || ""; resolved = true;
             }
           }
         } catch (e) { 
@@ -195,3 +196,55 @@ window.handleGgmapLinkInput = function() {
     }
   }, 400);
 };
+
+// ============================================================================
+// TỰ ĐỘNG BẮT LINK GOOGLE MAPS KHI KHÁCH QUAY LẠI TAB (TỐI ƯU CỰC MẠNH CHO IPHONE)
+// ============================================================================
+async function checkAndAutoPasteClipboard() {
+  const inputEl = document.getElementById('ggmapLinkInput');
+  if (!inputEl) return;
+
+  try {
+    if (navigator.clipboard && navigator.clipboard.readText) {
+      const text = await navigator.clipboard.readText();
+      const cleanText = text ? text.trim() : '';
+
+      // Kiểm tra xem bộ nhớ tạm có chứa link Google Maps không
+      if (cleanText && (cleanText.includes('maps.app.goo.gl') || cleanText.includes('google.com/maps') || cleanText.includes('goo.gl'))) {
+        
+        // Tránh tự dán lại nhiều lần cùng 1 link
+        if (cleanText !== lastAutoPastedUrl && inputEl.value !== cleanText) {
+          lastAutoPastedUrl = cleanText;
+          inputEl.value = cleanText;
+
+          // Hiển thị nút xóa x
+          const clearBtn = document.getElementById('clearGgmapBtn');
+          if (clearBtn) clearBtn.style.display = 'flex';
+
+          // Tự động kích hoạt luồng bóc tách tọa độ
+          if (typeof handleGgmapLinkInput === 'function') {
+            handleGgmapLinkInput();
+          }
+        }
+      }
+    }
+  } catch (err) {
+    // Trình duyệt từ chối quyền đọc Clipboard ngầm, bỏ qua êm đẹp
+  }
+}
+
+// Bắt sự kiện khi người dùng vừa chuyển từ Google Maps quay lại Tab Avyo
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) {
+    checkAndAutoPasteClipboard();
+  }
+});
+
+// Bắt sự kiện khi chạm hoặc focus vào ô nhập link
+document.addEventListener('DOMContentLoaded', () => {
+  const inputEl = document.getElementById('ggmapLinkInput');
+  if (inputEl) {
+    inputEl.addEventListener('focus', checkAndAutoPasteClipboard);
+    inputEl.addEventListener('click', checkAndAutoPasteClipboard);
+  }
+});
