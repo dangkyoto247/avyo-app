@@ -1,6 +1,5 @@
 // boc-tach-ggmap.js - Bóc tách và xử lý link chỉ đường Google Maps
 
-// Gắn trực tiếp vào window để triệt tiêu 100% lỗi SyntaxError trùng biến
 window.ggmapAbortController = window.ggmapAbortController || null;
 window.ggmapInputTimer = window.ggmapInputTimer || null;
 window.wasGgmapOpened = window.wasGgmapOpened || false;
@@ -19,7 +18,7 @@ function extractGoogleMapsUrl(text) {
  * Mở Google Maps chuẩn cho iOS, Android và PC
  */
 window.openGoogleMapsToCopy = function() {
-  window.wasGgmapOpened = true; // Đánh dấu người dùng vừa bấm mở Google Maps
+  window.wasGgmapOpened = true;
   let url = 'https://www.google.com/maps/dir/?api=1';
 
   if (typeof markerStart !== 'undefined' && markerStart) {
@@ -50,7 +49,7 @@ window.clearGgmapInput = function() {
 };
 
 /**
- * Hàm dán liên kết: Thử đọc ngầm trước, nếu bị Safari chặn sẽ mở ngay khung dán
+ * Hàm dán liên kết hỗ trợ tối đa cho Safari iOS
  */
 window.pasteFromClipboard = async function() {
   const inputEl = document.getElementById('ggmapLinkInput');
@@ -58,7 +57,6 @@ window.pasteFromClipboard = async function() {
 
   let text = '';
 
-  // 1. Thử tự động đọc khay nhớ tạm ngầm
   try {
     if (navigator.clipboard && navigator.clipboard.readText) {
       text = await navigator.clipboard.readText();
@@ -69,7 +67,6 @@ window.pasteFromClipboard = async function() {
 
   let cleanUrl = extractGoogleMapsUrl(text);
 
-  // 2. Nếu đọc ngầm thành công và có link Google Maps -> Tự dán luôn không cần hỏi
   if (cleanUrl && (cleanUrl.includes('google.com') || cleanUrl.includes('goo.gl'))) {
     inputEl.value = cleanUrl;
     const clearBtn = document.getElementById('clearGgmapBtn');
@@ -78,7 +75,6 @@ window.pasteFromClipboard = async function() {
     return;
   }
 
-  // 3. Nếu Safari chặn đọc ngầm -> Bật ngay hộp thoại để người dùng dán 1 chạm
   const userPasted = prompt("📌 Nhấn giữ vào ô bên dưới ➔ Chọn 'Dán' (Paste):");
   if (userPasted) {
     cleanUrl = extractGoogleMapsUrl(userPasted);
@@ -96,10 +92,10 @@ window.pasteFromClipboard = async function() {
 // TỰ ĐỘNG BẬT HỘP THOẠI DÁN KHI TỪ GOOGLE MAPS QUAY VỀ ỨNG DỤNG
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden && window.wasGgmapOpened) {
-    window.wasGgmapOpened = false; // Đặt lại cờ sau khi xử lý
+    window.wasGgmapOpened = false;
     setTimeout(() => {
       window.pasteFromClipboard();
-    }, 350); // Chờ 350ms để Safari ổn định giao diện khi chuyển tab quay về
+    }, 350);
   }
 });
 
@@ -156,7 +152,7 @@ window.handleGgmapLinkInput = function() {
           if (cfRes.ok) {
             const cfData = await cfRes.json();
             if (cfData.expandedUrl) {
-              targetUrl = cfData.expandedUrl; fullHtmlContent = sbData.content || ""; resolved = true;
+              targetUrl = cfData.expandedUrl; fullHtmlContent = cfData.content || ""; resolved = true;
             }
           }
         } catch (e) { 
@@ -190,9 +186,21 @@ window.handleGgmapLinkInput = function() {
 
     if (currentSignal.aborted) return;
 
-    const parseText = targetUrl + " " + fullHtmlContent;
+    // Trích xuất thêm các thẻ Meta og:url / canonical / og:image trong HTML nếu có
+    let metaUrls = "";
+    if (fullHtmlContent) {
+      const ogUrlMatch = fullHtmlContent.match(/<meta[^>]+property=["']og:url["'][^>]+content=["']([^"']+)["']/i);
+      const canonicalMatch = fullHtmlContent.match(/<link[^>]+rel=["']canonical["'][^>]+href=["']([^"']+)["']/i);
+      const ogImageMatch = fullHtmlContent.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i);
+      if (ogUrlMatch) metaUrls += " " + ogUrlMatch[1];
+      if (canonicalMatch) metaUrls += " " + canonicalMatch[1];
+      if (ogImageMatch) metaUrls += " " + ogImageMatch[1];
+    }
+
+    const parseText = targetUrl + " " + metaUrls + " " + fullHtmlContent;
     let pickupLat = null, pickupLng = null, destLat = null, destLng = null, pickupName = "", destName = "";
 
+    // BƯỚC 1: Bóc tách tên địa điểm từ URL /dir/Name1/Name2/
     const textMatch = targetUrl.match(/\/dir\/([^\/@]+)\/([^\/@]+)\//);
     if (textMatch) {
       try {
@@ -204,26 +212,50 @@ window.handleGgmapLinkInput = function() {
       } catch (e) {}
     }
 
-    const dataMatches = [...parseText.matchAll(/!2m2!1d(-?\d+\.\d+)!2d(-?\d+\.\d+)/g)];
-    if (dataMatches.length >= 2) {
-      pickupLng = parseFloat(dataMatches[0][1]); pickupLat = parseFloat(dataMatches[0][2]);
-      destLng = parseFloat(dataMatches[1][1]); destLat = parseFloat(dataMatches[1][2]);
+    // BƯỚC 2: Thử trích xuất theo tham số Origin & Destination (Thường gặp trên iOS/Shortlink)
+    const queryMatch = parseText.match(/(?:origin|saddr)=(-?\d+\.\d+)(?:%2C|,)\s*(-?\d+\.\d+).*(?:destination|daddr)=(-?\d+\.\d+)(?:%2C|,)\s*(-?\d+\.\d+)/i);
+    if (queryMatch) {
+      pickupLat = parseFloat(queryMatch[1]); pickupLng = parseFloat(queryMatch[2]);
+      destLat = parseFloat(queryMatch[3]); destLng = parseFloat(queryMatch[4]);
     }
+
+    // BƯỚC 3: Thử trích xuất theo đường dẫn /dir/lat1,lng1/lat2,lng2
     if (!pickupLat || !destLat) {
-      const dirCoordMatch = parseText.match(/\/dir\/(-?\d+\.\d+),\s*(-?\d+\.\d+)\/(-?\d+\.\d+),\s*(-?\d+\.\d+)/);
+      const dirCoordMatch = parseText.match(/\/dir\/(-?\d+\.\d+),(?:%2C|\s*)(-?\d+\.\d+)\/(-?\d+\.\d+),(?:%2C|\s*)(-?\d+\.\d+)/i);
       if (dirCoordMatch) {
         pickupLat = parseFloat(dirCoordMatch[1]); pickupLng = parseFloat(dirCoordMatch[2]);
         destLat = parseFloat(dirCoordMatch[3]); destLng = parseFloat(dirCoordMatch[4]);
       }
     }
+
+    // BƯỚC 4: Thử trích xuất theo định dạng Protobuf Kiểu 1 (!1d lng !2d lat)
     if (!pickupLat || !destLat) {
-      const queryMatch = parseText.match(/(?:origin|saddr)=(-?\d+\.\d+),\s*(-?\d+\.\d+).*(?:destination|daddr)=(-?\d+\.\d+),\s*(-?\d+\.\d+)/);
-      if (queryMatch) {
-        pickupLat = parseFloat(queryMatch[1]); pickupLng = parseFloat(queryMatch[2]);
-        destLat = parseFloat(queryMatch[3]); destLng = parseFloat(queryMatch[4]);
+      const matches1 = [...parseText.matchAll(/(?:!2m2)?!1d(-?\d+\.\d+)!2d(-?\d+\.\d+)/g)];
+      if (matches1.length >= 2) {
+        pickupLng = parseFloat(matches1[0][1]); pickupLat = parseFloat(matches1[0][2]);
+        destLng = parseFloat(matches1[1][1]); destLat = parseFloat(matches1[1][2]);
       }
     }
 
+    // BƯỚC 5: Thử trích xuất theo định dạng Protobuf Kiểu 2 (!3d lat !4d lng - Phổ biến trên app iOS)
+    if (!pickupLat || !destLat) {
+      const matches2 = [...parseText.matchAll(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/g)];
+      if (matches2.length >= 2) {
+        pickupLat = parseFloat(matches2[0][1]); pickupLng = parseFloat(matches2[0][2]);
+        destLat = parseFloat(matches2[1][1]); destLng = parseFloat(matches2[1][2]);
+      }
+    }
+
+    // BƯỚC 6: Thử trích xuất từ chuỗi đường vẽ tĩnh staticmap path=...%7Clat,lng%7C...
+    if (!pickupLat || !destLat) {
+      const pathMatches = [...parseText.matchAll(/(?:%7C|\|)(-?\d+\.\d+),(?:%2C|,)(-?\d+\.\d+)/g)];
+      if (pathMatches.length >= 2) {
+        pickupLat = parseFloat(pathMatches[0][1]); pickupLng = parseFloat(pathMatches[0][2]);
+        destLat = parseFloat(pathMatches[pathMatches.length - 1][1]); destLng = parseFloat(pathMatches[pathMatches.length - 1][2]);
+      }
+    }
+
+    // THỰC THI VẼ ĐƯỜNG
     if (pickupLat && pickupLng && destLat && destLng) {
       const pickupLatLng = L.latLng(pickupLat, pickupLng);
       const destLatLng = L.latLng(destLat, destLng);
