@@ -12,9 +12,20 @@ function getHaversineDistance(lat1, lon1, lat2, lon2) {
 
 function getOptimizedAvatar(url) {
   const defaultAvatar = 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
-  if (!url) return defaultAvatar;
-  if (url.startsWith('data:image') || url.startsWith('blob:')) return url;
-  return url;
+  if (!url || typeof url !== 'string') return defaultAvatar;
+  
+  const cleanUrl = url.trim();
+  // Bắt buộc URL phải bắt đầu bằng http://, https://, data:image hoặc blob: để tránh lỗi 404
+  if (
+    cleanUrl.startsWith('http://') || 
+    cleanUrl.startsWith('https://') || 
+    cleanUrl.startsWith('data:image') || 
+    cleanUrl.startsWith('blob:')
+  ) {
+    return cleanUrl;
+  }
+  
+  return defaultAvatar;
 }
 
 function formatTime(minutes) {
@@ -32,4 +43,15 @@ function getLocalDateStr() {
 function getLocalMonthStr() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+// Hàm mã hóa ký tự đặc biệt phòng chống lỗ hổng XSS
+function escapeHTML(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }

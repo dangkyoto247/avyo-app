@@ -53,7 +53,7 @@ async function checkDeviceLockState(email) {
     loginBtn.disabled = true;
     loginBtn.style.background = '#94a3b8';
     loginBtn.innerText = `⛔ TÀI KHOẢN BỊ KHÓA (${result.remaining_minutes}p)`;
-    customAlert('⛔ Tài khoản bị khóa', `Tài khoản [${email}] đang bị KHÓA đăng nhập trong ${result.remaining_minutes} phút do nhập sai 3 lần!`, 'error');
+    customAlert('⛔ Tài khoản bị khóa', `Tài khoản [${escapeHTML(email)}] đang bị KHÓA đăng nhập trong ${result.remaining_minutes} phút do nhập sai 3 lần!`, 'error');
     return true;
   } else {
     loginBtn.disabled = false;
@@ -384,7 +384,9 @@ function renderAdminData() {
         ghostNotice = `<br><b style="color:#d97706;">⚠️ Mất tín hiệu ${timeText} trước</b>`;
       }
 
-      marker.bindPopup(`<b>${d.name}</b><br>${d.phone}${ghostNotice}`);
+      const safeMarkerName = escapeHTML(d.name);
+      const safeMarkerPhone = escapeHTML(d.phone);
+      marker.bindPopup(`<b>${safeMarkerName}</b><br>${safeMarkerPhone}${ghostNotice}`);
       adminMarkers[d.id] = marker;
     }
   });
@@ -463,8 +465,14 @@ function renderAdminData() {
         <span class="small-text">⏳ TH: <b style="color:#d97706;">${formatTime(displayMinsMonth)}</b></span>
       </div>`;
 
+    const safeName = escapeHTML(d.name);
+    const safeVehicle = escapeHTML(d.vehicle || '--');
+    const safeCccd = escapeHTML(d.cccd || '---');
+    const safeAddress = escapeHTML(d.address || 'Chưa có địa chỉ');
+    const safePhone = escapeHTML(d.phone);
+
     const unlockButtonHtml = isLocked 
-      ? `<button class="btn-unlock" onclick="unlockDriver('${d.id}', '${d.name}', '${d.pin || '1234'}')">🔓 Mở khóa & PIN</button>` 
+      ? `<button class="btn-unlock" onclick="unlockDriver('${d.id}')">🔓 Mở khóa & PIN</button>` 
       : '';
 
     const tr = document.createElement('tr');
@@ -472,15 +480,15 @@ function renderAdminData() {
       <td style="text-align: center; font-weight: bold;">${stt}</td>
       <td>
         <b>${typeLabels[d.vehicle_type] || d.vehicle_type}</b><br>
-        <span class="small-text">${d.vehicle || '--'}</span>
+        <span class="small-text">${safeVehicle}</span>
       </td>
       <td>
         <div style="display:flex; align-items:center; gap:8px;">
           <img src="${avatarUrl}" class="admin-avatar" onerror="this.src='https://cdn-icons-png.flaticon.com/512/149/149071.png'">
           <div>
-            <b>${d.name}</b>
-            <span class="small-text">CCCD: ${d.cccd || '---'}</span>
-            <span class="small-text">📍 ${d.address || 'Chưa có địa chỉ'}</span>
+            <b>${safeName}</b>
+            <span class="small-text">CCCD: ${safeCccd}</span>
+            <span class="small-text">📍 ${safeAddress}</span>
             <span class="small-text">📅 Tham gia: ${joinDate}</span>
           </div>
         </div>
@@ -491,19 +499,20 @@ function renderAdminData() {
         📞 <b style="color:#0284c7; font-size:13px;">${d.call_count || 0}</b> cuộc gọi
       </td>
       <td>
-        SĐT: <b>${d.phone}</b><br>
-        PIN: <b style="color:#eab308;">${d.pin || '1234'}</b>
+        SĐT: <b>${safePhone}</b><br>
+        PIN: <b id="pin-text-${d.id}" style="color:#eab308;">******</b>
+        <button type="button" onclick="togglePinVisibility('${d.id}')" style="background:none; border:none; cursor:pointer; padding:0 4px; font-size:12px;" title="Hiện/Ẩn PIN">👁️</button>
       </td>
       <td>
         ${statusBadge}
         ${timeString}
       </td>
       <td>
-        <button class="btn-edit" onclick="editDriver('${d.id}', '${d.name}', '${d.phone}', '${d.pin || ''}', '${d.avatar_url || ''}', '${d.cccd || ''}', '${d.address || ''}', '${d.vehicle_type}', '${d.vehicle || ''}')">Sửa</button>
+        <button class="btn-edit" onclick="editDriver('${d.id}')">Sửa</button>
         ${unlockButtonHtml}
         ${d.is_active === false
-          ? `<button class="btn-toggle-on" onclick="toggleDriverStatus('${d.id}', '${d.name}', false)">Kích hoạt lại</button>`
-          : `<button class="btn-toggle-off" onclick="toggleDriverStatus('${d.id}', '${d.name}', true)">Cho nghỉ</button>`
+          ? `<button class="btn-toggle-on" onclick="toggleDriverStatus('${d.id}', false)">Kích hoạt lại</button>`
+          : `<button class="btn-toggle-off" onclick="toggleDriverStatus('${d.id}', true)">Cho nghỉ</button>`
         }
       </td>
     `;
@@ -511,6 +520,19 @@ function renderAdminData() {
   });
 
   renderPaginationUI(totalPages, totalDrivers);
+}
+
+function togglePinVisibility(driverId) {
+  const d = rawAdminDriversData.find(item => item.id === driverId);
+  if (!d) return;
+  const pinEl = document.getElementById(`pin-text-${driverId}`);
+  if (!pinEl) return;
+  
+  if (pinEl.innerText === '******') {
+    pinEl.innerText = d.pin || '1234';
+  } else {
+    pinEl.innerText = '******';
+  }
 }
 
 function renderPaginationUI(totalPages, totalDrivers) {
@@ -584,7 +606,7 @@ async function saveDriver() {
   }
 
   // 6. Biển số xe bọc () và IN HOA
-  const vehicleRegex = /\(\d{2}[A-Z][A-Z0-9]?-(?:\d{4}|\d{3}\.\d{2})\)$/;
+  const vehicleRegex = /\(\d{2}[A-Z][A-Z0-9]?-(?:\d{4}\vert{}\d{3}\.\d{2})\)$/;
   if (!vehicle || !vehicleRegex.test(vehicle)) {
     return customAlert('⚠️ Loại xe & Biển số không hợp lệ', 'Phần biển số ở cuối bắt buộc phải bọc trong ngoặc () và CHỮ IN HOA (Ví dụ: Wave (37B1-1234) hoặc Toyota (37K-123.12)).', 'warning');
   }
@@ -621,16 +643,19 @@ async function saveDriver() {
   }
 }
 
-function editDriver(id, name, phone, pin, avatar_url, cccd, address, type, vehicle) {
-  document.getElementById('driverId').value = id;
-  document.getElementById('driverName').value = name;
-  document.getElementById('driverPhone').value = phone;
-  document.getElementById('driverPin').value = pin;
-  document.getElementById('driverAvatarUrl').value = avatar_url;
-  document.getElementById('driverCccd').value = cccd;
-  document.getElementById('driverAddress').value = address;
-  document.getElementById('vehicleType').value = type;
-  document.getElementById('vehicleDetail').value = vehicle;
+function editDriver(id) {
+  const d = rawAdminDriversData.find(item => item.id === id);
+  if (!d) return;
+
+  document.getElementById('driverId').value = d.id;
+  document.getElementById('driverName').value = d.name || '';
+  document.getElementById('driverPhone').value = d.phone || '';
+  document.getElementById('driverPin').value = d.pin || '';
+  document.getElementById('driverAvatarUrl').value = d.avatar_url || '';
+  document.getElementById('driverCccd').value = d.cccd || '';
+  document.getElementById('driverAddress').value = d.address || '';
+  document.getElementById('vehicleType').value = d.vehicle_type || 'bike';
+  document.getElementById('vehicleDetail').value = d.vehicle || '';
 
   const formTitleEl = document.getElementById('formTitle');
   formTitleEl.innerText = "✏️ Cập Nhật Thông Tin Tài Xế";
@@ -655,10 +680,16 @@ function resetForm() {
   document.getElementById('cancelBtn').style.display = "none";
 }
 
-async function unlockDriver(id, name, pin) {
+async function unlockDriver(id) {
+  const d = rawAdminDriversData.find(item => item.id === id);
+  if (!d) return;
+
+  const safeName = escapeHTML(d.name);
+  const safePin = escapeHTML(d.pin || '1234');
+
   const result = await customConfirm(
     '🔓 Mở khóa tài khoản',
-    `Đã xác minh Video thành công với tài xế: <b>"${name}"</b>?<br><br>Mật khẩu PIN: <b style="color:#eab308; font-size:16px;">[ ${pin} ]</b>`,
+    `Đã xác minh Video thành công với tài xế: <b>"${safeName}"</b>?<br><br>Mật khẩu PIN: <b style="color:#eab308; font-size:16px;">[ ${safePin} ]</b>`,
     'Mở khóa ngay',
     'Hủy'
   );
@@ -672,18 +703,22 @@ async function unlockDriver(id, name, pin) {
     if (error) {
       customAlert('❌ Lỗi', error.message, 'error');
     } else {
-      customAlert('✅ Thành công', `ĐÃ MỞ KHÓA THÀNH CÔNG!\n\nHãy đọc lại Mã PIN cho tài xế "${name}": ${pin}`, 'success');
+      customAlert('✅ Thành công', `ĐÃ MỞ KHÓA THÀNH CÔNG!\n\nHãy đọc lại Mã PIN cho tài xế "${safeName}": ${safePin}`, 'success');
       loadAllData();
     }
   }
 }
 
-async function toggleDriverStatus(id, name, isCurrentlyActive) {
+async function toggleDriverStatus(id, isCurrentlyActive) {
+  const d = rawAdminDriversData.find(item => item.id === id);
+  if (!d) return;
+
   const actionText = isCurrentlyActive ? "chuyển trạng thái ĐÃ NGHỈ cho" : "KÍCH HOẠT LẠI";
+  const safeName = escapeHTML(d.name);
   
   const result = await customConfirm(
     '⚙️ Xác nhận thay đổi',
-    `Bạn có chắc muốn <b>${actionText}</b> tài xế <b>"${name}"</b>?`,
+    `Bạn có chắc muốn <b>${actionText}</b> tài xế <b>"${safeName}"</b>?`,
     'Đồng ý',
     'Hủy'
   );
@@ -698,7 +733,7 @@ async function toggleDriverStatus(id, name, isCurrentlyActive) {
     if (error) {
       customAlert('❌ Lỗi', error.message, 'error');
     } else {
-      customAlert('✅ Thành công', isCurrentlyActive ? `Đã chuyển tài xế "${name}" sang trạng thái Đã nghỉ.` : `Đã kích hoạt lại tài xế "${name}".`, 'success');
+      customAlert('✅ Thành công', isCurrentlyActive ? `Đã chuyển tài xế "${safeName}" sang trạng thái Đã nghỉ.` : `Đã kích hoạt lại tài xế "${safeName}".`, 'success');
       loadAllData();
     }
   }

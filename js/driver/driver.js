@@ -49,11 +49,13 @@ function initSavedPhone() {
 }
 
 function showNetworkAlert() {
-  document.getElementById('networkAlertModal').style.display = 'block';
+  const el = document.getElementById('networkAlertModal');
+  if (el) el.style.display = 'block';
 }
 
 function hideNetworkAlert() {
-  document.getElementById('networkAlertModal').style.display = 'none';
+  const el = document.getElementById('networkAlertModal');
+  if (el) el.style.display = 'none';
 }
 
 async function requestWakeLock() {
@@ -80,14 +82,18 @@ document.addEventListener('visibilitychange', async () => {
   }
 });
 
-if (currentDriverId) {
-  document.getElementById('appScreen').style.display = 'block';
-  loadDriverProfile();
-  initDriverMap();
-} else {
-  document.getElementById('loginScreen').style.display = 'block';
-  initSavedPhone();
-}
+document.addEventListener('DOMContentLoaded', () => {
+  if (currentDriverId) {
+    const appScreen = document.getElementById('appScreen');
+    if (appScreen) appScreen.style.display = 'block';
+    loadDriverProfile();
+    initDriverMap();
+  } else {
+    const loginScreen = document.getElementById('loginScreen');
+    if (loginScreen) loginScreen.style.display = 'block';
+    initSavedPhone();
+  }
+});
 
 async function login() {
   const phone = document.getElementById('phoneInput').value.trim();
@@ -106,7 +112,7 @@ async function login() {
     return alert(`❌ Thiết bị này đã bị tạm khóa đăng nhập cho SĐT ${phone}!\nVui lòng thử lại sau ${remainingMinutes} phút hoặc liên hệ Admin.`);
   }
 
-  btn.innerText = "Đang kiểm tra...";
+  if (btn) btn.innerText = "Đang kiểm tra...";
 
   const { data: result, error } = await supabaseClient.rpc('check_driver_login', {
     p_phone: phone,
@@ -124,7 +130,7 @@ async function login() {
     } else {
       alert(`❌ Sai SĐT hoặc Mã PIN!\nCảnh báo: Còn ${3 - failCount} lần thử.`);
     }
-    btn.innerText = "ĐĂNG NHẬP";
+    if (btn) btn.innerText = "ĐĂNG NHẬP";
     return;
   }
 
@@ -135,13 +141,13 @@ async function login() {
 
   if (driverInfo.locked_until && parseInt(driverInfo.locked_until) > now) {
     const lockedMinutes = Math.ceil((parseInt(driverInfo.locked_until) - now) / 60000);
-    btn.innerText = "ĐĂNG NHẬP";
+    if (btn) btn.innerText = "ĐĂNG NHẬP";
     return alert(`⛔ Tài khoản đang bị KHÓA TẠM THỜI (còn ${lockedMinutes} phút)!`);
   }
 
   if (driverInfo.is_active === false) {
     alert("⛔ Tài khoản của bạn đã bị cho nghỉ. Vui lòng liên hệ Admin!");
-    btn.innerText = "ĐĂNG NHẬP";
+    if (btn) btn.innerText = "ĐĂNG NHẬP";
     return;
   }
 
@@ -151,7 +157,6 @@ async function login() {
   localStorage.setItem('avyo_driver_id', driverInfo.id);
   localStorage.setItem('avyo_driver_name', driverInfo.name);
   localStorage.setItem('avyo_session_token', newToken);
-  
   localStorage.setItem('avyo_last_phone', phone);
 
   window.location.reload();
@@ -159,6 +164,8 @@ async function login() {
 
 function initDriverMap() {
   if (driverMap) return;
+  const mapEl = document.getElementById('driverMap');
+  if (!mapEl) return;
   driverMap = L.map('driverMap', { preferCanvas: true, attributionControl: false }).setView([18.7034, 105.6832], 14);
 
   const googleLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
@@ -183,6 +190,7 @@ function initDriverMap() {
 }
 
 async function loadDriverProfile() {
+  if (!currentDriverId) return;
   const { data } = await supabaseClient.from('drivers').select('*').eq('id', currentDriverId).single();
   if (data) {
     if (data.session_token && data.session_token !== currentSessionToken) {
@@ -197,35 +205,59 @@ async function loadDriverProfile() {
 
     driverData = data; 
 
-    document.getElementById('driverNameLabel').innerText = data.name;
-    document.getElementById('driverAvatar').src = getOptimizedAvatar(data.avatar_url);
-    document.getElementById('cccdLabel').innerText = "CCCD: " + (data.cccd || '---');
-    document.getElementById('addressLabel').innerText = "📍 " + (data.address || 'Chưa cập nhật địa chỉ');
-    if (data.created_at) {
-      document.getElementById('joinDateLabel').innerText = "📅 Tham gia: " + new Date(data.created_at).toLocaleDateString('vi-VN');
-    }
-    document.getElementById('vehicleTypeLabel').innerText = typeLabels[data.vehicle_type] || 'Phương tiện';
-    document.getElementById('vehicleDetailLabel').innerText = data.vehicle || 'Chưa cập nhật chi tiết xe';
-    document.getElementById('phoneLabel').innerText = data.phone;
+    const nameLabel = document.getElementById('driverNameLabel');
+    if (nameLabel) nameLabel.innerText = data.name || '--';
 
-    document.getElementById('clickCountLabel').innerText = data.click_count || 0;
-    document.getElementById('zaloCountLabel').innerText = data.zalo_count || 0;
-    document.getElementById('callCountLabel').innerText = data.call_count || 0;
+    const avatarImg = document.getElementById('driverAvatar');
+    if (avatarImg) avatarImg.src = typeof getOptimizedAvatar === 'function' ? getOptimizedAvatar(data.avatar_url) : (data.avatar_url || 'https://cdn-icons-png.flaticon.com/512/149/149071.png');
+
+    const cccdLabel = document.getElementById('cccdLabel');
+    if (cccdLabel) cccdLabel.innerText = "CCCD: " + (data.cccd || '---');
+
+    const addressLabel = document.getElementById('addressLabel');
+    if (addressLabel) addressLabel.innerText = "📍 " + (data.address || 'Chưa cập nhật địa chỉ');
+
+    const joinDateLabel = document.getElementById('joinDateLabel');
+    if (joinDateLabel && data.created_at) {
+      joinDateLabel.innerText = "📅 Tham gia: " + new Date(data.created_at).toLocaleDateString('vi-VN');
+    }
+
+    const vehicleTypeLabel = document.getElementById('vehicleTypeLabel');
+    if (vehicleTypeLabel) vehicleTypeLabel.innerText = typeLabels[data.vehicle_type] || 'Phương tiện';
+
+    const vehicleDetailLabel = document.getElementById('vehicleDetailLabel');
+    if (vehicleDetailLabel) vehicleDetailLabel.innerText = data.vehicle || 'Chưa cập nhật chi tiết xe';
+
+    const phoneLabel = document.getElementById('phoneLabel');
+    if (phoneLabel) phoneLabel.innerText = data.phone || '--';
+
+    const clickLabel = document.getElementById('clickCountLabel');
+    if (clickLabel) clickLabel.innerText = data.click_count || 0;
+
+    const zaloLabel = document.getElementById('zaloCountLabel');
+    if (zaloLabel) zaloLabel.innerText = data.zalo_count || 0;
+
+    const callLabel = document.getElementById('callCountLabel');
+    if (callLabel) callLabel.innerText = data.call_count || 0;
     
     const sum = data.rating_sum || 25;
     const count = data.rating_count || 5;
-    document.getElementById('ratingLabel').innerText = `${(sum / count).toFixed(1)} (${count})`;
+    const ratingLabel = document.getElementById('ratingLabel');
+    if (ratingLabel) ratingLabel.innerText = `${(sum / count).toFixed(1)} (${count})`;
 
-    const todayStr = getLocalDateStr();
-    const monthStr = getLocalMonthStr();
+    const todayStr = typeof getLocalDateStr === 'function' ? getLocalDateStr() : new Date().toISOString().split('T')[0];
+    const monthStr = typeof getLocalMonthStr === 'function' ? getLocalMonthStr() : new Date().toISOString().slice(0, 7);
     let displayMinsToday = data.online_minutes_today || 0;
     let displayMinsMonth = data.online_minutes_month || 0;
     
     if (data.last_online_date !== todayStr) displayMinsToday = 0;
     if (data.last_online_month !== monthStr) displayMinsMonth = 0;
 
-    document.getElementById('timeTodayLabel').innerText = formatTime(displayMinsToday);
-    document.getElementById('timeMonthLabel').innerText = formatTime(displayMinsMonth);
+    const timeTodayLabel = document.getElementById('timeTodayLabel');
+    if (timeTodayLabel) timeTodayLabel.innerText = typeof formatTime === 'function' ? formatTime(displayMinsToday) : displayMinsToday + 'p';
+
+    const timeMonthLabel = document.getElementById('timeMonthLabel');
+    if (timeMonthLabel) timeMonthLabel.innerText = typeof formatTime === 'function' ? formatTime(displayMinsMonth) : displayMinsMonth + 'p';
 
     if (data.lat && data.lng) {
       updateMapMarker(data.lat, data.lng);
@@ -235,6 +267,7 @@ async function loadDriverProfile() {
 
 function updateMapMarker(lat, lng) {
   if (!driverMap) initDriverMap();
+  if (!driverMap) return;
   const latLng = [lat, lng];
   
   const ringHtml = isOnline ? '<div class="radar-ring"></div>' : '';
@@ -326,22 +359,30 @@ async function toggleOnline() {
       updated_at: new Date().toISOString()
     }).eq('id', currentDriverId);
 
-    btn.innerText = 'TẮT NHẬN KHÁCH (NGHỈ NGƠI)';
-    btn.style.background = '#ef4444';
+    if (btn) {
+      btn.innerText = 'TẮT NHẬN KHÁCH (NGHỈ NGƠI)';
+      btn.style.background = '#ef4444';
+    }
     
-    status.innerHTML = '<span class="live-dot"></span> ĐANG PHÁT GPS ĐỂ ĐÓN KHÁCH';
-    status.style.color = '#10b981';
+    if (status) {
+      status.innerHTML = '<span class="live-dot"></span> ĐANG PHÁT GPS ĐỂ ĐÓN KHÁCH';
+      status.style.color = '#10b981';
+    }
 
     setTimeout(() => { if (driverMap) driverMap.invalidateSize(); }, 200);
 
-    const todayStr = getLocalDateStr();
-    const monthStr = getLocalMonthStr();
+    const todayStr = typeof getLocalDateStr === 'function' ? getLocalDateStr() : new Date().toISOString().split('T')[0];
+    const monthStr = typeof getLocalMonthStr === 'function' ? getLocalMonthStr() : new Date().toISOString().slice(0, 7);
 
+    if (!driverData) driverData = {};
     if (driverData.last_online_date !== todayStr) driverData.online_minutes_today = 0;
     if (driverData.last_online_month !== monthStr) driverData.online_minutes_month = 0;
 
-    document.getElementById('timeTodayLabel').innerText = formatTime(driverData.online_minutes_today);
-    document.getElementById('timeMonthLabel').innerText = formatTime(driverData.online_minutes_month);
+    const timeTodayLabel = document.getElementById('timeTodayLabel');
+    if (timeTodayLabel) timeTodayLabel.innerText = typeof formatTime === 'function' ? formatTime(driverData.online_minutes_today || 0) : (driverData.online_minutes_today || 0) + 'p';
+
+    const timeMonthLabel = document.getElementById('timeMonthLabel');
+    if (timeMonthLabel) timeMonthLabel.innerText = typeof formatTime === 'function' ? formatTime(driverData.online_minutes_month || 0) : (driverData.online_minutes_month || 0) + 'p';
 
     let heartbeatTicks = 0;
     timeInterval = setInterval(async () => {
@@ -351,11 +392,12 @@ async function toggleOnline() {
       let updateObj = { updated_at: new Date().toISOString() };
 
       if (heartbeatTicks % 2 === 0) {
+        if (!driverData) driverData = {};
         driverData.online_minutes_today = (driverData.online_minutes_today || 0) + 1;
         driverData.online_minutes_month = (driverData.online_minutes_month || 0) + 1;
 
-        document.getElementById('timeTodayLabel').innerText = formatTime(driverData.online_minutes_today);
-        document.getElementById('timeMonthLabel').innerText = formatTime(driverData.online_minutes_month);
+        if (timeTodayLabel) timeTodayLabel.innerText = typeof formatTime === 'function' ? formatTime(driverData.online_minutes_today) : driverData.online_minutes_today + 'p';
+        if (timeMonthLabel) timeMonthLabel.innerText = typeof formatTime === 'function' ? formatTime(driverData.online_minutes_month) : driverData.online_minutes_month + 'p';
 
         updateObj.online_minutes_today = driverData.online_minutes_today;
         updateObj.online_minutes_month = driverData.online_minutes_month;
@@ -371,11 +413,12 @@ async function toggleOnline() {
       if (!isOnline) return;
       const lat = pos.coords.latitude;
       const lng = pos.coords.longitude;
-      document.getElementById('coords').innerText = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+      const coordsEl = document.getElementById('coords');
+      if (coordsEl) coordsEl.innerText = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
       updateMapMarker(lat, lng);
 
       const now = Date.now();
-      const movedKm = getHaversineDistance(lat, lng, lastSentLat, lastSentLng);
+      const movedKm = typeof getHaversineDistance === 'function' ? getHaversineDistance(lat, lng, lastSentLat, lastSentLng) : 0;
 
       if ((now - lastUpdateTime >= 3000 && movedKm > 0.01) || lastSentLat === 0) {
         await updateLocation(lat, lng);
@@ -413,10 +456,14 @@ async function toggleOnline() {
       }).eq('id', currentDriverId);
     }
     
-    status.innerHTML = '🔴 ĐÃ TẮT ĐỊNH VỊ (Nghỉ ngơi)';
-    status.style.color = '#f87171';
-    btn.innerText = 'BẮT ĐẦU NHẬN KHÁCH (BẬT GPS)';
-    btn.style.background = 'linear-gradient(135deg, #10b981, #047857)';
+    if (status) {
+      status.innerHTML = '🔴 ĐÃ TẮT ĐỊNH VỊ (Nghỉ ngơi)';
+      status.style.color = '#f87171';
+    }
+    if (btn) {
+      btn.innerText = 'BẮT ĐẦU NHẬN KHÁCH (BẬT GPS)';
+      btn.style.background = 'linear-gradient(135deg, #10b981, #047857)';
+    }
   }
 }
 
@@ -424,8 +471,10 @@ window.addEventListener('online', async () => {
   hideNetworkAlert();
   const status = document.getElementById('status');
   if (isOnline) {
-    status.innerHTML = '<span class="live-dot"></span> ĐÃ KHÔI PHỤC INTERNET - ĐANG PHÁT GPS';
-    status.style.color = '#10b981';
+    if (status) {
+      status.innerHTML = '<span class="live-dot"></span> ĐÃ KHÔI PHỤC INTERNET - ĐANG PHÁT GPS';
+      status.style.color = '#10b981';
+    }
 
     lastSentLat = 0;
     lastSentLng = 0;
@@ -442,8 +491,10 @@ window.addEventListener('offline', () => {
   if (isOnline) {
     showNetworkAlert();
     const status = document.getElementById('status');
-    status.innerHTML = '⚠️ Mất kết nối 4G/5G/WIFI! Vui lòng kết nối lại Internet';
-    status.style.color = '#dc2626';
+    if (status) {
+      status.innerHTML = '⚠️ Mất kết nối 4G/5G/WIFI! Vui lòng kết nối lại Internet';
+      status.style.color = '#dc2626';
+    }
   }
 });
 
@@ -467,19 +518,23 @@ if (currentDriverId) {
           return;
         }
         
-        if (payload.new.click_count !== undefined) {
-          document.getElementById('clickCountLabel').innerText = payload.new.click_count;
+        const clickEl = document.getElementById('clickCountLabel');
+        if (clickEl && payload.new.click_count !== undefined) {
+          clickEl.innerText = payload.new.click_count;
         }
-        if (payload.new.zalo_count !== undefined) {
-          document.getElementById('zaloCountLabel').innerText = payload.new.zalo_count;
+        const zaloEl = document.getElementById('zaloCountLabel');
+        if (zaloEl && payload.new.zalo_count !== undefined) {
+          zaloEl.innerText = payload.new.zalo_count;
         }
-        if (payload.new.call_count !== undefined) {
-          document.getElementById('callCountLabel').innerText = payload.new.call_count;
+        const callEl = document.getElementById('callCountLabel');
+        if (callEl && payload.new.call_count !== undefined) {
+          callEl.innerText = payload.new.call_count;
         }
-        if (payload.new.rating_sum !== undefined && payload.new.rating_count !== undefined) {
+        const ratingEl = document.getElementById('ratingLabel');
+        if (ratingEl && payload.new.rating_sum !== undefined && payload.new.rating_count !== undefined) {
           const sum = payload.new.rating_sum || 25;
           const count = payload.new.rating_count || 5;
-          document.getElementById('ratingLabel').innerText = `${(sum / count).toFixed(1)} (${count})`;
+          ratingEl.innerText = `${(sum / count).toFixed(1)} (${count})`;
         }
       }
     })
