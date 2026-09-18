@@ -261,14 +261,14 @@ function exitSelectionMode() {
 }
 
 async function fetchAddressForInput(type, latlng) {
-  if (!MAPBOX_TOKEN || !latlng || !Number.isFinite(latlng.lat) || !Number.isFinite(latlng.lng)) return;
+  if (!GOONG_API_KEY || !latlng || !Number.isFinite(latlng.lat) || !Number.isFinite(latlng.lng)) return;
   try {
-    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${latlng.lng},${latlng.lat}.json?access_token=${MAPBOX_TOKEN}&country=vn&language=vi&limit=1`;
+    const url = `https://rsapi.goong.io/Geocode?latlng=${latlng.lat},${latlng.lng}&api_key=${GOONG_API_KEY}`;
     const res = await fetch(url);
     if (res.ok) {
       const data = await res.json();
-      if (data.features && data.features.length > 0) {
-        const placeName = cleanAddressText(data.features[0].text || data.features[0].place_name);
+      if (data.results && data.results.length > 0) {
+        const placeName = cleanAddressText(data.results[0].formatted_address || data.results[0].name);
         const inputEl = document.getElementById(type + 'Input');
         if (inputEl) { inputEl.value = placeName; toggleClearButton(type); }
         if (type === 'pickup') saveRecentPickup(placeName, latlng.lat, latlng.lng);
@@ -418,12 +418,10 @@ function onSearchInput(type, isDirectCall = false) {
     return;
   }
 
-  // 1. Hủy request cũ nếu nó vẫn đang tiếp tục
   if (searchAbortController) {
     searchAbortController.abort();
   }
   
-  // 2. Khởi tạo một AbortController mới
   searchAbortController = new AbortController();
   const currentSignal = searchAbortController.signal;
 
@@ -436,87 +434,92 @@ function onSearchInput(type, isDirectCall = false) {
       if (rawCenter && typeof rawCenter.wrap === 'function') rawCenter = rawCenter.wrap();
       const lat = Number(rawCenter ? rawCenter.lat : 18.7034), lng = Number(rawCenter ? rawCenter.lng : 105.6832);
 
-      const fetchGeocoding = async (bboxStr) => {
-        let url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${MAPBOX_TOKEN}&country=vn&language=vi&limit=8`;
-        if (rawCenter && Number.isFinite(lat) && Number.isFinite(lng)) url += `&proximity=${lng.toFixed(4)},${lat.toFixed(4)}`;
-        if (bboxStr) url += `&bbox=${bboxStr}`;
+      let url = `https://rsapi.goong.io/Place/AutoComplete?api_key=${GOONG_API_KEY}&input=${encodeURIComponent(query)}&limit=8`;
+      if (rawCenter && Number.isFinite(lat) && Number.isFinite(lng)) {
+        url += `&location=${lat.toFixed(5)},${lng.toFixed(5)}`;
+      }
+
+      const res = await fetch(url, { signal: currentSignal });
+      if (!res.ok) return;
+      const data = await res.json();
+      const predictions = data.predictions || [];
+
+      if (predictions.length === 0) {
+        listEl.innerHTML = '<div class="suggestion-loading">❌ Không tìm thấy địa chỉ phù hợp</div>';
+        listEl.style.display = 'block'; 
+        return;
+      }
+
+      const fetchGoongPlaceDetail = async (placeId) => {
         try {
-          // 3. Truyền signal vào hàm fetch
-          const res = await fetch(url, { signal: currentSignal });
-          if (!res.ok) return [];
-          const data = await res.json(); 
-          return data.features || [];
-        } catch (e) { 
-          // 4. Bắt lỗi AbortError và throw ra bên ngoài để cắt đứt luồng xử lý
+          const detailUrl = `https://rsapi.goong.io/Place/Detail?place_id=${placeId}&api_key=${GOONG_API_KEY}`;
+          const detailRes = await fetch(detailUrl, { signal: currentSignal });
+          if (!detailRes.ok) return null;
+          const detailData = await detailRes.json();
+          return detailData.result || null;
+        } catch (e) {
           if (e.name === 'AbortError') throw e;
-          return []; 
+          return null;
         }
       };
 
-      let features = [];
-      if (rawCenter && Number.isFinite(lat) && Number.isFinite(lng)) {
-        features = await fetchGeocoding(getBBox(lat, lng, 15));
-        if (features.length === 0) features = await fetchGeocoding(getBBox(lat, lng, 50));
-        if (features.length === 0) features = await fetchGeocoding(null);
-      } else {
-        features = await fetchGeocoding(null);
-      }
-
-      if (features.length === 0) {
-        listEl.innerHTML = '<div class="suggestion-loading">❌ Không tìm thấy địa chỉ phù hợp</div>';
-        listEl.style.display = 'block'; return;
-      }
-
-      if (rawCenter && Number.isFinite(lat) && Number.isFinite(lng)) {
-        features.sort((a, b) => {
-          if (!a.geometry || !b.geometry) return 0;
-          return safeDistance(lat, lng, a.geometry.coordinates[1], a.geometry.coordinates[0]) - safeDistance(lat, lng, b.geometry.coordinates[1], b.geometry.coordinates[0]);
-        });
-      }
-
-      if (isDirectCall && features.length > 0) {
-        const topResult = features[0];
-        const placeName = cleanAddressText(topResult.text || topResult.place_name);
-        const [resLng, resLat] = topResult.geometry.coordinates;
+      if (isDirectCall && predictions.length > 0) {
+        const topPrediction = predictions[0];
+        const detail = await fetchGoongPlaceDetail(topPrediction.place_id);
         
-        if (document.activeElement) document.activeElement.blur();
-        document.getElementById(type + 'Input').value = placeName;
-        toggleClearButton(type);
-        listEl.style.display = 'none';
-        const latlng = L.latLng(resLat, resLng);
+        if (detail && detail.geometry && detail.geometry.location) {
+          const placeName = cleanAddressText(topPrediction.structured_formatting?.main_text || topPrediction.description);
+          const resLat = detail.geometry.location.lat;
+          const resLng = detail.geometry.location.lng;
 
-        if (type === 'pickup') {
-          setPickupLocation(latlng); saveRecentPickup(placeName, resLat, resLng); exitFocusInputMode('pickup');
-          if (!markerEnd) enterSelectionMode('dest'); else exitSelectionMode();
-        } else {
-          setDestLocation(latlng); saveRecentDest(placeName, resLat, resLng); exitFocusInputMode('dest'); exitSelectionMode();
+          if (document.activeElement) document.activeElement.blur();
+          document.getElementById(type + 'Input').value = placeName;
+          toggleClearButton(type);
+          listEl.style.display = 'none';
+          const latlng = L.latLng(resLat, resLng);
+
+          if (type === 'pickup') {
+            setPickupLocation(latlng); saveRecentPickup(placeName, resLat, resLng); exitFocusInputMode('pickup');
+            if (!markerEnd) enterSelectionMode('dest'); else exitSelectionMode();
+          } else {
+            setDestLocation(latlng); saveRecentDest(placeName, resLat, resLng); exitFocusInputMode('dest'); exitSelectionMode();
+          }
         }
         return;
       }
 
       listEl.innerHTML = '';
-      features.forEach(f => {
-        if (!f.geometry || !f.geometry.coordinates) return;
-        const mainTitle = cleanAddressText(f.text || f.place_name), addressSub = cleanAddressText(f.place_name || '');
-        const [fLng, fLat] = f.geometry.coordinates;
-        let distTag = '';
-        if (rawCenter && Number.isFinite(lat) && Number.isFinite(lng)) {
-          const d = safeDistance(lat, lng, fLat, fLng);
-          distTag = ` • Cách ${d < 1 ? Math.round(d * 1000) + 'm' : d.toFixed(1) + 'km'}`;
-        }
+      predictions.forEach(p => {
+        const mainTitle = cleanAddressText(p.structured_formatting?.main_text || p.description);
+        const addressSub = cleanAddressText(p.structured_formatting?.secondary_text || p.description);
+        const placeId = p.place_id;
+
         const div = document.createElement('div');
         div.className = 'suggestion-item';
-        div.innerHTML = `📍 <b>${mainTitle}</b> <small style="color:#64748b; font-size:11px;">(${addressSub}<b style="color:#00b14f;">${distTag}</b>)</small>`;
-        div.onclick = () => {
+        div.innerHTML = `📍 <b>${mainTitle}</b> <small style="color:#64748b; font-size:11px;">(${addressSub})</small>`;
+        
+        div.onclick = async () => {
           if (document.activeElement) document.activeElement.blur();
           document.getElementById(type + 'Input').value = mainTitle;
-          toggleClearButton(type); listEl.style.display = 'none';
-          const latlng = L.latLng(fLat, fLng);
-          if (type === 'pickup') {
-            setPickupLocation(latlng); saveRecentPickup(mainTitle, fLat, fLng); exitFocusInputMode('pickup');
-            if (!markerEnd) enterSelectionMode('dest'); else exitSelectionMode();
-          } else {
-            setDestLocation(latlng); saveRecentDest(mainTitle, fLat, fLng); exitFocusInputMode('dest'); exitSelectionMode();
+          toggleClearButton(type); 
+          listEl.style.display = 'none';
+
+          try {
+            const detail = await fetchGoongPlaceDetail(placeId);
+            if (detail && detail.geometry && detail.geometry.location) {
+              const fLat = detail.geometry.location.lat;
+              const fLng = detail.geometry.location.lng;
+              const latlng = L.latLng(fLat, fLng);
+
+              if (type === 'pickup') {
+                setPickupLocation(latlng); saveRecentPickup(mainTitle, fLat, fLng); exitFocusInputMode('pickup');
+                if (!markerEnd) enterSelectionMode('dest'); else exitSelectionMode();
+              } else {
+                setDestLocation(latlng); saveRecentDest(mainTitle, fLat, fLng); exitFocusInputMode('dest'); exitSelectionMode();
+              }
+            }
+          } catch (err) {
+            if (err.name !== 'AbortError') console.error('Lỗi khi lấy chi tiết Goong Maps API:', err);
           }
         };
         listEl.appendChild(div);
@@ -524,14 +527,10 @@ function onSearchInput(type, isDirectCall = false) {
       listEl.style.display = 'block';
 
     } catch (err) {
-      // 5. Nếu lỗi là do Abort, chúng ta chỉ cần thoát ra (không làm gì cả)
-      if (err.name === 'AbortError') {
-        return;
-      }
-      console.error('Lỗi khi gọi Mapbox API:', err);
+      if (err.name === 'AbortError') return;
+      console.error('Lỗi khi gọi API:', err);
     }
   };
   
-  // Tối ưu debounce: Chờ 300ms sau khi người dùng ngừng gõ mới tiến hành gửi API request
   if (isDirectCall) executeSearch(); else searchTimer = setTimeout(executeSearch, 300);
 }

@@ -113,28 +113,27 @@ function extractPlaceNamesFromText(text) {
 }
 
 /**
- * Hàm tra cứu tọa độ từ tên địa danh qua Mapbox API
+ * Hàm tra cứu tọa độ từ tên địa danh qua Goong API
  */
 async function geocodeAddressName(name, proximity) {
-  if (!name || typeof MAPBOX_TOKEN === 'undefined' || !MAPBOX_TOKEN) return null;
+  if (!name || typeof GOONG_API_KEY === 'undefined' || !GOONG_API_KEY) return null;
   
   if (/^(ghim đã thả|dropped pin|chỗ ghim|vị trí đã ghim|pinned location)$/i.test(name.trim())) {
     return null;
   }
 
   try {
-    let url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(name)}.json?access_token=${MAPBOX_TOKEN}&country=vn&language=vi&limit=1`;
-    if (proximity && Number.isFinite(proximity.lat) && Number.isFinite(proximity.lng)) {
-      url += `&proximity=${proximity.lng.toFixed(4)},${proximity.lat.toFixed(4)}`;
-    }
+    let url = `https://rsapi.goong.io/Geocode?address=${encodeURIComponent(name)}&api_key=${GOONG_API_KEY}`;
+    
     const res = await fetch(url);
     if (res.ok) {
       const data = await res.json();
-      if (data.features && data.features.length > 0) {
-        const [lng, lat] = data.features[0].geometry.coordinates;
+      if (data.results && data.results.length > 0) {
+        const lat = data.results[0].geometry.location.lat;
+        const lng = data.results[0].geometry.location.lng;
         const placeName = typeof cleanAddressText === 'function' 
-          ? cleanAddressText(data.features[0].text || data.features[0].place_name) 
-          : (data.features[0].text || data.features[0].place_name);
+          ? cleanAddressText(data.results[0].formatted_address || data.results[0].name) 
+          : (data.results[0].formatted_address || data.results[0].name);
         return { lat, lng, placeName };
       }
     }
