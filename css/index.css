@@ -4,7 +4,7 @@ html, body {
   height: 100%;
   width: 100%;
   overflow: hidden;
-  background: #e5e3df;
+  background: #ffffff; /* Đã chuyển nền tổng về màu trắng đồng bộ */
   touch-action: manipulation;
   -webkit-text-size-adjust: 100%;
   overscroll-behavior: none;
@@ -546,7 +546,7 @@ body.selecting-dest .btn-confirm-select {
   display: block !important;
 }
 
-/* CỤM ĐÁY MÀN HÌNH - NỀN TRẮNG ĐỒNG BỘ MÀU KHUNG NHẬP ĐỊA CHỈ TRÀN HẾT MÀN HÌNH IPHONE */
+/* CỤM ĐÁY MÀN HÌNH - NỀN TRẮNG PHỦ TRÒN HOÀN TOÀN VÙNG HOME INDICATOR IPHONE */
 .bottom-section {
   position: fixed;
   bottom: 0;
@@ -556,8 +556,8 @@ body.selecting-dest .btn-confirm-select {
   max-width: 480px;
   margin: 0 auto;
   z-index: 1000;
-  background: #ffffff; /* Trùng màu nền với khung nhập địa chỉ */
-  padding: 10px 12px calc(4px + env(safe-area-inset-bottom, 0px)) 12px;
+  background: #ffffff;
+  padding: 10px 12px calc(8px + env(safe-area-inset-bottom, 0px)) 12px;
   border-radius: 18px 18px 0 0;
   box-shadow: 0 -6px 20px rgba(0, 0, 0, 0.12);
   box-sizing: border-box;
@@ -571,10 +571,10 @@ body.selecting-dest .btn-confirm-select {
   content: "";
   position: absolute;
   top: 100%;
-  left: 0;
-  right: 0;
-  height: 500px;
-  background: #ffffff; /* Tràn nền trắng phủ trọn vùng điều hướng Home Indicator của iPhone */
+  left: -50vw;
+  right: -50vw;
+  height: 100vh;
+  background: #ffffff; /* Tràn trắng xuống tận mép dưới cùng thiết bị */
   pointer-events: none;
 }
 
@@ -1097,8 +1097,8 @@ body.map-moving .fixed-center-pin .pin-shadow {
 }
 
 /* CHẾ ĐỘ TỐI (DARK MODE) */
-body.dark-mode {
-  background: #121212;
+body.dark-mode, html.dark-mode {
+  background: #0f172a !important;
   color: #e2e8f0;
 }
 
@@ -1106,14 +1106,13 @@ body.dark-mode {
   filter: brightness(0.6) invert(1) contrast(3) hue-rotate(200deg) saturate(0.3) brightness(0.7);
 }
 
-.dark-mode .bottom-section {
-  background: #0f172a; /* Nền tối đồng bộ với khung địa chỉ ở chế độ tối */
-  color: #e2e8f0;
-  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.5);
+.dark-mode .bottom-section,
+.dark-mode .bottom-section::after {
+  background: #0f172a !important;
 }
 
-.dark-mode .bottom-section::after {
-  background: #0f172a;
+.dark-mode .bottom-section {
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.5);
 }
 
 .dark-mode .btn-theme-toggle-float {
@@ -1126,7 +1125,7 @@ body.dark-mode {
 .dark-mode .route-input-item,
 .dark-mode .route-input-item.pickup-group,
 .dark-mode .route-input-item.dest-group {
-  background-color: #0f172a !important;
+  background-color: #1e293b !important;
   color: #ffffff !important;
   border-color: #334155 !important;
 }
@@ -1134,7 +1133,7 @@ body.dark-mode {
 .dark-mode #pickupInput,
 .dark-mode #destInput,
 .dark-mode #pickupDetailInput {
-  background-color: #0f172a !important;
+  background-color: #1e293b !important;
   color: #ffffff !important;
   caret-color: #00b14f !important;
   -webkit-text-fill-color: #ffffff !important;
@@ -1188,7 +1187,7 @@ body.dark-mode {
 }
 
 .dark-mode .bottom-main-bar {
-  background: #0f172a;
+  background: #1e293b;
   border-color: #334155;
 }
 
@@ -1243,7 +1242,7 @@ body.dark-mode {
 }
 
 .dark-mode .top3-item {
-  background: #0f172a;
+  background: #1e293b;
   border-color: #334155;
 }
 
