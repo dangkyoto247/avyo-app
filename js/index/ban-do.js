@@ -7,13 +7,32 @@ const goongCache = {
   geocode: new Map()
 };
 
-// KHÔI PHỤC TỈNH/THÀNH PHỐ & TỌA ĐỘ CACHE NGAY KHI VỪA MỞ APP
+// Khôi phục Tỉnh/Thành phố & Tọa độ cache ngay khi mở ứng dụng
 let userProvince = localStorage.getItem('avyo_last_province') || "";
 let userCity = localStorage.getItem('avyo_last_city') || "";
 
-if (savedLat && savedLng) {
+if (typeof savedLat !== 'undefined' && typeof savedLng !== 'undefined' && savedLat && savedLng) {
   userLatLng = L.latLng(parseFloat(savedLat), parseFloat(savedLng));
 }
+
+// Biến quản lý trạng thái gõ Telex trên iOS & Hủy Request cũ
+let searchAbortController = null;
+let isComposing = false;
+
+// Lắng nghe trạng thái gõ bàn phím Telex trên iPhone
+document.addEventListener('DOMContentLoaded', () => {
+  ['pickupInput', 'destInput'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.addEventListener('compositionstart', () => { isComposing = true; });
+      el.addEventListener('compositionend', () => {
+        isComposing = false;
+        const type = id === 'pickupInput' ? 'pickup' : 'dest';
+        onSearchInput(type);
+      });
+    }
+  });
+});
 
 // KHỞI TẠO BẢN ĐỒ LEAFLET CHÍNH
 const map = L.map('map', { 
@@ -135,7 +154,6 @@ function getBBox(lat, lng, radiusKm) {
   return `${(lng - dLng).toFixed(4)},${(lat - dLat).toFixed(4)},${(lng + dLng).toFixed(4)},${(lat + dLat).toFixed(4)}`;
 }
 
-/* NÚT VỊ TRÍ VÀ XEM LỘ TRÌNH VỚI ICON 25PX */
 function updateGpsButtonUI(isRouteActive) {
   const btn = document.getElementById('gpsFloatBtn');
   if (!btn) return;
@@ -216,7 +234,6 @@ async function calculateMapboxRoute() {
   updateGuide();
 }
 
-// LOGIC CHỌN ĐIỂM (GHIM) TRÊN BẢN ĐỒ
 function triggerPinSelection(type) {
   exitFocusInputMode(type);
   let targetLatLng = null;
@@ -278,7 +295,6 @@ function exitSelectionMode() {
   updateSwapButtonVisibility();
 }
 
-// CẬP NHẬT TỈNH/THÀNH PHỐ VÀ LƯU CACHE TỰ ĐỘNG
 async function fetchAddressForInput(type, latlng) {
   if (!GOONG_API_KEY || !latlng || !Number.isFinite(latlng.lat) || !Number.isFinite(latlng.lng)) return;
   
@@ -451,7 +467,6 @@ function cleanAddressText(text) {
   return text.replace(/\b\d{5,6}\b,?\s*/g, '').replace(/,?\s*(Việt Nam|Vietnam)$/gi, '').replace(/\s*,\s*,/g, ', ').replace(/^,\s*/, '').trim();
 }
 
-// HÀM TRA CỨU PLACE DETAIL CÓ CACHE
 async function fetchGoongPlaceDetail(placeId, signal) {
   if (goongCache.detail.has(placeId)) {
     return goongCache.detail.get(placeId);
@@ -470,9 +485,13 @@ async function fetchGoongPlaceDetail(placeId, signal) {
   }
 }
 
-// GỢI Ý ĐỊA ĐIỂM - TỐI ƯU CHUẨN CHO BỘ GÕ TELEX IPHONE VÀ GOONG API
+// GỢI Ý ĐỊA ĐIỂM - XỬ LÝ CHUẨN TELEX IPHONE VÀ CHỐNG TRÙNG KẾT QUẢ CŨ
 function onSearchInput(type, isDirectCall = false) {
   clearTimeout(searchTimer);
+
+  // Bỏ qua nếu người dùng đang trong quá trình gõ tổ hợp dấu tiếng Việt Telex trên iPhone
+  if (isComposing && !isDirectCall) return;
+
   const inputEl = document.getElementById(type + 'Input');
   const listEl = document.getElementById(type + 'Suggestions');
   const query = inputEl ? inputEl.value.trim() : '';
@@ -484,29 +503,34 @@ function onSearchInput(type, isDirectCall = false) {
     return;
   }
 
-  listEl.innerHTML = '<div class="suggestion-loading">⏳ Đang tìm địa chỉ...</div>';
-  listEl.style.display = 'block';
-
   const isMobileApp = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-  const delayTime = isDirectCall ? 0 : (isMobileApp ? 350 : 250);
+  const delayTime = isDirectCall ? 0 : (isMobileApp ? 400 : 250);
 
   searchTimer = setTimeout(async () => {
+    // Hủy bỏ request tìm kiếm cũ trước đó nếu chưa chạy xong
+    if (searchAbortController) {
+      searchAbortController.abort();
+    }
+    searchAbortController = new AbortController();
+    const signal = searchAbortController.signal;
+
+    listEl.innerHTML = '<div class="suggestion-loading">⏳ Đang tìm địa chỉ...</div>';
+    listEl.style.display = 'block';
+
     try {
       let url = `https://rsapi.goong.io/Place/AutoComplete?api_key=${GOONG_API_KEY}&input=${encodeURIComponent(query)}`;
 
-      // Lấy điểm ưu tiên vị trí (markerStart -> userLatLng -> Pin center -> Mặc định)
       const center = markerStart ? markerStart.getLatLng() : (userLatLng || getPinCenterLatLng());
       if (center && Number.isFinite(center.lat) && Number.isFinite(center.lng)) {
         url += `&location=${center.lat.toFixed(5)},${center.lng.toFixed(5)}`;
       }
 
-      const res = await fetch(url);
+      const res = await fetch(url, { signal });
       const data = await res.json();
 
       if (data.status === "OK" && data.predictions && data.predictions.length > 0) {
         let predictions = data.predictions;
 
-        // Ưu tiên đưa địa điểm thuộc Thành phố/Tỉnh hiện tại lên đầu
         if (userCity || userProvince) {
           const targetCity = userCity || userProvince;
           predictions.sort((a, b) => {
@@ -556,6 +580,7 @@ function onSearchInput(type, isDirectCall = false) {
         listEl.style.display = 'block';
       }
     } catch (err) {
+      if (err.name === 'AbortError') return; // Bỏ qua nếu bị hủy chủ động
       console.error('Lỗi API Goong:', err);
     }
   }, delayTime);
