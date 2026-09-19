@@ -447,150 +447,72 @@ async function fetchGoongPlaceDetail(placeId, signal) {
   }
 }
 
-// HÀM GỢI Ý ĐỊA ĐIỂM TỰ ĐỘNG CẬP NHẬT CHUẨN XÁC TỰ NHIÊN NHƯ DỰ ÁN DEMO
-let searchAbortController = null;
-
+// GỢI Ý ĐỊA ĐIỂM ĐƠN GIẢN (ƯU TIÊN THEO GPS KHÁCH HÀNG)
 function onSearchInput(type, isDirectCall = false) {
   clearTimeout(searchTimer);
-  activeSuggestionIndex = -1;
-  const query = document.getElementById(type + 'Input').value.trim().substring(0, 200);
+  const inputEl = document.getElementById(type + 'Input');
   const listEl = document.getElementById(type + 'Suggestions');
- 
-  // Bắt đầu tìm khi nhập từ 2 ký tự trở lên
+  const query = inputEl ? inputEl.value.trim() : '';
+
   if (query.length < 2) {
-    if (type === 'pickup') showRecentPickups(); else if (type === 'dest') showRecentDests(); else listEl.style.display = 'none';
-    return;
-  }
-
-  if (searchAbortController) {
-    searchAbortController.abort();
-  }
-  
-  searchAbortController = new AbortController();
-  const currentSignal = searchAbortController.signal;
-
-  let rawCenter = markerStart ? markerStart.getLatLng() : (userLatLng || getPinCenterLatLng());
-  if (rawCenter && typeof rawCenter.wrap === 'function') rawCenter = rawCenter.wrap();
-  const lat = Number(rawCenter ? rawCenter.lat : 18.7034), lng = Number(rawCenter ? rawCenter.lng : 105.6832);
-
-  const cacheKey = `${query.toLowerCase()}_${lat.toFixed(2)},${lng.toFixed(2)}`;
-
-  const renderSuggestions = (predictions) => {
-    if (predictions.length === 0) {
-      listEl.innerHTML = '<div class="suggestion-loading">❌ Không tìm thấy địa chỉ phù hợp</div>';
-      listEl.style.display = 'block'; 
-      return;
-    }
-
-    listEl.innerHTML = '';
-    predictions.forEach(p => {
-      const mainTitle = cleanAddressText(p.structured_formatting?.main_text || p.description);
-      const addressSub = cleanAddressText(p.structured_formatting?.secondary_text || p.description);
-      const placeId = p.place_id;
-
-      const div = document.createElement('div');
-      div.className = 'suggestion-item';
-      div.innerHTML = `📍 <b>${mainTitle}</b> ${addressSub ? `<small style="color:#64748b; font-size:11px;">(${addressSub})</small>` : ''}`;
-      
-      div.onclick = async () => {
-        if (document.activeElement) document.activeElement.blur();
-        document.getElementById(type + 'Input').value = mainTitle;
-        toggleClearButton(type); 
-        listEl.style.display = 'none';
-
-        try {
-          const detail = await fetchGoongPlaceDetail(placeId, currentSignal);
-          if (detail && detail.geometry && detail.geometry.location) {
-            const fLat = detail.geometry.location.lat;
-            const fLng = detail.geometry.location.lng;
-            const latlng = L.latLng(fLat, fLng);
-
-            if (type === 'pickup') {
-              setPickupLocation(latlng); saveRecentPickup(mainTitle, fLat, fLng); exitFocusInputMode('pickup');
-              if (!markerEnd) enterSelectionMode('dest'); else exitSelectionMode();
-            } else {
-              setDestLocation(latlng); saveRecentDest(mainTitle, fLat, fLng); exitFocusInputMode('dest'); exitSelectionMode();
-            }
-          }
-        } catch (err) {
-          if (err.name !== 'AbortError') console.error('Lỗi khi lấy chi tiết Goong Maps API:', err);
-        }
-      };
-      listEl.appendChild(div);
-    });
-    listEl.style.display = 'block';
-  };
-
-  // Kiểm tra nếu có sẵn trong Cache
-  if (goongCache.autocomplete.has(cacheKey)) {
-    const cachedPredictions = goongCache.autocomplete.get(cacheKey);
-    if (isDirectCall && cachedPredictions.length > 0) {
-      fetchGoongPlaceDetail(cachedPredictions[0].place_id, currentSignal).then(detail => {
-        if (detail && detail.geometry && detail.geometry.location) {
-          const placeName = cleanAddressText(cachedPredictions[0].structured_formatting?.main_text || cachedPredictions[0].description);
-          const latlng = L.latLng(detail.geometry.location.lat, detail.geometry.location.lng);
-          document.getElementById(type + 'Input').value = placeName;
-          if (type === 'pickup') { setPickupLocation(latlng); saveRecentPickup(placeName, latlng.lat, latlng.lng); exitFocusInputMode('pickup'); }
-          else { setDestLocation(latlng); saveRecentDest(placeName, latlng.lat, latlng.lng); exitFocusInputMode('dest'); }
-        }
-      });
-    } else {
-      renderSuggestions(cachedPredictions);
-    }
+    if (type === 'pickup') showRecentPickups();
+    else if (type === 'dest') showRecentDests();
+    else listEl.style.display = 'none';
     return;
   }
 
   listEl.innerHTML = '<div class="suggestion-loading">⏳ Đang tìm địa chỉ...</div>';
   listEl.style.display = 'block';
 
-  const executeSearch = async () => {
+  searchTimer = setTimeout(async () => {
     try {
-      // Chuỗi URL gọi API tối giản chính xác như mẫu thử nghiệm, kết hợp more_compound=true để lấy đầy đủ cấu trúc địa chỉ
-      let url = `https://rsapi.goong.io/Place/AutoComplete?api_key=${GOONG_API_KEY}&input=${encodeURIComponent(query)}&more_compound=true`;
-      
-      if (rawCenter && Number.isFinite(lat) && Number.isFinite(lng)) {
-        url += `&location=${lat.toFixed(5)},${lng.toFixed(5)}`;
+      let url = `https://rsapi.goong.io/Place/AutoComplete?api_key=${GOONG_API_KEY}&input=${encodeURIComponent(query)}`;
+
+      const center = markerStart ? markerStart.getLatLng() : (userLatLng || getPinCenterLatLng());
+      if (center && Number.isFinite(center.lat) && Number.isFinite(center.lng)) {
+        url += `&location=${center.lat.toFixed(5)},${center.lng.toFixed(5)}`;
       }
 
-      const res = await fetch(url, { signal: currentSignal });
-      if (!res.ok) return;
+      const res = await fetch(url);
       const data = await res.json();
-      const predictions = data.predictions || [];
 
-      goongCache.autocomplete.set(cacheKey, predictions);
+      if (data.status === "OK" && data.predictions && data.predictions.length > 0) {
+        listEl.innerHTML = '';
+        data.predictions.forEach(p => {
+          const div = document.createElement('div');
+          div.className = 'suggestion-item';
+          div.innerHTML = `📍 <b>${p.description}</b>`;
 
-      if (isDirectCall && predictions.length > 0) {
-        const topPrediction = predictions[0];
-        const detail = await fetchGoongPlaceDetail(topPrediction.place_id, currentSignal);
-        
-        if (detail && detail.geometry && detail.geometry.location) {
-          const placeName = cleanAddressText(topPrediction.structured_formatting?.main_text || topPrediction.description);
-          const resLat = detail.geometry.location.lat;
-          const resLng = detail.geometry.location.lng;
+          div.onclick = async () => {
+            if (document.activeElement) document.activeElement.blur();
+            inputEl.value = p.description;
+            toggleClearButton(type);
+            listEl.style.display = 'none';
 
-          if (document.activeElement) document.activeElement.blur();
-          document.getElementById(type + 'Input').value = placeName;
-          toggleClearButton(type);
-          listEl.style.display = 'none';
-          const latlng = L.latLng(resLat, resLng);
-
-          if (type === 'pickup') {
-            setPickupLocation(latlng); saveRecentPickup(placeName, resLat, resLng); exitFocusInputMode('pickup');
-            if (!markerEnd) enterSelectionMode('dest'); else exitSelectionMode();
-          } else {
-            setDestLocation(latlng); saveRecentDest(placeName, resLat, resLng); exitFocusInputMode('dest'); exitSelectionMode();
-          }
-        }
-        return;
+            const detail = await fetchGoongPlaceDetail(p.place_id);
+            if (detail && detail.geometry && detail.geometry.location) {
+              const latlng = L.latLng(detail.geometry.location.lat, detail.geometry.location.lng);
+              if (type === 'pickup') {
+                setPickupLocation(latlng);
+                saveRecentPickup(p.description, latlng.lat, latlng.lng);
+                exitFocusInputMode('pickup');
+                if (!markerEnd) enterSelectionMode('dest'); else exitSelectionMode();
+              } else {
+                setDestLocation(latlng);
+                saveRecentDest(p.description, latlng.lat, latlng.lng);
+                exitFocusInputMode('dest');
+                exitSelectionMode();
+              }
+            }
+          };
+          listEl.appendChild(div);
+        });
+        listEl.style.display = 'block';
+      } else {
+        listEl.innerHTML = '<div class="suggestion-loading">❌ Không tìm thấy địa chỉ phù hợp</div>';
       }
-
-      renderSuggestions(predictions);
-
     } catch (err) {
-      if (err.name === 'AbortError') return;
-      console.error('Lỗi khi gọi API Goong:', err);
+      console.error('Lỗi API Goong:', err);
     }
-  };
-  
-  if (isDirectCall) executeSearch(); else searchTimer = setTimeout(executeSearch, 350);
+  }, 300);
 }
