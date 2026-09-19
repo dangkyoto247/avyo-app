@@ -7,6 +7,14 @@ const goongCache = {
   geocode: new Map()
 };
 
+// KHÔI PHỤC TỈNH/THÀNH PHỐ & TỌA ĐỘ CACHE NGAY KHI VỪA MỞ APP
+let userProvince = localStorage.getItem('avyo_last_province') || "";
+let userCity = localStorage.getItem('avyo_last_city') || "";
+
+if (savedLat && savedLng) {
+  userLatLng = L.latLng(parseFloat(savedLat), parseFloat(savedLng));
+}
+
 // KHỞI TẠO BẢN ĐỒ LEAFLET CHÍNH
 const map = L.map('map', { 
   preferCanvas: true,
@@ -56,14 +64,14 @@ const destinationIcon = L.divIcon({
 
 // CÁC HÀM XỬ LÝ GHIM CHÍNH GIỮA (CENTER PIN)
 function getPinCenterLatLng() {
-  if (!map) return L.latLng(18.7034, 105.6832);
+  if (!map) return userLatLng || L.latLng(18.7034, 105.6832);
   try {
     const size = map.getSize();
-    if (!size || !size.x || !size.y) return L.latLng(18.7034, 105.6832);
+    if (!size || !size.x || !size.y) return userLatLng || L.latLng(18.7034, 105.6832);
     const pt = map.containerPointToLatLng([size.x / 2, size.y * 0.3333]);
     if (pt && Number.isFinite(pt.lat) && Number.isFinite(pt.lng)) return pt;
   } catch (e) {}
-  return L.latLng(18.7034, 105.6832);
+  return userLatLng || L.latLng(18.7034, 105.6832);
 }
 
 map.on('zoomstart', () => {
@@ -270,11 +278,7 @@ function exitSelectionMode() {
   updateSwapButtonVisibility();
 }
 
-// Biến toàn cục lưu Tỉnh & Thành phố/Quận Huyện từ GPS hiện tại
-let userProvince = "";
-let userCity = "";
-
-// Cập nhật tên tỉnh và thành phố khi tìm thấy địa chỉ GPS hiện tại (Đã sửa lỗi tách chuỗi trên iOS)
+// CẬP NHẬT TỈNH/THÀNH PHỐ VÀ LƯU CACHE TỰ ĐỘNG
 async function fetchAddressForInput(type, latlng) {
   if (!GOONG_API_KEY || !latlng || !Number.isFinite(latlng.lat) || !Number.isFinite(latlng.lng)) return;
   
@@ -298,15 +302,16 @@ async function fetchAddressForInput(type, latlng) {
         const placeName = cleanAddressText(fullAddr);
         goongCache.geocode.set(cacheKey, placeName);
 
-        // Làm sạch toàn bộ chuỗi trước khi split để tránh phần tử rỗng trên Safari/iOS
         const cleanFull = cleanAddressText(fullAddr);
         const parts = cleanFull.split(',').map(p => p.trim().toLowerCase()).filter(p => p.length > 0);
         
         if (parts.length >= 1) {
-          userProvince = parts[parts.length - 1]; // Ví dụ: "nghệ an"
+          userProvince = parts[parts.length - 1];
+          localStorage.setItem('avyo_last_province', userProvince);
         }
         if (parts.length >= 2) {
-          userCity = parts[parts.length - 2].replace(/thành phố|thị xã|huyện/gi, '').trim(); // Ví dụ: "vinh"
+          userCity = parts[parts.length - 2].replace(/thành phố|thị xã|huyện/gi, '').trim();
+          localStorage.setItem('avyo_last_city', userCity);
         }
 
         const inputEl = document.getElementById(type + 'Input');
@@ -482,16 +487,14 @@ function onSearchInput(type, isDirectCall = false) {
   listEl.innerHTML = '<div class="suggestion-loading">⏳ Đang tìm địa chỉ...</div>';
   listEl.style.display = 'block';
 
-  // Tăng delay trên Mobile lên 350ms để chờ người dùng gõ xong từ trên bàn phím Telex
   const isMobileApp = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
   const delayTime = isDirectCall ? 0 : (isMobileApp ? 350 : 250);
 
   searchTimer = setTimeout(async () => {
     try {
-      // Giữ nguyên chuỗi tìm kiếm tự nhiên của khách hàng, không ép cộng chuỗi thủ công
       let url = `https://rsapi.goong.io/Place/AutoComplete?api_key=${GOONG_API_KEY}&input=${encodeURIComponent(query)}`;
 
-      // Đính kèm tọa độ GPS để Goong tự ưu tiên địa điểm quanh bán kính vị trí hiện tại
+      // Lấy điểm ưu tiên vị trí (markerStart -> userLatLng -> Pin center -> Mặc định)
       const center = markerStart ? markerStart.getLatLng() : (userLatLng || getPinCenterLatLng());
       if (center && Number.isFinite(center.lat) && Number.isFinite(center.lng)) {
         url += `&location=${center.lat.toFixed(5)},${center.lng.toFixed(5)}`;
@@ -503,7 +506,7 @@ function onSearchInput(type, isDirectCall = false) {
       if (data.status === "OK" && data.predictions && data.predictions.length > 0) {
         let predictions = data.predictions;
 
-        // Ưu tiên đưa các địa điểm thuộc Thành phố/Tỉnh hiện tại lên đầu thay vì dùng filter xóa bỏ
+        // Ưu tiên đưa địa điểm thuộc Thành phố/Tỉnh hiện tại lên đầu
         if (userCity || userProvince) {
           const targetCity = userCity || userProvince;
           predictions.sort((a, b) => {
@@ -515,7 +518,6 @@ function onSearchInput(type, isDirectCall = false) {
           });
         }
 
-        // Lấy tối đa 5 gợi ý sát nhất
         predictions = predictions.slice(0, 5);
 
         listEl.innerHTML = '';
