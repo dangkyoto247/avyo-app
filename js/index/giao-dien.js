@@ -145,6 +145,11 @@ function exitFocusInputMode(type) {
     document.getElementById('destSuggestions').style.display = 'none';
   }
   activeSuggestionIndex = -1;
+  
+  // HỦY SESSION TÌM KIẾM CỦA GOONG NẾU NGƯỜI DÙNG TẮT Ô NHẬP KHÔNG CHỌN
+  if (typeof window.resetSearchSessionToken === 'function') {
+    window.resetSearchSessionToken();
+  }
 }
 
 window.addEventListener('scroll', () => {
