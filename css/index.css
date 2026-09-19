@@ -300,6 +300,7 @@ body.focus-dest .dest-group .action-buttons-right {
   display: flex !important;
 }
 
+/* ĐÃ SỬA: Dùng dvh thay cho vh để giới hạn chiều cao hiển thị trên điện thoại không bị bàn phím che mất */
 body.focus-pickup .pickup-group .suggestions-list,
 body.focus-dest .dest-group .suggestions-list {
   top: 100% !important;
@@ -307,10 +308,11 @@ body.focus-dest .dest-group .suggestions-list {
   left: 0 !important;
   right: 0 !important;
   margin-top: 6px !important;
-  max-height: calc(100vh - 120px) !important;
+  max-height: 45dvh !important;
   z-index: 100000 !important;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2) !important;
   border-radius: 14px !important;
+  -webkit-overflow-scrolling: touch; 
 }
 
 /* ICON ĐẦU DÒNG */

@@ -492,6 +492,10 @@ function onSearchInput(type, isDirectCall = false) {
   listEl.innerHTML = '<div class="suggestion-loading">⏳ Đang tìm địa chỉ...</div>';
   listEl.style.display = 'block';
 
+  // ĐÃ SỬA: Tối ưu Debounce riêng cho Mobile (150ms) thay vì cố định 300ms
+  const isMobileApp = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  const delayTime = isMobileApp ? 150 : 300;
+
   searchTimer = setTimeout(async () => {
     try {
       // 1. URL tìm kiếm cơ bản
@@ -557,5 +561,5 @@ function onSearchInput(type, isDirectCall = false) {
     } catch (err) {
       console.error('Lỗi API Goong:', err);
     }
-  }, 300);
+  }, delayTime);
 }
