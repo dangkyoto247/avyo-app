@@ -221,12 +221,28 @@ body.focus-dest {
   color: #f8fafc;
 }
 
-/* VÔ HIỆU HÓA TRANSFORM CỦA BOTTOM-SECTION KHI FOCUS */
+/* KHÓA VÀ ẨN HOÀN TOÀN ĐƯỜNG TRẮNG CÙNG KHUNG ĐÁY KHI DÙNG Ô NHẬP LIỆU */
 body.focus-pickup .bottom-section,
 body.focus-dest .bottom-section {
   transform: none !important;
   background: transparent !important;
   box-shadow: none !important;
+  padding: 0 !important;
+  pointer-events: none !important;
+}
+
+body.focus-pickup .bottom-section::after,
+body.focus-dest .bottom-section::after {
+  display: none !important;
+}
+
+body.focus-pickup .route-card,
+body.focus-dest .route-card {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
 }
 
 /* CHẾ ĐỘ FOCUS ĐẨY NGUYÊN DÒNG ĐIỂM ĐÓN / ĐIỂM ĐẾN LÊN ĐẦU MÀN HÌNH */
@@ -247,6 +263,7 @@ body.focus-dest .dest-group {
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.18) !important;
   min-height: 48px !important;
   box-sizing: border-box !important;
+  pointer-events: auto !important;
 }
 
 /* ẨN NÚT CHI TIẾT VÀ NÚT CHỌN BẢN ĐỒ KHI Ở CHẾ ĐỘ FOCUS */
@@ -514,7 +531,7 @@ body.focus-dest .dest-group .suggestions-list {
   color: #93c5fd;
 }
 
-/* NÚT XÁC NHẬN CHỌN VỊ TRÍ - ĐÃ SỬA CAO HƠN VÀ BO TRÒN DẠNG VIÊN THUỐC */
+/* NÚT XÁC NHẬN CHỌN VỊ TRÍ - CAO HƠN VÀ BO TRÒN VIÊN THUỐC (CAPSULE) */
 .btn-confirm-select {
   order: 2;
   display: none;
@@ -547,7 +564,7 @@ body.selecting-dest .btn-confirm-select {
   display: block !important;
 }
 
-/* CỤM ĐÁY MÀN HÌNH - ĐÃ SỬA SÁT CẠNH TRÊN VÙNG ĐIỀU HƯỚNG HỆ THỐNG */
+/* CỤM ĐÁY MÀN HÌNH - SÁT CẠNH TRÊN VÙNG ĐIỀU HƯỚNG HỆ THỐNG */
 .bottom-section {
   position: fixed;
   bottom: 0;
