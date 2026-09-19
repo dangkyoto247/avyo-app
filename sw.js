@@ -1,9 +1,9 @@
 const TILE_CACHE_NAME = 'map-tiles-v2';
-const STATIC_CACHE_NAME = 'avyo-static-v201';
+const STATIC_CACHE_NAME = 'avyo-static-v202';
 const MAX_TILE_LIMIT = 150; // Giới hạn tối đa 150 mảnh bản đồ gần nhất
 
 const STATIC_ASSETS = [
-  '/',
+
   'index.html',
   'driver.html',
   'admin.html',
