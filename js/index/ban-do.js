@@ -447,7 +447,35 @@ async function fetchGoongPlaceDetail(placeId, signal) {
   }
 }
 
-// GỢI Ý ĐỊA ĐIỂM ĐƠN GIẢN (ƯU TIÊN THEO GPS KHÁCH HÀNG)
+// Biến toàn cục lưu tên tỉnh từ vị trí GPS
+let userProvince = "";
+
+// Cập nhật tên tỉnh khi tìm thấy địa chỉ GPS hiện tại
+async function fetchAddressForInput(type, latlng) {
+  if (!GOONG_API_KEY || !latlng) return;
+  try {
+    const url = `https://rsapi.goong.io/Geocode?latlng=${latlng.lat},${latlng.lng}&api_key=${GOONG_API_KEY}`;
+    const res = await fetch(url);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.results && data.results.length > 0) {
+        const fullAddr = data.results[0].formatted_address || "";
+        const placeName = cleanAddressText(fullAddr);
+        
+        // Tách lấy Tỉnh/Thành từ vị trí thực tế của khách
+        const parts = fullAddr.split(',');
+        if (parts.length > 0) {
+          userProvince = parts[parts.length - 1].trim().toLowerCase();
+        }
+
+        const inputEl = document.getElementById(type + 'Input');
+        if (inputEl) { inputEl.value = placeName; toggleClearButton(type); }
+      }
+    }
+  } catch (e) {}
+}
+
+// GỢI Ý ĐỊA ĐIỂM - TỰ ĐỘNG TRUYỀN GPS ĐỂ GOONG ƯU TIÊN BÁN KÍNH GẦN KHÁCH
 function onSearchInput(type, isDirectCall = false) {
   clearTimeout(searchTimer);
   const inputEl = document.getElementById(type + 'Input');
@@ -466,8 +494,10 @@ function onSearchInput(type, isDirectCall = false) {
 
   searchTimer = setTimeout(async () => {
     try {
+      // 1. URL tìm kiếm cơ bản
       let url = `https://rsapi.goong.io/Place/AutoComplete?api_key=${GOONG_API_KEY}&input=${encodeURIComponent(query)}`;
 
+      // 2. TRUYỀN TỌA ĐỘ GPS KHÁCH HÀNG: Giúp Goong tự định hướng ưu tiên Vinh/Nghệ An lên đầu
       const center = markerStart ? markerStart.getLatLng() : (userLatLng || getPinCenterLatLng());
       if (center && Number.isFinite(center.lat) && Number.isFinite(center.lng)) {
         url += `&location=${center.lat.toFixed(5)},${center.lng.toFixed(5)}`;
@@ -477,8 +507,21 @@ function onSearchInput(type, isDirectCall = false) {
       const data = await res.json();
 
       if (data.status === "OK" && data.predictions && data.predictions.length > 0) {
+        let predictions = data.predictions;
+
+        // 3. Sắp xếp phụ ở Client: Nếu địa chỉ chứa "Nghệ An" hoặc "Vinh", ưu tiên lên vị trí đầu
+        if (userProvince) {
+          predictions.sort((a, b) => {
+            const aMatch = a.description.toLowerCase().includes(userProvince) || a.description.toLowerCase().includes('vinh');
+            const bMatch = b.description.toLowerCase().includes(userProvince) || b.description.toLowerCase().includes('vinh');
+            if (aMatch && !bMatch) return -1;
+            if (!aMatch && bMatch) return 1;
+            return 0;
+          });
+        }
+
         listEl.innerHTML = '';
-        data.predictions.forEach(p => {
+        predictions.forEach(p => {
           const div = document.createElement('div');
           div.className = 'suggestion-item';
           div.innerHTML = `📍 <b>${p.description}</b>`;
