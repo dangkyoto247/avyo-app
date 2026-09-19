@@ -546,7 +546,7 @@ body.selecting-dest .btn-confirm-select {
   display: block !important;
 }
 
-/* CỤM ĐÁY MÀN HÌNH - ÉP SÁT ĐÁY MÀN HÌNH VÀ VÙNG ĐIỀU HƯỚNG */
+/* CỤM ĐÁY MÀN HÌNH - NỀN TRẮNG ĐỒNG BỘ MÀU KHUNG NHẬP ĐỊA CHỈ TRÀN HẾT MÀN HÌNH IPHONE */
 .bottom-section {
   position: fixed;
   bottom: 0;
@@ -556,7 +556,7 @@ body.selecting-dest .btn-confirm-select {
   max-width: 480px;
   margin: 0 auto;
   z-index: 1000;
-  background: #f1f5f9;
+  background: #ffffff; /* Trùng màu nền với khung nhập địa chỉ */
   padding: 10px 12px calc(4px + env(safe-area-inset-bottom, 0px)) 12px;
   border-radius: 18px 18px 0 0;
   box-shadow: 0 -6px 20px rgba(0, 0, 0, 0.12);
@@ -574,7 +574,7 @@ body.selecting-dest .btn-confirm-select {
   left: 0;
   right: 0;
   height: 500px;
-  background: #f1f5f9;
+  background: #ffffff; /* Tràn nền trắng phủ trọn vùng điều hướng Home Indicator của iPhone */
   pointer-events: none;
 }
 
@@ -1107,13 +1107,13 @@ body.dark-mode {
 }
 
 .dark-mode .bottom-section {
-  background: #1e293b;
+  background: #0f172a; /* Nền tối đồng bộ với khung địa chỉ ở chế độ tối */
   color: #e2e8f0;
   box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.5);
 }
 
 .dark-mode .bottom-section::after {
-  background: #1e293b;
+  background: #0f172a;
 }
 
 .dark-mode .btn-theme-toggle-float {
