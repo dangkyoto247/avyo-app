@@ -7,18 +7,6 @@ const goongCache = {
   geocode: new Map()
 };
 
-// QUẢN LÝ SESSION TOKEN TÌM KIẾM CHO GOONG
-let currentSearchSessionToken = null;
-function getOrGenerateSessionToken() {
-  if (!currentSearchSessionToken) {
-    currentSearchSessionToken = 'session_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
-  }
-  return currentSearchSessionToken;
-}
-window.resetSearchSessionToken = function() {
-  currentSearchSessionToken = null;
-};
-
 // KHỞI TẠO BẢN ĐỒ LEAFLET CHÍNH
 const map = L.map('map', { 
   preferCanvas: true,
@@ -351,7 +339,6 @@ function setDestLocation(latlng) {
 function resetRoute() {
   if (routeAnimationTimer) cancelAnimationFrame(routeAnimationTimer);
   clearTimeout(mapboxTimeout);
-  if (typeof window.resetSearchSessionToken === 'function') window.resetSearchSessionToken();
   if (markerStart) map.removeLayer(markerStart);
   if (markerEnd) map.removeLayer(markerEnd);
   if (routeLine) map.removeLayer(routeLine);
@@ -441,21 +428,18 @@ function cleanAddressText(text) {
   return text.replace(/\b\d{5,6}\b,?\s*/g, '').replace(/,?\s*(Việt Nam|Vietnam)$/gi, '').replace(/\s*,\s*,/g, ', ').replace(/^,\s*/, '').trim();
 }
 
-// HÀM TRA CỨU PLACE DETAIL CÓ CACHE & SESSION TOKEN
+// HÀM TRA CỨU PLACE DETAIL CÓ CACHE
 async function fetchGoongPlaceDetail(placeId, signal) {
-  const sessionToken = getOrGenerateSessionToken();
-  const cacheKey = `${placeId}_${sessionToken}`;
-
-  if (goongCache.detail.has(cacheKey)) {
-    return goongCache.detail.get(cacheKey);
+  if (goongCache.detail.has(placeId)) {
+    return goongCache.detail.get(placeId);
   }
   try {
-    const detailUrl = `https://rsapi.goong.io/Place/Detail?place_id=${placeId}&api_key=${GOONG_API_KEY}&sessiontoken=${sessionToken}`;
+    const detailUrl = `https://rsapi.goong.io/Place/Detail?place_id=${placeId}&api_key=${GOONG_API_KEY}`;
     const detailRes = await fetch(detailUrl, { signal });
     if (!detailRes.ok) return null;
     const detailData = await detailRes.json();
     const result = detailData.result || null;
-    if (result) goongCache.detail.set(cacheKey, result);
+    if (result) goongCache.detail.set(placeId, result);
     return result;
   } catch (e) {
     if (e.name === 'AbortError') throw e;
@@ -463,7 +447,7 @@ async function fetchGoongPlaceDetail(placeId, signal) {
   }
 }
 
-// HÀM GỢI Ý ĐỊA ĐIỂM TỰ ĐỘNG VỚI TỐI ƯU CACHE & DEBOUNCE 450MS
+// HÀM GỢI Ý ĐỊA ĐIỂM TỰ ĐỘNG CẬP NHẬT CHUẨN XÁC TỰ NHIÊN NHƯ DỰ ÁN DEMO
 let searchAbortController = null;
 
 function onSearchInput(type, isDirectCall = false) {
@@ -472,7 +456,7 @@ function onSearchInput(type, isDirectCall = false) {
   const query = document.getElementById(type + 'Input').value.trim().substring(0, 200);
   const listEl = document.getElementById(type + 'Suggestions');
  
-  // Chỉ tìm kiếm khi gõ từ 2 ký tự trở lên để tiết kiệm request
+  // Bắt đầu tìm khi nhập từ 2 ký tự trở lên
   if (query.length < 2) {
     if (type === 'pickup') showRecentPickups(); else if (type === 'dest') showRecentDests(); else listEl.style.display = 'none';
     return;
@@ -489,11 +473,7 @@ function onSearchInput(type, isDirectCall = false) {
   if (rawCenter && typeof rawCenter.wrap === 'function') rawCenter = rawCenter.wrap();
   const lat = Number(rawCenter ? rawCenter.lat : 18.7034), lng = Number(rawCenter ? rawCenter.lng : 105.6832);
 
-  // Áp dụng Location Biasing: Bán kính 12km cho Điểm đón và 45km cho Điểm đến
-  const radiusInMeters = (type === 'pickup') ? 12000 : 45000;
-  const sessionToken = getOrGenerateSessionToken();
-
-  const cacheKey = `${query.toLowerCase()}_${type}_${lat.toFixed(2)},${lng.toFixed(2)}`;
+  const cacheKey = `${query.toLowerCase()}_${lat.toFixed(2)},${lng.toFixed(2)}`;
 
   const renderSuggestions = (predictions) => {
     if (predictions.length === 0) {
@@ -520,8 +500,6 @@ function onSearchInput(type, isDirectCall = false) {
 
         try {
           const detail = await fetchGoongPlaceDetail(placeId, currentSignal);
-          window.resetSearchSessionToken(); // Chọn xong điểm -> Xóa Session
-
           if (detail && detail.geometry && detail.geometry.location) {
             const fLat = detail.geometry.location.lat;
             const fLng = detail.geometry.location.lng;
@@ -552,8 +530,6 @@ function onSearchInput(type, isDirectCall = false) {
           const placeName = cleanAddressText(cachedPredictions[0].structured_formatting?.main_text || cachedPredictions[0].description);
           const latlng = L.latLng(detail.geometry.location.lat, detail.geometry.location.lng);
           document.getElementById(type + 'Input').value = placeName;
-          window.resetSearchSessionToken();
-
           if (type === 'pickup') { setPickupLocation(latlng); saveRecentPickup(placeName, latlng.lat, latlng.lng); exitFocusInputMode('pickup'); }
           else { setDestLocation(latlng); saveRecentDest(placeName, latlng.lat, latlng.lng); exitFocusInputMode('dest'); }
         }
@@ -569,9 +545,11 @@ function onSearchInput(type, isDirectCall = false) {
 
   const executeSearch = async () => {
     try {
-      let url = `https://rsapi.goong.io/Place/AutoComplete?api_key=${GOONG_API_KEY}&input=${encodeURIComponent(query)}&limit=8&more_compound=true&sessiontoken=${sessionToken}`;
+      // Chuỗi URL gọi API tối giản chính xác như mẫu thử nghiệm, kết hợp more_compound=true để lấy đầy đủ cấu trúc địa chỉ
+      let url = `https://rsapi.goong.io/Place/AutoComplete?api_key=${GOONG_API_KEY}&input=${encodeURIComponent(query)}&more_compound=true`;
+      
       if (rawCenter && Number.isFinite(lat) && Number.isFinite(lng)) {
-        url += `&location=${lat.toFixed(5)},${lng.toFixed(5)}&radius=${radiusInMeters}`;
+        url += `&location=${lat.toFixed(5)},${lng.toFixed(5)}`;
       }
 
       const res = await fetch(url, { signal: currentSignal });
@@ -584,7 +562,6 @@ function onSearchInput(type, isDirectCall = false) {
       if (isDirectCall && predictions.length > 0) {
         const topPrediction = predictions[0];
         const detail = await fetchGoongPlaceDetail(topPrediction.place_id, currentSignal);
-        window.resetSearchSessionToken();
         
         if (detail && detail.geometry && detail.geometry.location) {
           const placeName = cleanAddressText(topPrediction.structured_formatting?.main_text || topPrediction.description);
