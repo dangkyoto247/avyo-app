@@ -447,10 +447,11 @@ async function fetchGoongPlaceDetail(placeId, signal) {
   }
 }
 
-// Biến toàn cục lưu tên tỉnh từ vị trí GPS
+// Biến toàn cục lưu Tỉnh & Thành phố/Quận Huyện từ GPS hiện tại
 let userProvince = "";
+let userCity = "";
 
-// Cập nhật tên tỉnh khi tìm thấy địa chỉ GPS hiện tại
+// Cập nhật tên tỉnh và thành phố khi tìm thấy địa chỉ GPS hiện tại
 async function fetchAddressForInput(type, latlng) {
   if (!GOONG_API_KEY || !latlng) return;
   try {
@@ -462,10 +463,14 @@ async function fetchAddressForInput(type, latlng) {
         const fullAddr = data.results[0].formatted_address || "";
         const placeName = cleanAddressText(fullAddr);
         
-        // Tách lấy Tỉnh/Thành từ vị trí thực tế của khách
-        const parts = fullAddr.split(',');
-        if (parts.length > 0) {
-          userProvince = parts[parts.length - 1].trim().toLowerCase();
+        // Tách lấy Tỉnh/Thành và Thành phố/Quận Huyện (Ví dụ: "vinh", "nghệ an")
+        const parts = fullAddr.split(',').map(p => cleanAddressText(p).trim().toLowerCase());
+        if (parts.length >= 1) {
+          userProvince = parts[parts.length - 1]; // Ví dụ: "nghệ an"
+        }
+        if (parts.length >= 2) {
+          // Tách tên Thành phố/Thị xã/Huyện (Ví dụ: "Thành phố Vinh" -> "vinh")
+          userCity = parts[parts.length - 2].replace(/thành phố|thị xã|huyện/gi, '').trim(); 
         }
 
         const inputEl = document.getElementById(type + 'Input');
@@ -475,7 +480,7 @@ async function fetchAddressForInput(type, latlng) {
   } catch (e) {}
 }
 
-// GỢI Ý ĐỊA ĐIỂM - TỰ ĐỘNG TRUYỀN GPS ĐỂ GOONG ƯU TIÊN BÁN KÍNH GẦN KHÁCH
+// GỢI Ý ĐỊA ĐIỂM - ĐIỂM ĐÓN TỐI ĐA 5 ĐỊA ĐIỂM TRONG TỈNH & ƯU TIÊN VINH/THÀNH PHỐ HIỆN TẠI LÊN ĐẦU
 function onSearchInput(type, isDirectCall = false) {
   clearTimeout(searchTimer);
   const inputEl = document.getElementById(type + 'Input');
@@ -492,16 +497,25 @@ function onSearchInput(type, isDirectCall = false) {
   listEl.innerHTML = '<div class="suggestion-loading">⏳ Đang tìm địa chỉ...</div>';
   listEl.style.display = 'block';
 
-  // ĐÃ SỬA: Tối ưu Debounce riêng cho Mobile (150ms) thay vì cố định 300ms
   const isMobileApp = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
   const delayTime = isMobileApp ? 150 : 300;
 
   searchTimer = setTimeout(async () => {
     try {
-      // 1. URL tìm kiếm cơ bản
-      let url = `https://rsapi.goong.io/Place/AutoComplete?api_key=${GOONG_API_KEY}&input=${encodeURIComponent(query)}`;
+      // 1. Đính kèm tên Thành phố/Tỉnh vào từ khóa nếu là ô Điểm đón
+      let searchInputText = query;
+      if (type === 'pickup') {
+        if (userCity && !query.toLowerCase().includes(userCity)) {
+          searchInputText = `${query}, ${userCity}`;
+        } else if (userProvince && !query.toLowerCase().includes(userProvince)) {
+          searchInputText = `${query}, ${userProvince}`;
+        }
+      }
 
-      // 2. TRUYỀN TỌA ĐỘ GPS KHÁCH HÀNG: Giúp Goong tự định hướng ưu tiên Vinh/Nghệ An lên đầu
+      // 2. URL gửi Goong API
+      let url = `https://rsapi.goong.io/Place/AutoComplete?api_key=${GOONG_API_KEY}&input=${encodeURIComponent(searchInputText)}`;
+
+      // 3. Đính kèm tọa độ GPS
       const center = markerStart ? markerStart.getLatLng() : (userLatLng || getPinCenterLatLng());
       if (center && Number.isFinite(center.lat) && Number.isFinite(center.lng)) {
         url += `&location=${center.lat.toFixed(5)},${center.lng.toFixed(5)}`;
@@ -513,50 +527,68 @@ function onSearchInput(type, isDirectCall = false) {
       if (data.status === "OK" && data.predictions && data.predictions.length > 0) {
         let predictions = data.predictions;
 
-        // 3. Sắp xếp phụ ở Client: Nếu địa chỉ chứa "Nghệ An" hoặc "Vinh", ưu tiên lên vị trí đầu
-        if (userProvince) {
+        // 4. LỌC CỨNG CHO ĐIỂM ĐÓN: Bắt buộc chỉ lấy địa điểm trong Tỉnh
+        if (type === 'pickup' && userProvince) {
+          predictions = predictions.filter(p => p.description.toLowerCase().includes(userProvince));
+        }
+
+        // 5. SẮP XẾP ƯU TIÊN: Đưa các địa điểm thuộc Thành phố/Quận Huyện hiện tại (Ví dụ: Vinh) lên đầu tiên
+        if (userCity) {
           predictions.sort((a, b) => {
-            const aMatch = a.description.toLowerCase().includes(userProvince) || a.description.toLowerCase().includes('vinh');
-            const bMatch = b.description.toLowerCase().includes(userProvince) || b.description.toLowerCase().includes('vinh');
+            const aDesc = a.description.toLowerCase();
+            const bDesc = b.description.toLowerCase();
+
+            const aMatch = aDesc.includes(userCity);
+            const bMatch = bDesc.includes(userCity);
+
             if (aMatch && !bMatch) return -1;
             if (!aMatch && bMatch) return 1;
-            return 0;
+            return 0; // Giữ nguyên thứ tự Goong nếu cùng cấp ưu tiên
           });
         }
 
-        listEl.innerHTML = '';
-        predictions.forEach(p => {
-          const div = document.createElement('div');
-          div.className = 'suggestion-item';
-          div.innerHTML = `📍 <b>${p.description}</b>`;
+        // 6. Cắt lấy tối đa 5 kết quả
+        predictions = predictions.slice(0, 5);
 
-          div.onclick = async () => {
-            if (document.activeElement) document.activeElement.blur();
-            inputEl.value = p.description;
-            toggleClearButton(type);
-            listEl.style.display = 'none';
+        if (predictions.length > 0) {
+          listEl.innerHTML = '';
+          predictions.forEach(p => {
+            const div = document.createElement('div');
+            div.className = 'suggestion-item';
+            div.innerHTML = `📍 <b>${p.description}</b>`;
 
-            const detail = await fetchGoongPlaceDetail(p.place_id);
-            if (detail && detail.geometry && detail.geometry.location) {
-              const latlng = L.latLng(detail.geometry.location.lat, detail.geometry.location.lng);
-              if (type === 'pickup') {
-                setPickupLocation(latlng);
-                saveRecentPickup(p.description, latlng.lat, latlng.lng);
-                exitFocusInputMode('pickup');
-                if (!markerEnd) enterSelectionMode('dest'); else exitSelectionMode();
-              } else {
-                setDestLocation(latlng);
-                saveRecentDest(p.description, latlng.lat, latlng.lng);
-                exitFocusInputMode('dest');
-                exitSelectionMode();
+            div.onclick = async () => {
+              if (document.activeElement) document.activeElement.blur();
+              inputEl.value = p.description;
+              toggleClearButton(type);
+              listEl.style.display = 'none';
+
+              const detail = await fetchGoongPlaceDetail(p.place_id);
+              if (detail && detail.geometry && detail.geometry.location) {
+                const latlng = L.latLng(detail.geometry.location.lat, detail.geometry.location.lng);
+                if (type === 'pickup') {
+                  setPickupLocation(latlng);
+                  saveRecentPickup(p.description, latlng.lat, latlng.lng);
+                  exitFocusInputMode('pickup');
+                  if (!markerEnd) enterSelectionMode('dest'); else exitSelectionMode();
+                } else {
+                  setDestLocation(latlng);
+                  saveRecentDest(p.description, latlng.lat, latlng.lng);
+                  exitFocusInputMode('dest');
+                  exitSelectionMode();
+                }
               }
-            }
-          };
-          listEl.appendChild(div);
-        });
-        listEl.style.display = 'block';
+            };
+            listEl.appendChild(div);
+          });
+          listEl.style.display = 'block';
+        } else {
+          listEl.innerHTML = '<div class="suggestion-loading">❌ Không tìm thấy điểm đón phù hợp trong khu vực</div>';
+          listEl.style.display = 'block';
+        }
       } else {
         listEl.innerHTML = '<div class="suggestion-loading">❌ Không tìm thấy địa chỉ phù hợp</div>';
+        listEl.style.display = 'block';
       }
     } catch (err) {
       console.error('Lỗi API Goong:', err);
