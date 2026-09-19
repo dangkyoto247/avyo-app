@@ -3,7 +3,7 @@ const STATIC_CACHE_NAME = 'avyo-static-v200';
 const MAX_TILE_LIMIT = 150; // Giới hạn tối đa 150 mảnh bản đồ gần nhất
 
 const STATIC_ASSETS = [
-  '/',
+
   'index.html',
   'driver.html',
   'admin.html',
