@@ -270,7 +270,11 @@ function exitSelectionMode() {
   updateSwapButtonVisibility();
 }
 
-// GIẢI MÃ TỌA ĐỘ KÉO GHIM VỚI BỘ NHỚ ĐỆM LATLNG (LÀM TRÒN ~11M)
+// Biến toàn cục lưu Tỉnh & Thành phố/Quận Huyện từ GPS hiện tại
+let userProvince = "";
+let userCity = "";
+
+// Cập nhật tên tỉnh và thành phố khi tìm thấy địa chỉ GPS hiện tại (Đã sửa lỗi tách chuỗi trên iOS)
 async function fetchAddressForInput(type, latlng) {
   if (!GOONG_API_KEY || !latlng || !Number.isFinite(latlng.lat) || !Number.isFinite(latlng.lng)) return;
   
@@ -290,16 +294,30 @@ async function fetchAddressForInput(type, latlng) {
     if (res.ok) {
       const data = await res.json();
       if (data.results && data.results.length > 0) {
-        const placeName = cleanAddressText(data.results[0].formatted_address || data.results[0].name);
+        const fullAddr = data.results[0].formatted_address || data.results[0].name || "";
+        const placeName = cleanAddressText(fullAddr);
         goongCache.geocode.set(cacheKey, placeName);
+
+        // Làm sạch toàn bộ chuỗi trước khi split để tránh phần tử rỗng trên Safari/iOS
+        const cleanFull = cleanAddressText(fullAddr);
+        const parts = cleanFull.split(',').map(p => p.trim().toLowerCase()).filter(p => p.length > 0);
         
+        if (parts.length >= 1) {
+          userProvince = parts[parts.length - 1]; // Ví dụ: "nghệ an"
+        }
+        if (parts.length >= 2) {
+          userCity = parts[parts.length - 2].replace(/thành phố|thị xã|huyện/gi, '').trim(); // Ví dụ: "vinh"
+        }
+
         const inputEl = document.getElementById(type + 'Input');
         if (inputEl) { inputEl.value = placeName; toggleClearButton(type); }
         if (type === 'pickup') saveRecentPickup(placeName, latlng.lat, latlng.lng);
         if (type === 'dest') saveRecentDest(placeName, latlng.lat, latlng.lng);
       }
     }
-  } catch (e) {}
+  } catch (e) {
+    console.warn("Lỗi giải mã tọa độ:", e);
+  }
 }
 
 function setPickupLocation(latlng, isAuto = false) {
@@ -447,40 +465,7 @@ async function fetchGoongPlaceDetail(placeId, signal) {
   }
 }
 
-// Biến toàn cục lưu Tỉnh & Thành phố/Quận Huyện từ GPS hiện tại
-let userProvince = "";
-let userCity = "";
-
-// Cập nhật tên tỉnh và thành phố khi tìm thấy địa chỉ GPS hiện tại
-async function fetchAddressForInput(type, latlng) {
-  if (!GOONG_API_KEY || !latlng) return;
-  try {
-    const url = `https://rsapi.goong.io/Geocode?latlng=${latlng.lat},${latlng.lng}&api_key=${GOONG_API_KEY}`;
-    const res = await fetch(url);
-    if (res.ok) {
-      const data = await res.json();
-      if (data.results && data.results.length > 0) {
-        const fullAddr = data.results[0].formatted_address || "";
-        const placeName = cleanAddressText(fullAddr);
-        
-        // Tách lấy Tỉnh/Thành và Thành phố/Quận Huyện (Ví dụ: "vinh", "nghệ an")
-        const parts = fullAddr.split(',').map(p => cleanAddressText(p).trim().toLowerCase());
-        if (parts.length >= 1) {
-          userProvince = parts[parts.length - 1]; // Ví dụ: "nghệ an"
-        }
-        if (parts.length >= 2) {
-          // Tách tên Thành phố/Thị xã/Huyện (Ví dụ: "Thành phố Vinh" -> "vinh")
-          userCity = parts[parts.length - 2].replace(/thành phố|thị xã|huyện/gi, '').trim(); 
-        }
-
-        const inputEl = document.getElementById(type + 'Input');
-        if (inputEl) { inputEl.value = placeName; toggleClearButton(type); }
-      }
-    }
-  } catch (e) {}
-}
-
-// GỢI Ý ĐỊA ĐIỂM - ĐIỂM ĐÓN TỐI ĐA 5 ĐỊA ĐIỂM TRONG TỈNH & ƯU TIÊN VINH/THÀNH PHỐ HIỆN TẠI LÊN ĐẦU
+// GỢI Ý ĐỊA ĐIỂM - TỐI ƯU CHUẨN CHO BỘ GÕ TELEX IPHONE VÀ GOONG API
 function onSearchInput(type, isDirectCall = false) {
   clearTimeout(searchTimer);
   const inputEl = document.getElementById(type + 'Input');
@@ -497,25 +482,16 @@ function onSearchInput(type, isDirectCall = false) {
   listEl.innerHTML = '<div class="suggestion-loading">⏳ Đang tìm địa chỉ...</div>';
   listEl.style.display = 'block';
 
+  // Tăng delay trên Mobile lên 350ms để chờ người dùng gõ xong từ trên bàn phím Telex
   const isMobileApp = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-  const delayTime = isMobileApp ? 150 : 300;
+  const delayTime = isDirectCall ? 0 : (isMobileApp ? 350 : 250);
 
   searchTimer = setTimeout(async () => {
     try {
-      // 1. Đính kèm tên Thành phố/Tỉnh vào từ khóa nếu là ô Điểm đón
-      let searchInputText = query;
-      if (type === 'pickup') {
-        if (userCity && !query.toLowerCase().includes(userCity)) {
-          searchInputText = `${query}, ${userCity}`;
-        } else if (userProvince && !query.toLowerCase().includes(userProvince)) {
-          searchInputText = `${query}, ${userProvince}`;
-        }
-      }
+      // Giữ nguyên chuỗi tìm kiếm tự nhiên của khách hàng, không ép cộng chuỗi thủ công
+      let url = `https://rsapi.goong.io/Place/AutoComplete?api_key=${GOONG_API_KEY}&input=${encodeURIComponent(query)}`;
 
-      // 2. URL gửi Goong API
-      let url = `https://rsapi.goong.io/Place/AutoComplete?api_key=${GOONG_API_KEY}&input=${encodeURIComponent(searchInputText)}`;
-
-      // 3. Đính kèm tọa độ GPS
+      // Đính kèm tọa độ GPS để Goong tự ưu tiên địa điểm quanh bán kính vị trí hiện tại
       const center = markerStart ? markerStart.getLatLng() : (userLatLng || getPinCenterLatLng());
       if (center && Number.isFinite(center.lat) && Number.isFinite(center.lng)) {
         url += `&location=${center.lat.toFixed(5)},${center.lng.toFixed(5)}`;
@@ -527,65 +503,52 @@ function onSearchInput(type, isDirectCall = false) {
       if (data.status === "OK" && data.predictions && data.predictions.length > 0) {
         let predictions = data.predictions;
 
-        // 4. LỌC CỨNG CHO ĐIỂM ĐÓN: Bắt buộc chỉ lấy địa điểm trong Tỉnh
-        if (type === 'pickup' && userProvince) {
-          predictions = predictions.filter(p => p.description.toLowerCase().includes(userProvince));
-        }
-
-        // 5. SẮP XẾP ƯU TIÊN: Đưa các địa điểm thuộc Thành phố/Quận Huyện hiện tại (Ví dụ: Vinh) lên đầu tiên
-        if (userCity) {
+        // Ưu tiên đưa các địa điểm thuộc Thành phố/Tỉnh hiện tại lên đầu thay vì dùng filter xóa bỏ
+        if (userCity || userProvince) {
+          const targetCity = userCity || userProvince;
           predictions.sort((a, b) => {
-            const aDesc = a.description.toLowerCase();
-            const bDesc = b.description.toLowerCase();
-
-            const aMatch = aDesc.includes(userCity);
-            const bMatch = bDesc.includes(userCity);
-
+            const aMatch = a.description.toLowerCase().includes(targetCity);
+            const bMatch = b.description.toLowerCase().includes(targetCity);
             if (aMatch && !bMatch) return -1;
             if (!aMatch && bMatch) return 1;
-            return 0; // Giữ nguyên thứ tự Goong nếu cùng cấp ưu tiên
+            return 0;
           });
         }
 
-        // 6. Cắt lấy tối đa 5 kết quả
+        // Lấy tối đa 5 gợi ý sát nhất
         predictions = predictions.slice(0, 5);
 
-        if (predictions.length > 0) {
-          listEl.innerHTML = '';
-          predictions.forEach(p => {
-            const div = document.createElement('div');
-            div.className = 'suggestion-item';
-            div.innerHTML = `📍 <b>${p.description}</b>`;
+        listEl.innerHTML = '';
+        predictions.forEach(p => {
+          const div = document.createElement('div');
+          div.className = 'suggestion-item';
+          div.innerHTML = `📍 <b>${typeof escapeHTML === 'function' ? escapeHTML(p.description) : p.description}</b>`;
 
-            div.onclick = async () => {
-              if (document.activeElement) document.activeElement.blur();
-              inputEl.value = p.description;
-              toggleClearButton(type);
-              listEl.style.display = 'none';
+          div.onclick = async () => {
+            if (document.activeElement) document.activeElement.blur();
+            inputEl.value = p.description;
+            toggleClearButton(type);
+            listEl.style.display = 'none';
 
-              const detail = await fetchGoongPlaceDetail(p.place_id);
-              if (detail && detail.geometry && detail.geometry.location) {
-                const latlng = L.latLng(detail.geometry.location.lat, detail.geometry.location.lng);
-                if (type === 'pickup') {
-                  setPickupLocation(latlng);
-                  saveRecentPickup(p.description, latlng.lat, latlng.lng);
-                  exitFocusInputMode('pickup');
-                  if (!markerEnd) enterSelectionMode('dest'); else exitSelectionMode();
-                } else {
-                  setDestLocation(latlng);
-                  saveRecentDest(p.description, latlng.lat, latlng.lng);
-                  exitFocusInputMode('dest');
-                  exitSelectionMode();
-                }
+            const detail = await fetchGoongPlaceDetail(p.place_id);
+            if (detail && detail.geometry && detail.geometry.location) {
+              const latlng = L.latLng(detail.geometry.location.lat, detail.geometry.location.lng);
+              if (type === 'pickup') {
+                setPickupLocation(latlng);
+                saveRecentPickup(p.description, latlng.lat, latlng.lng);
+                exitFocusInputMode('pickup');
+                if (!markerEnd) enterSelectionMode('dest'); else exitSelectionMode();
+              } else {
+                setDestLocation(latlng);
+                saveRecentDest(p.description, latlng.lat, latlng.lng);
+                exitFocusInputMode('dest');
+                exitSelectionMode();
               }
-            };
-            listEl.appendChild(div);
-          });
-          listEl.style.display = 'block';
-        } else {
-          listEl.innerHTML = '<div class="suggestion-loading">❌ Không tìm thấy điểm đón phù hợp trong khu vực</div>';
-          listEl.style.display = 'block';
-        }
+            }
+          };
+          listEl.appendChild(div);
+        });
+        listEl.style.display = 'block';
       } else {
         listEl.innerHTML = '<div class="suggestion-loading">❌ Không tìm thấy địa chỉ phù hợp</div>';
         listEl.style.display = 'block';
