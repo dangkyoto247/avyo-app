@@ -1,5 +1,5 @@
 const TILE_CACHE_NAME = 'map-tiles-v2';
-const STATIC_CACHE_NAME = 'avyo-static-v6';
+const STATIC_CACHE_NAME = 'avyo-static-v1';
 const MAX_TILE_LIMIT = 150; // Giới hạn tối đa 150 mảnh bản đồ gần nhất
 
 const STATIC_ASSETS = [
@@ -104,29 +104,27 @@ self.addEventListener('fetch', (event) => {
   }
 
   // 1. Xử lý tài nguyên Tĩnh (Static Assets)
-// SỬA LẠI TRONG SW.JS: Bỏ ignoreSearch: true để khi đổi ?v=3 nó sẽ tải mới từ Server
-if (STATIC_ASSETS.some(url => requestUrl.includes(url))) {
-  event.respondWith(
-    caches.open(STATIC_CACHE_NAME).then(async (cache) => {
-      // ĐÃ SỬA: Xóa { ignoreSearch: true } để nhận diện được v=3, v=4
-      const cachedResponse = await cache.match(event.request); 
-      if (cachedResponse) return cachedResponse;
-      
-      try {
-        const networkResponse = await fetch(event.request, { redirect: 'follow' });
-        if (networkResponse && (networkResponse.status === 200 || networkResponse.type === 'opaque')) {
-          const cleaned = await cleanResponse(networkResponse);
-          cache.put(event.request, cleaned.clone());
-          return cleaned;
+  if (STATIC_ASSETS.some(url => requestUrl.includes(url))) {
+    event.respondWith(
+      caches.open(STATIC_CACHE_NAME).then(async (cache) => {
+        const cachedResponse = await cache.match(event.request, { ignoreSearch: true });
+        if (cachedResponse) return cachedResponse;
+        
+        try {
+          const networkResponse = await fetch(event.request, { redirect: 'follow' });
+          if (networkResponse && (networkResponse.status === 200 || networkResponse.type === 'opaque')) {
+            const cleaned = await cleanResponse(networkResponse);
+            cache.put(event.request, cleaned.clone());
+            return cleaned;
+          }
+          return networkResponse;
+        } catch (e) {
+          return Response.error();
         }
-        return networkResponse;
-      } catch (e) {
-        return Response.error();
-      }
-    })
-  );
-  return;
-}
+      })
+    );
+    return;
+  }
 
   // 2. Xử lý Cache mảnh bản đồ (Map Tiles) - Có giới hạn 150 tiles tối đa
   if (requestUrl.includes('google.com/vt') || requestUrl.includes('mapbox.com') || requestUrl.includes('arcgisonline.com')) {

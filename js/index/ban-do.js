@@ -114,12 +114,15 @@ map.on('zoomend', () => {
     activeZoomPinLatLng = null;
   }
 });
+
 map.on('movestart', () => { document.body.classList.add('map-moving'); clearTimeout(mapMoveDebounceTimer); });
+
+// ĐÃ SỬA: Khi dừng kéo bản đồ, CHỈ tắt hiệu ứng di chuyển, KHÔNG gọi API Geocode ngầm!
 map.on('moveend', () => {
   document.body.classList.remove('map-moving');
   clearTimeout(mapMoveDebounceTimer);
-  if (currentSelectionMode) mapMoveDebounceTimer = setTimeout(() => { fetchAddressForInput(currentSelectionMode, getPinCenterLatLng()); }, 300);
 });
+
 map.on('click', () => { exitFocusInputMode(); });
 
 function updatePinColor(color) {
@@ -274,15 +277,20 @@ function enterSelectionMode(mode) {
   updateSwapButtonVisibility();
 }
 
-function confirmAndExitSelection() {
+// ĐÃ SỬA: Chỉ khi người dùng bấm nút "XÁC NHẬN CHỌN VỊ TRÍ", ứng dụng mới gọi API Geocode 1 lần duy nhất!
+async function confirmAndExitSelection() {
   const pinLatLng = getPinCenterLatLng();
   if (currentSelectionMode === 'pickup') {
     setPickupLocation(pinLatLng);
-    fetchAddressForInput('pickup', pinLatLng);
+    const pickupInput = document.getElementById('pickupInput');
+    if (pickupInput) pickupInput.value = "⏳ Đang lấy địa chỉ...";
+    await fetchAddressForInput('pickup', pinLatLng);
     if (!markerEnd) enterSelectionMode('dest'); else exitSelectionMode();
   } else if (currentSelectionMode === 'dest') {
     setDestLocation(pinLatLng);
-    fetchAddressForInput('dest', pinLatLng);
+    const destInput = document.getElementById('destInput');
+    if (destInput) destInput.value = "⏳ Đang lấy địa chỉ...";
+    await fetchAddressForInput('dest', pinLatLng);
     exitSelectionMode();
   }
 }
@@ -429,26 +437,49 @@ function swapRoute() {
 
 // BẮT GPS HIỆN TẠI VÀ CHUẨN HÓA VĂN BẢN TÌM KIẾM
 map.locate({ setView: false, maxZoom: 15, enableHighAccuracy: true });
+
 map.on('locationfound', (e) => {
   userLatLng = e.latlng;
   localStorage.setItem('avyo_last_lat', e.latlng.lat);
   localStorage.setItem('avyo_last_lng', e.latlng.lng);
+  
   if (isFirstLocationLoad) {
+    // 1. Căn giữa bản đồ vào vị trí GPS
     centerMapOnPin(e.latlng, 15, 0, false);
-    if (!markerStart) setPickupLocation(e.latlng, true);
+    
+    // 2. Chốt luôn vị trí này làm Điểm Đón (Pickup)
+    setPickupLocation(e.latlng, true);
+    
+    // 3. Hiển thị chữ tạm thời vào ô input trong lúc chờ API load tên đường
+    const pickupInput = document.getElementById('pickupInput');
+    if (pickupInput) {
+      pickupInput.value = "📍 Vị trí hiện tại của bạn";
+      if (typeof toggleClearButton === 'function') toggleClearButton('pickup');
+    }
+    
+    // Gọi API ngầm để dịch tọa độ thành tên đường thật
     fetchAddressForInput('pickup', e.latlng);
+    
+    // 4. Chuyển Ứng dụng sang trạng thái "Sẵn sàng chọn Điểm Đến" (Màu xanh dương)
+    if (typeof enterSelectionMode === 'function') {
+      enterSelectionMode('dest');
+    }
+    
     isFirstLocationLoad = false;
   } else {
+    // Các lần update GPS tiếp theo (nếu đang ở chế độ chọn thì pan theo)
     if (currentSelectionMode) centerMapOnPin(e.latlng, 15);
   }
   loadDrivers();
 });
+
 map.on('locationerror', (e) => { console.warn("Không thể lấy vị trí GPS hiện tại:", e.message); });
 
 function useCurrentLocationAsPickup() {
   if (userLatLng && Number.isFinite(userLatLng.lat) && Number.isFinite(userLatLng.lng)) {
     if (currentSelectionMode) {
-      centerMapOnPin(userLatLng, map.getZoom()); fetchAddressForInput(currentSelectionMode, userLatLng);
+      centerMapOnPin(userLatLng, map.getZoom()); 
+      fetchAddressForInput(currentSelectionMode, userLatLng);
     } else {
       map.setView(userLatLng, 15, { animate: true });
       setPickupLocation(userLatLng, true);
