@@ -127,15 +127,16 @@ function getBBox(lat, lng, radiusKm) {
   return `${(lng - dLng).toFixed(4)},${(lat - dLat).toFixed(4)},${(lng + dLng).toFixed(4)},${(lat + dLat).toFixed(4)}`;
 }
 
+/* NÚT VỊ TRÍ VÀ XEM LỘ TRÌNH VỚI ICON 25PX */
 function updateGpsButtonUI(isRouteActive) {
   const btn = document.getElementById('gpsFloatBtn');
   if (!btn) return;
   if (isRouteActive) {
     btn.title = 'Xem toàn cảnh lộ trình';
-    btn.innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19L9 3"/><path d="M20 19L15 3"/><path d="M12 4v3"/><path d="M12 11v3"/><path d="M12 18v3"/></svg>`;
+    btn.innerHTML = `<svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19L9 3"/><path d="M20 19L15 3"/><path d="M12 4v3"/><path d="M12 11v3"/><path d="M12 18v3"/></svg>`;
   } else {
     btn.title = 'Vị trí hiện tại';
-    btn.innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11"></polygon></svg>`;
+    btn.innerHTML = `<svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11"></polygon></svg>`;
   }
 }
 
